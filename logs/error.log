@@ -1,0 +1,2 @@
+[2025-12-05 16:17:59] ERROR: Signup failed {"service":"nile-mart-api","env":"development","transactionId":"3294869e-d04a-40c0-a23d-9db7172103d3","error":"CompensationTracker is not a constructor","email":"testuser@example.com","ip":"127.0.0.1"}
+[2025-12-05 16:31:50] ERROR: Signup failed {"service":"nile-mart-api","env":"development","transactionId":"3a7c61d8-c00b-498c-8f9d-db5752691cce","error":"CompensationTracker is not a constructor","email":"testuser@example.com","ip":"127.0.0.1"}
