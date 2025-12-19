@@ -227,6 +227,24 @@ const signupcustomer = async (req, res) => {
       log.warn("Non-fatal: failed to update user prefs:", prefErr?.message);
     }
 
+    // 1. Generate a random 6-digit code for verification
+    const verificationCode = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
+    // 2. Temporarily store the verification code with an expiration time
+    // You should use a temporary cache like Redis or a database table with an expiry.
+    // For this example, let's use a simple placeholder.
+    // NOTE: DO NOT use a global variable or object in production.
+    await storeVerificationCode(email, verificationCode); // A new function
+
+    // 3. Send the verification email using Resend
+    await sendVerificationEmail({
+      customerEmail: email,
+      customerName: username,
+      verificationCode,
+    });
+
     // 4) Create profile document
     const profile = await db.createDocument(
       env.APPWRITE_DATABASE_ID,

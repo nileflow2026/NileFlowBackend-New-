@@ -20,7 +20,7 @@ const sendOrderConfirmationEmail = async ({
 
   try {
     await resend.emails.send({
-      from: "Nile Flow <delivered@resend.dev>",
+      from: "Nile Flow <orders@nileflowafrica.com>",
       to: customerEmail,
       subject: `Order #${orderId} Confirmed`,
       html: `
@@ -51,11 +51,19 @@ const sendOrderConfirmationEmail = async ({
                   
                     <tr style="border-bottom: 1px solid #eee;">
                         <td style="padding: 10px; display: flex; align-items: center;">
-                            <img src="${item.productImage}" alt="${item.productName}" width="60" style="margin-right: 15px; border-radius: 4px;" />
-                            <div style="font-size: 14px;">${item.productName}</div>
+                            <img src="${item.productImage}" alt="${
+                                item.productName
+                              }" width="60" style="margin-right: 15px; border-radius: 4px;" />
+                            <div style="font-size: 14px;">${
+                              item.productName
+                            }</div>
                         </td>
-                        <td style="padding: 10px; text-align: right;">${item.quantity}</td>
-                        <td style="padding: 10px; text-align: right;">$${item.price.toFixed(2)}</td>
+                        <td style="padding: 10px; text-align: right;">${
+                          item.quantity
+                        }</td>
+                        <td style="padding: 10px; text-align: right;">$${item.price.toFixed(
+                          2
+                        )}</td>
                         </tr>
 
                     `
@@ -71,7 +79,7 @@ const sendOrderConfirmationEmail = async ({
                 </div>
 
                 <div style="text-align: center; margin: 30px 0;">
-                <a href="https://yourdomain.com/track/${orderId}" 
+                <a href="https://nileflowafrica.com/track/${orderId}" 
                     style="background: #1c1c1c; color: #fff; padding: 12px 20px; border-radius: 5px; text-decoration: none; font-weight: bold;">
                     🚚 Track Your Order
                 </a>
@@ -79,12 +87,12 @@ const sendOrderConfirmationEmail = async ({
 
                 <p style="font-size: 15px;">We’ll email you again when your package ships. If you have questions, reply to this email anytime.</p>
 
-                <p style="margin-top: 30px; font-size: 16px;">— The Nile Mart Team</p>
+                <p style="margin-top: 30px; font-size: 16px;">— The Nile Flow Team</p>
             </div>
 
             <div style="background-color: #1c1c1c; padding: 15px; text-align: center;">
                 <p style="margin: 0; font-size: 12px; color: #bbb;">
-                Nile Mart | Juba, South Sudan | <a href="mailto:support@nilemart.com" style="color: #bbb;">support@nilemart.com</a>
+                Nile Flow | Nairobi, Kenya | <a href="mailto:support@nileflowafrica.com" style="color: #bbb;">support@nileflowafrica.com</a>
                 </p>
             </div>
             </div>
@@ -105,7 +113,7 @@ const sendOrderStatusUpdateEmail = async ({
 }) => {
   try {
     await resend.emails.send({
-      from: "Nile Mart <delivered@resend.dev>",
+      from: "Nile Flow <orders@nileflowafrica.com>",
       to: customerEmail,
       subject: `Update on Order #${orderId}`,
       html: `
@@ -161,7 +169,7 @@ const sendOrderStatusUpdateEmail = async ({
         color: #999;
         border-top: 1px solid #e0e0e0;
       ">
-        Nile Flow | Nairobi, Kenya | <a href="mailto:support@nileflow.com" style="color: #999; text-decoration: none;">support@nileflow.com</a>
+        Nile Flow | Nairobi, Kenya | <a href="mailto:support@nileflowafrica.com" style="color: #999; text-decoration: none;">support@nileflowafrica.com</a>
       </div>
     </div>
   </div>
@@ -180,14 +188,14 @@ const sendVerificationEmail = async ({
 }) => {
   try {
     await resend.emails.send({
-      from: "Nile Flow <no-reply@resend.dev>", // Your verified Resend domain
+      from: "Nile Flow <no-reply@nileflowafrica.com>", // Your verified Resend domain
       to: customerEmail,
       subject: "Verify Your Nile Flow Account",
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f7f7f7;">
           <div style="max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <h2 style="color: #333;">Hello ${customerName},</h2>
-            <p style="font-size: 16px; color: #555;">Thank you for signing up with Nile Mart! Please use the following code to verify your account:</p>
+            <p style="font-size: 16px; color: #555;">Thank you for signing up with Nile Flow! Please use the following code to verify your account:</p>
             <div style="text-align: center; margin: 30px 0;">
               <span style="font-size: 28px; font-weight: bold; color: #1c1c1c; background-color: #f0f0f0; padding: 15px 25px; border-radius: 6px; letter-spacing: 2px;">
                 ${verificationCode}
@@ -206,7 +214,7 @@ const sendVerificationEmail = async ({
   }
 };
 
-const verifyCustomer = async (req, res) => {
+const verifyCustomers = async (req, res) => {
   const { email, verificationCode } = req.body;
 
   if (!email || !verificationCode) {
@@ -235,6 +243,97 @@ const verifyCustomer = async (req, res) => {
     return res
       .status(200)
       .json({ message: "Email and phone number verified successfully." });
+  } catch (error) {
+    console.error("Verification error:", error);
+    return res
+      .status(500)
+      .json({ error: "Verification failed. Please try again." });
+  }
+};
+
+const verifyCustomer = async (req, res) => {
+  const { email, verificationCode, deviceId } = req.body;
+
+  if (!email || !verificationCode) {
+    return res
+      .status(400)
+      .json({ error: "Email and verification code are required." });
+  }
+
+  try {
+    // Retrieve the stored verification code
+    const storedCode = await getStoredVerificationCode(email);
+
+    if (!storedCode || storedCode !== verificationCode) {
+      return res
+        .status(400)
+        .json({ error: "Invalid or expired verification code." });
+    }
+
+    // Mark the user as verified
+    await markUserAsVerified(email);
+
+    // Invalidate the verification code
+    await deleteVerificationCode(email);
+
+    // ✅ AUTO-LOGIN: Fetch user and generate tokens
+    const user = await getUserByEmail(email);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    // Generate tokens (use your existing token generation functions)
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    // Store refresh token with deviceId
+    await storeRefreshToken(user.id, refreshToken, deviceId);
+
+    // Set httpOnly cookies
+    /* res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    }); */
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      domain: "localhost",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: "/",
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      domain: "localhost",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: "/",
+    });
+
+    // Return success with user data
+    return res.status(200).json({
+      message: "Email verified and logged in successfully.",
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        phone: user.phone,
+        isVerified: true,
+      },
+    });
   } catch (error) {
     console.error("Verification error:", error);
     return res

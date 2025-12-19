@@ -121,6 +121,7 @@ const corsOptions = {
       "http://localhost:3000",
       "https://nileflow.co.ke",
       "http://localhost:5176",
+      "https://new-nile-flow-backend.onrender.com",
     ];
 
     // Allow requests with no origin (like mobile apps or curl requests)
