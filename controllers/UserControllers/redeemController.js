@@ -70,55 +70,6 @@ exports.redeemMile = async (req, res) => {
   }
 };
 
-/* exports.redeemMiles = async (req, res) => {
-  try {
-    const { userId, rewardKey } = req.body;
-
-    if (!userId || !rewardKey) {
-      return res.status(400).json({ error: "Missing userId or rewardKey" });
-    }
-
-    // **CHANGE THIS LINE**
-    // Use the find() method to get the correct reward object
-    const reward = REWARDS.find((r) => r.key === rewardKey);
-
-    if (!reward) {
-      return res.status(400).json({ error: "Invalid reward" });
-    }
-
-    const userRecord = await getUserMiles(userId);
-    if (!userRecord) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    if (userRecord.currentMiles < reward.miles) {
-      return res.status(400).json({ error: "Not enough miles" });
-    }
-
-    const newMiles = userRecord.currentMiles - reward.miles;
-
-    const updatedRedemptions = [
-      ...(userRecord.redeemed || []),
-      {
-        rewardName: reward.name,
-        milesUsed: reward.miles,
-        used: false, // <-- Add this new property
-        date: new Date().toISOString(),
-      },
-    ];
-
-    await db.updateDocument(DB_ID, COLLECTION_ID, userRecord.$id, {
-      currentMiles: newMiles,
-      redeemed: JSON.stringify(updatedRedemptions),
-    });
-
-    return res.status(200).json({ success: true, reward: reward.name });
-  } catch (err) {
-    console.error("[redeemMiles error]", err);
-    return res.status(500).json({ error: "Server error" });
-  }
-}; */
-
 exports.redeemMiles = async (req, res) => {
   try {
     const { userId, rewardKey } = req.body;
@@ -130,7 +81,7 @@ exports.redeemMiles = async (req, res) => {
     // 🔍 Fetch reward dynamically from DB
     const rewardQuery = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_REWARD_COLLECTION,
+      env.APPWRITE_REWARD_COLLECTION_ID,
       [Query.equal("key", rewardKey), Query.equal("active", true)]
     );
 
@@ -153,9 +104,13 @@ exports.redeemMiles = async (req, res) => {
     // 💳 Deduct miles
     const newMiles = userRecord.currentMiles - reward.miles;
 
-    // 📜 Track redemption
+    // 📜 Track redemption (store as JSON string per schema)
+    const existingRedemptions = Array.isArray(userRecord.redeemed)
+      ? userRecord.redeemed
+      : JSON.parse(userRecord.redeemed || "[]");
+
     const updatedRedemptions = [
-      ...(userRecord.redeemed || []),
+      ...existingRedemptions,
       {
         rewardKey: reward.key,
         rewardName: reward.name,
@@ -172,7 +127,7 @@ exports.redeemMiles = async (req, res) => {
       userRecord.$id,
       {
         currentMiles: newMiles,
-        redeemed: updatedRedemptions,
+        redeemed: JSON.stringify(updatedRedemptions),
       }
     );
 

@@ -509,7 +509,7 @@ const getProductsForMobile = async (req, res) => {
 
 const submitReview = async (req, res) => {
   try {
-    const { productId, reviewText, rating, imageId } = req.body;
+    const { productId, reviewText, rating, image, images } = req.body;
     console.log("Review body payload received:", req.body);
 
     const user = req.user; // Ensure authentication middleware attaches `req.user`
@@ -534,7 +534,6 @@ const submitReview = async (req, res) => {
     }
 
     const userProfile = userDoc.documents[0];
-    /* const userName = userProfile.username || "Anonymous"; */
     const userName =
       userProfile.name ||
       userProfile.username ||
@@ -556,6 +555,16 @@ const submitReview = async (req, res) => {
       }
     }
 
+    // Handle image URLs (single or multiple)
+    let imageUrl = "";
+    if (images && Array.isArray(images) && images.length > 0) {
+      // Multiple images - store as JSON array string
+      imageUrl = JSON.stringify(images);
+    } else if (image && typeof image === "string") {
+      // Single image URL
+      imageUrl = image;
+    }
+
     // Create review
     const reviewPayload = {
       userId,
@@ -564,7 +573,7 @@ const submitReview = async (req, res) => {
       avatar,
       reviewText: String(reviewText).trim(),
       rating: validatedRating,
-      imageId: imageId || "",
+      image: imageUrl,
       createdAt: new Date().toISOString(),
     };
 
@@ -740,15 +749,25 @@ const getProductReviews = async (req, res) => {
         avatar:
           "https://fra.cloud.appwrite.io/v1/storage/buckets/692a3b700039c02fb4bc/files/692b97e30027bf293efe/view?project=6926c7df002fa7831d94&mode=admin",
       };
-      const imageUrl = doc.imageId
-        ? storage.getFileView(Config.StorageId, doc.imageId)
-        : null;
+
+      // Handle image URLs (single or multiple)
+      let imageUrls = [];
+      if (doc.image) {
+        try {
+          // Try to parse as JSON array (multiple images)
+          imageUrls = JSON.parse(doc.image);
+        } catch (e) {
+          // Single image URL
+          imageUrls = [doc.image];
+        }
+      }
 
       return {
         id: doc.$id,
         text: doc.reviewText,
         rating: doc.rating ?? 0,
-        image: imageUrl,
+        image: imageUrls.length > 0 ? imageUrls[0] : null, // First image for backward compatibility
+        images: imageUrls, // All images
         date: new Date(doc.createdAt).toDateString(),
         userName: user.userName,
         avatar: user.avatar,

@@ -4,8 +4,10 @@ const { env } = require("../../src/env");
 const Stripe = require("stripe");
 const checkoutNodeJssdk = require("@paypal/checkout-server-sdk");
 const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+const crypto = require("crypto");
 const {
   sendOrderConfirmationEmail,
+  sendOrderCancellationEmail,
 } = require("../../services/send-confirmation");
 const { createNotification } = require("../UserControllers/Clientnotification");
 const { ID, Query } = require("node-appwrite");
@@ -16,200 +18,51 @@ const {
   reduceProductStock,
 } = require("./stockController");
 
-const FRONTEND_URL = env.FRONTEND_URL || "http://localhost:5174";
+const FRONTEND_URL = env.FRONTEND_UR || "http://localhost:5173";
 
-const cashonDeliverys = async (req, res) => {
+/**
+ * Helper function to archive cancelled/failed order to separate collection
+ */
+async function archiveCancelledOrder(order, reason, failureType) {
+  // Only archive if collection is configured
+  if (!env.APPWRITE_CANCELLED_ORDERS_COLLECTION_ID) {
+    console.warn("Cancelled orders collection not configured, skipping archive");
+    return null;
+  }
+
   try {
-    const { cart, userId, customerEmail, username, totalAmount, currency } =
-      req.body;
-
-    // Validate incoming data
-    if (!cart || !userId || !customerEmail || !totalAmount || !currency) {
-      return res
-        .status(400)
-        .json({ message: "Missing required order details." });
-    }
-
-    // Prepare the document to be saved in Appwrite
-    const orderDocument = {
-      users: userId,
-      customerEmail,
-      username,
-      items: JSON.stringify(cart), // Appwrite JSON attribute requires a string
-      amount: Math.round(totalAmount), // Convert to a rounded integer
-      currency,
-      paymentMethod: "Cash on Delivery",
-      status: "Pending",
-      orderStatus: "Ordered",
-      paymentStatus: "succeeded",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    // Save the order document to the Appwrite database
-    const result = await db.createDocument(
+    const archivedOrder = await db.createDocument(
       env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_ORDERS_COLLECTION,
-      ID.unique(), // Appwrite` generates a unique ID for us
-      orderDocument
+      env.APPWRITE_CANCELLED_ORDERS_COLLECTION_ID,
+      ID.unique(),
+      {
+        originalOrderId: order.$id,
+        users: order.users,
+        customerEmail: order.customerEmail,
+        username: order.username,
+        items: order.items,
+        amount: order.amount,
+        currency: order.currency || "KES",
+        paymentMethod: order.paymentMethod,
+        orderStatus: order.orderStatus,
+        paymentStatus: order.paymentStatus,
+        cancellationReason: reason,
+        failureType: failureType, // 'user_cancelled', 'payment_failed', 'timeout'
+        mpesaReceiptNumber: order.mpesaReceiptNumber || null,
+        mpesaPhone: order.mpesaPhone || null,
+        originalCreatedAt: order.createdAt,
+        cancelledAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      }
     );
 
-    // The document ID from Appwrite will serve as our unique orderId
-    const orderId = result.$id;
-
-    await addNileMilesOnPurchase(userId, totalAmount);
-
-    // Return the generated orderId and a success message
-    res.status(201).json({
-      success: true,
-      message: "Cash on Delivery order created successfully.",
-      orderId: orderId,
-      createdAt: orderDocument.createdAt,
-    });
+    console.log(`✅ Order archived to cancelled collection: ${archivedOrder.$id}`);
+    return archivedOrder;
   } catch (error) {
-    console.error("Error creating COD order:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create order.",
-      error: error.message,
-    });
+    console.error("❌ Failed to archive cancelled order:", error.message);
+    return null;
   }
-};
-
-const stripewebpayments = async (req, res) => {
-  try {
-    const { cart, userId, customerEmail, username } = req.body;
-
-    if (!cart || !cart.length || !userId || !customerEmail) {
-      return res.status(400).json({ message: "Missing cart or user details" });
-    }
-
-    if (!userId)
-      return res.status(400).json({ message: "User ID is required" });
-    if (!customerEmail)
-      return res.status(400).json({ message: "Customer email is required" });
-    if (!username)
-      return res.status(400).json({ message: "Username is required" });
-
-    console.log("=== VALIDATION PASSED ===");
-    console.log(`Processing order for ${username}, ${cart.length} items`);
-
-    // 1. CHECK STOCK AVAILABILITY BEFORE CREATING ORDER
-    console.log("Checking stock availability...");
-    const stockCheck = await checkStockAvailability(cart); // ADD AWAIT HERE
-
-    if (!stockCheck.isAvailable) {
-      console.log("Stock check failed:", stockCheck.unavailableItems);
-      return res.status(400).json({
-        success: false,
-        message: "Some items are out of stock or insufficient quantity",
-        unavailableItems: stockCheck.unavailableItems,
-        stockDetails: stockCheck.stockDetails,
-      });
-    }
-
-    console.log("✅ Stock check passed");
-
-    const orderId = `ORD-${Date.now()}`;
-
-    const lineItems = cart.map((item) => ({
-      price_data: {
-        currency: "usd",
-        product_data: {
-          name: item.productName || item.name,
-          images: [item.productImage],
-        },
-        unit_amount: Math.round(Number(item.price) * 100),
-      },
-      quantity: item.quantity,
-    }));
-
-    // 2. Create the Checkout Session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: lineItems,
-      mode: "payment",
-      customer_email: customerEmail,
-      metadata: {
-        users: userId,
-        username,
-        orderId,
-      },
-      success_url: `${FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${FRONTEND_URL}/payment-cancelled?orderId=${orderId}`,
-    });
-
-    // 3. ✅ SYNC: Create order FIRST before responding to frontend
-    try {
-      await functions.createExecution(
-        env.ORDER_FUNCTION_WEB_ID,
-        JSON.stringify({
-          orderId,
-          products: cart,
-          customerEmail,
-          username,
-          users: userId,
-          paymentStatus: "initiated",
-          sessionId: session.id,
-          stockChecked: true,
-          stockCheckedAt: new Date().toISOString(),
-        }),
-        true // ← CHANGE TO SYNCHRONOUS
-      );
-    } catch (orderError) {
-      console.error("Order creation failed:", orderError);
-      return res.status(500).json({ message: "Order creation failed" });
-    }
-
-    // 4. Now respond to frontend
-    res.json({
-      sessionId: session.id,
-      orderId,
-      orderStatus: "Ordered",
-    });
-
-    // In your payment controller, update the async IIFE:
-    (async () => {
-      try {
-        const totalAmount = cart.reduce((t, i) => t + i.price * i.quantity, 0);
-
-        // ✅ Call createNotification WITHOUT the res parameter
-        const notificationResult = await createNotification({
-          message: `🛍️ New order #${orderId} placed by ${customerEmail} totaling $${totalAmount.toFixed(2)}.`,
-          type: "order",
-          username: username || customerEmail,
-          userId,
-          email: customerEmail,
-        });
-
-        console.log(`✅ Notification created:`, notificationResult);
-
-        // Send email confirmation
-        await Emailconfirmation({
-          cart,
-          customerEmail,
-          customerName: username || customerEmail,
-          orderId,
-          orderTotal: totalAmount,
-        });
-
-        console.log(`✅ Email sent to ${customerEmail}`);
-
-        // Add Nile Miles - make sure this function is similarly fixed
-        await addNileMilesOnPurchase(userId, totalAmount);
-
-        console.log(`✅ Nile Miles added for user ${userId}`);
-      } catch (err) {
-        console.error("❌ Async operations error:", err.message);
-      }
-    })();
-  } catch (error) {
-    console.error("Checkout Error:", error);
-    return res
-      .status(500)
-      .json({ message: "Checkout failed. Please try again." });
-  }
-};
+}
 
 const cashonDelivery = async (req, res) => {
   let orderId; // Declare orderId at function scope
@@ -340,6 +193,22 @@ const cashonDelivery = async (req, res) => {
       console.log("✅ Nile Miles added");
     } catch (milesError) {
       console.warn("Nile Miles error (non-critical):", milesError.message);
+    }
+
+    // Send email confirmation
+    try {
+      await Emailconfirmation({
+        cart,
+        customerEmail,
+        customerName: username,
+        orderId,
+        orderTotal: parseFloat(totalAmount),
+        paymentMethod: "Cash on Delivery",
+        status: "Pending",
+      });
+      console.log("✅ Email confirmation sent");
+    } catch (emailError) {
+      console.warn("Email confirmation failed:", emailError.message);
     }
 
     // 7. RETURN SUCCESS RESPONSE
@@ -573,7 +442,7 @@ const stripewebpayment = async (req, res) => {
         console.log(`✅ Email sent to ${customerEmail}`);
 
         // Add Nile Miles (only after payment success, not here)
-        // await addNileMilesOnPurchase(userId, totalAmount);
+        await addNileMilesOnPurchase(userId, totalAmount);
       } catch (err) {
         console.error("❌ Async operations error:", err.message);
       }
@@ -714,70 +583,6 @@ const stripePaymentCancelled = async (req, res) => {
   }
 };
 
-const stripemobilepayments = async (req, res) => {
-  try {
-    const { cart, userId, customerEmail, username } = req.body;
-
-    if (!cart || !cart.length || !userId || !customerEmail) {
-      return res.status(400).json({ message: "Missing cart or user details" });
-    }
-
-    const createdAt = new Date().toISOString();
-    const Products = cart.map((item) => ({
-      product_name: item.productName || item.name,
-      currency: "usd",
-      price: Math.round(Number(item.price) * 100),
-      quantity: item.quantity,
-    }));
-
-    const amount = Products.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-
-    if (!amount || isNaN(amount)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid amount calculated from cart." });
-    }
-
-    const currency = req.body.currency || "usd";
-
-    const orderId = `ORD-${Date.now()}`;
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount,
-      currency,
-      metadata: { customerEmail, users: userId, orderId },
-    });
-
-    await functions.createExecution(
-      env.ORDER_FUNCTION_ID,
-      JSON.stringify({
-        orderId,
-        products: cart,
-        customerEmail,
-        username,
-        users: userId,
-        paymentStatus: "initiated",
-        timestamp: createdAt,
-      })
-    );
-
-    return res.json({
-      client_secret: paymentIntent.client_secret,
-      orderId,
-      orderStatus: "Ordered",
-      createdAt,
-    });
-  } catch (error) {
-    console.error("Checkout Error:", error);
-    return res
-      .status(500)
-      .json({ message: "Checkout failed", error: error.message });
-  }
-};
-
 const verifyStripePayment = async (req, res) => {
   try {
     const { session_id } = req.query;
@@ -858,9 +663,15 @@ const PayPalCaptureOrder = async (req, res) => {
   }
 };
 
-const Emailconfirmation = async (req, res) => {
-  const { customerEmail, customerName, orderId, orderTotal, cart } = req.body;
-
+const Emailconfirmation = async ({
+  customerEmail,
+  customerName,
+  orderId,
+  orderTotal,
+  cart,
+  paymentMethod,
+  status,
+}) => {
   try {
     await sendOrderConfirmationEmail({
       customerEmail,
@@ -868,100 +679,716 @@ const Emailconfirmation = async (req, res) => {
       orderId,
       orderTotal,
       cart,
+      paymentMethod,
+      status,
     });
-    res.status(200).json({ success: true });
   } catch (err) {
     console.error("Email sending failed:", err);
-    res.status(500).json({ error: "Failed to send confirmation email" });
+    throw err;
   }
 };
 
-/* New ones */
-const stripemobilepayment = async (req, res) => {
-  try {
-    const { cart, userId, customerEmail, username } = req.body;
+/**
+ * Get M-Pesa OAuth Access Token
+ */
+async function getMpesaAccessToken() {
+  const consumerKey = env.MPESA_CONSUMER_KEY;
+  const consumerSecret = env.MPESA_CONSUMER_SECRET;
 
-    if (!cart || !cart.length || !userId || !customerEmail) {
-      return res.status(400).json({ message: "Missing cart or user details" });
+  if (!consumerKey || !consumerSecret) {
+    throw new Error(
+      "M-Pesa consumer key and secret are required. Check your .env file."
+    );
+  }
+
+  const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString(
+    "base64"
+  );
+
+  const url =
+    env.MPESA_ENVIRONMENT === "production"
+      ? "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+      : "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
+
+  try {
+    console.log("Requesting M-Pesa OAuth token from:", url);
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Basic ${auth}`,
+      },
+    });
+
+    const data = await response.json();
+    console.log("M-Pesa OAuth response:", data);
+
+    if (!response.ok) {
+      throw new Error(
+        `M-Pesa auth failed: ${data.errorMessage || response.statusText}`
+      );
     }
 
-    // 1. CHECK STOCK AVAILABILITY
-    const stockCheck = await checkStockAvailability(cart);
+    return data.access_token;
+  } catch (error) {
+    console.error("M-Pesa OAuth error:", error);
+    throw error;
+  }
+}
 
-    if (!stockCheck.isAvailable) {
+/**
+ * Initiate M-Pesa STK Push (Lipa na M-Pesa Online)
+ */
+const initiateMpesaPayment = async (req, res) => {
+  try {
+    console.log("=== M-PESA STK PUSH REQUEST ===");
+    const {
+      phoneNumber,
+      amount,
+      accountReference,
+      transactionDesc,
+      userId,
+      cart,
+      customerEmail,
+      username,
+      currency,
+    } = req.body;
+
+    // Validation
+    if (!phoneNumber || !amount || !accountReference) {
       return res.status(400).json({
-        message: "Some items are out of stock or insufficient quantity",
-        unavailableItems: stockCheck.unavailableItems,
+        success: false,
+        message: "Phone number, amount, and account reference are required",
       });
     }
 
-    const createdAt = new Date().toISOString();
-    const Products = cart.map((item) => ({
-      product_name: item.productName || item.name,
-      currency: "usd",
-      price: Math.round(Number(item.price) * 100),
-      quantity: item.quantity,
-    }));
-
-    const amount = Products.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-
-    if (!amount || isNaN(amount)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid amount calculated from cart." });
+    // Format phone number (remove + and ensure it starts with 254)
+    let formattedPhone = phoneNumber.replace(/[^0-9]/g, "");
+    if (formattedPhone.startsWith("0")) {
+      formattedPhone = "254" + formattedPhone.substring(1);
+    } else if (!formattedPhone.startsWith("254")) {
+      formattedPhone = "254" + formattedPhone;
     }
 
-    const currency = req.body.currency || "usd";
+    // Check stock availability
+    if (cart && Array.isArray(cart)) {
+      const stockCheck = await checkStockAvailability(cart);
+      if (!stockCheck.isAvailable) {
+        return res.status(400).json({
+          success: false,
+          message: "Some items are out of stock",
+          unavailableItems: stockCheck.unavailableItems,
+        });
+      }
+    }
 
-    const orderId = `ORD-${Date.now()}`;
+    // Get access token
+    const accessToken = await getMpesaAccessToken();
 
-    // 2. CREATE ORDER WITH STOCK CHECK INFO
-    const orderData = {
-      orderId,
-      products: cart,
-      customerEmail,
-      username,
-      users: userId,
-      paymentStatus: "initiated",
-      timestamp: createdAt,
-      stockChecked: true,
-      stockCheckedAt: new Date().toISOString(),
-    };
+    // Generate timestamp
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[-:TZ.]/g, "")
+      .slice(0, 14);
 
-    await functions.createExecution(
-      env.ORDER_FUNCTION_ID,
-      JSON.stringify(orderData)
+    // Generate password
+    const shortCode = env.MPESA_SHORTCODE;
+    const passkey = env.MPESA_PASSKEY;
+    const password = Buffer.from(`${shortCode}${passkey}${timestamp}`).toString(
+      "base64"
     );
 
-    // 3. CREATE PAYMENT INTENT WITH STOCK RESERVATION INFO
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount,
-      currency,
-      metadata: {
-        customerEmail,
-        users: userId,
-        orderId,
-        stockReserved: "true", // Indicate stock was checked
-        productsCount: cart.length,
+    // Create order in database first
+    const orderId = ID.unique();
+    const orderDocument = {
+      users: userId,
+      customerEmail,
+      username,
+      items: JSON.stringify(cart || []),
+      amount: Math.round(parseFloat(amount)),
+      currency: currency || "KES",
+      paymentMethod: "M-Pesa",
+      status: "Pending",
+      orderStatus: "Pending Payment",
+      paymentStatus: "pending",
+      mpesaPhone: formattedPhone,
+      stockChecked: true,
+      stockUpdated: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await db.createDocument(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_ORDERS_COLLECTION,
+      orderId,
+      orderDocument
+    );
+
+    console.log(`✅ M-Pesa order created: ${orderId}`);
+
+    // Prepare STK Push request
+    const stkUrl =
+      env.MPESA_ENVIRONMENT === "production"
+        ? "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+        : "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
+
+    const stkPayload = {
+      BusinessShortCode: shortCode,
+      Password: password,
+      Timestamp: timestamp,
+      TransactionType: "CustomerPayBillOnline",
+      Amount: Math.round(parseFloat(amount)),
+      PartyA: formattedPhone,
+      PartyB: shortCode,
+      PhoneNumber: formattedPhone,
+      CallBackURL:
+        env.MPESA_CALLBACK_URL ||
+        `${env.BACKEND_URL}/api/payments/mpesa/callback`,
+      AccountReference: accountReference || orderId,
+      TransactionDesc: transactionDesc || `Payment for order ${orderId}`,
+    };
+
+    console.log("Sending STK Push...");
+    const stkResponse = await fetch(stkUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
       },
-      description: `Order ${orderId} - ${cart.length} items`,
+      body: JSON.stringify(stkPayload),
     });
 
-    return res.json({
-      client_secret: paymentIntent.client_secret,
-      orderId,
-      orderStatus: "Ordered",
-      createdAt,
-      stockChecked: true,
+    // Get response text first to handle non-JSON responses
+    const responseText = await stkResponse.text();
+    console.log("STK Push Raw Response:", responseText);
+
+    let stkData;
+    try {
+      stkData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Failed to parse M-Pesa response:", responseText);
+
+      // Update order as failed
+      await db.updateDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_ORDERS_COLLECTION,
+        orderId,
+        {
+          orderStatus: "Failed",
+          paymentStatus: "failed",
+          failureReason: "Invalid M-Pesa response - likely callback URL issue",
+          updatedAt: new Date().toISOString(),
+        }
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "M-Pesa returned an invalid response. Check your callback URL configuration.",
+        hint: "Ensure MPESA_CALLBACK_URL is a valid HTTPS URL accessible by M-Pesa servers",
+      });
+    }
+
+    console.log("STK Push Response:", stkData);
+
+    if (stkData.ResponseCode === "0") {
+      // Update order with checkout request ID
+      await db.updateDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_ORDERS_COLLECTION,
+        orderId,
+        {
+          mpesaCheckoutRequestID: stkData.CheckoutRequestID,
+          mpesaMerchantRequestID: stkData.MerchantRequestID,
+          updatedAt: new Date().toISOString(),
+        }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "STK Push sent successfully. Please check your phone.",
+        orderId,
+        checkoutRequestId: stkData.CheckoutRequestID,
+        merchantRequestId: stkData.MerchantRequestID,
+      });
+    } else {
+      // Update order as failed
+      await db.updateDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_ORDERS_COLLECTION,
+        orderId,
+        {
+          orderStatus: "Failed",
+          paymentStatus: "failed",
+          failureReason: stkData.ResponseDescription || "STK Push failed",
+          updatedAt: new Date().toISOString(),
+        }
+      );
+
+      return res.status(400).json({
+        success: false,
+        message:
+          stkData.ResponseDescription || "Failed to initiate M-Pesa payment",
+        errorCode: stkData.ResponseCode,
+      });
+    }
+  } catch (error) {
+    console.error("❌ M-Pesa STK Push error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to initiate M-Pesa payment",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * M-Pesa Payment Callback
+ */
+const mpesaCallback = async (req, res) => {
+  try {
+    console.log("=== M-PESA CALLBACK RECEIVED ===");
+    console.log("Callback Body:", JSON.stringify(req.body, null, 2));
+
+    const { Body } = req.body;
+    const stkCallback = Body?.stkCallback;
+
+    if (!stkCallback) {
+      return res.status(400).json({ message: "Invalid callback data" });
+    }
+
+    const {
+      MerchantRequestID,
+      CheckoutRequestID,
+      ResultCode,
+      ResultDesc,
+      CallbackMetadata,
+    } = stkCallback;
+
+    // Find order by checkout request ID
+    const orders = await db.listDocuments(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_ORDERS_COLLECTION,
+      [Query.equal("mpesaCheckoutRequestID", CheckoutRequestID)]
+    );
+
+    if (!orders.documents || orders.documents.length === 0) {
+      console.warn("No order found for CheckoutRequestID:", CheckoutRequestID);
+      return res.status(200).json({ message: "Order not found" });
+    }
+
+    const order = orders.documents[0];
+    const orderId = order.$id;
+
+    // ResultCode 0 = Success
+    if (ResultCode === 0) {
+      console.log("✅ M-Pesa payment successful for order:", orderId);
+
+      // Extract payment details from metadata
+      let mpesaReceiptNumber = "";
+      let amount = 0;
+      let phoneNumber = "";
+
+      if (CallbackMetadata && CallbackMetadata.Item) {
+        CallbackMetadata.Item.forEach((item) => {
+          if (item.Name === "MpesaReceiptNumber")
+            mpesaReceiptNumber = item.Value;
+          if (item.Name === "Amount") amount = item.Value;
+          if (item.Name === "PhoneNumber") phoneNumber = item.Value;
+        });
+      }
+
+      // Reduce stock
+      const cart = JSON.parse(order.items || "[]");
+      if (cart.length > 0) {
+        const stockUpdateResult = await reduceProductStock(cart, orderId);
+        if (!stockUpdateResult.success) {
+          console.error("Stock update failed:", stockUpdateResult.errors);
+        }
+      }
+
+      // Update order status
+      await db.updateDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_ORDERS_COLLECTION,
+        orderId,
+        {
+          orderStatus: "Ordered",
+          paymentStatus: "succeeded",
+          status: "Pending",
+          mpesaReceiptNumber,
+          mpesaTransactionDate: new Date().toISOString(),
+          stockUpdated: true,
+          updatedAt: new Date().toISOString(),
+        }
+      );
+
+      // Add Nile Miles
+      try {
+        await addNileMilesOnPurchase(order.users, order.amount);
+      } catch (e) {
+        console.warn("Nile Miles error:", e.message);
+      }
+
+      // Send confirmation email
+      try {
+        await Emailconfirmation({
+          cart,
+          customerEmail: order.customerEmail,
+          customerName: order.username,
+          orderId,
+          orderTotal: parseFloat(order.amount),
+          paymentMethod: "M-Pesa",
+          status: "Confirmed",
+        });
+      } catch (e) {
+        console.warn("Email error:", e.message);
+      }
+
+      // Create notification
+      try {
+        await createNotification({
+          userId: order.users,
+          message: `Your M-Pesa payment of KES ${amount} was successful. Order ${orderId} confirmed.`,
+          type: "payment",
+          username: order.username,
+          email: order.customerEmail,
+        });
+      } catch (e) {
+        console.warn("Notification error:", e.message);
+      }
+
+      console.log("🎉 M-Pesa order completed:", orderId);
+    } else {
+      // Payment failed or cancelled
+      console.warn(
+        `❌ M-Pesa payment failed for order ${orderId}:`,
+        ResultDesc
+      );
+
+      await db.updateDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_ORDERS_COLLECTION,
+        orderId,
+        {
+          orderStatus: "Failed",
+          paymentStatus: "failed",
+          failureReason: ResultDesc,
+          mpesaResultCode: ResultCode?.toString() || "",
+          updatedAt: new Date().toISOString(),
+        }
+      );
+
+      // Archive to cancelled orders collection
+      await archiveCancelledOrder(
+        order,
+        ResultDesc,
+        ResultCode === 1032 ? "user_cancelled" : "payment_failed"
+      );
+
+      // Send cancellation email
+      try {
+        const cart = JSON.parse(order.items || "[]");
+        await sendOrderCancellationEmail({
+          customerEmail: order.customerEmail,
+          customerName: order.username,
+          orderId,
+          orderTotal: parseFloat(order.amount),
+          cart,
+          cancellationReason: ResultDesc,
+        });
+        console.log("✅ Cancellation email sent");
+      } catch (emailError) {
+        console.warn("Cancellation email error:", emailError.message);
+      }
+
+      // Notify user
+      try {
+        await createNotification({
+          userId: order.users,
+          message: `Your M-Pesa payment failed: ${ResultDesc}`,
+          type: "payment",
+          username: order.username,
+          email: order.customerEmail,
+        });
+      } catch (e) {
+        console.warn("Notification error:", e.message);
+      }
+    }
+
+    // Always respond with success to M-Pesa
+    return res
+      .status(200)
+      .json({ ResultCode: 0, ResultDesc: "Callback processed" });
+  } catch (error) {
+    console.error("❌ M-Pesa callback error:", error);
+    // Still return 200 to prevent retries
+    return res
+      .status(200)
+      .json({ ResultCode: 1, ResultDesc: "Internal error" });
+  }
+};
+
+/**
+ * Check M-Pesa Payment Status
+ */
+const mpesaPaymentStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID is required",
+      });
+    }
+
+    // Get order from database
+    const order = await db.getDocument(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_ORDERS_COLLECTION,
+      orderId
+    );
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      orderId: order.$id,
+      paymentStatus: order.paymentStatus,
+      orderStatus: order.orderStatus,
+      paymentMethod: order.paymentMethod,
+      amount: order.amount,
+      mpesaReceiptNumber: order.mpesaReceiptNumber || null,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
     });
   } catch (error) {
-    console.error("Checkout Error:", error);
-    return res
-      .status(500)
-      .json({ message: "Checkout failed", error: error.message });
+    console.error("❌ M-Pesa status check error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to check payment status",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Cancel M-Pesa Payment
+ */
+const mpesaCancelPayment = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID is required",
+      });
+    }
+
+    // Get order from database
+    const order = await db.getDocument(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_ORDERS_COLLECTION,
+      orderId
+    );
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Only cancel if payment is still pending
+    if (
+      order.paymentStatus === "pending" ||
+      order.paymentStatus === "initiated"
+    ) {
+      await db.updateDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_ORDERS_COLLECTION,
+        orderId,
+        {
+          orderStatus: "Cancelled",
+          paymentStatus: "cancelled",
+          status: "Cancelled",
+          updatedAt: new Date().toISOString(),
+        }
+      );
+
+      // Archive to cancelled orders collection
+      await archiveCancelledOrder(order, "Cancelled by customer", "user_cancelled");
+
+      // Send cancellation email
+      try {
+        const cart = JSON.parse(order.items || "[]");
+        await sendOrderCancellationEmail({
+          customerEmail: order.customerEmail,
+          customerName: order.username,
+          orderId,
+          orderTotal: parseFloat(order.amount),
+          cart,
+          cancellationReason: "Cancelled by customer",
+        });
+        console.log("✅ Cancellation email sent");
+      } catch (emailError) {
+        console.warn("Cancellation email error:", emailError.message);
+      }
+
+      // Send notification
+      try {
+        await createNotification({
+          userId: order.users,
+          message: `Your M-Pesa payment for order ${orderId} was cancelled.`,
+          type: "payment",
+          username: order.username,
+          email: order.customerEmail,
+        });
+      } catch (e) {
+        console.warn("Notification error:", e.message);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Payment cancelled successfully",
+        orderId,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot cancel payment with status: ${order.paymentStatus}`,
+        paymentStatus: order.paymentStatus,
+      });
+    }
+  } catch (error) {
+    console.error("❌ M-Pesa cancel payment error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to cancel payment",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Cancel Cash on Delivery Order
+ */
+const cancelCodOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID is required",
+      });
+    }
+
+    // Get order from database
+    const order = await db.getDocument(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_ORDERS_COLLECTION,
+      orderId
+    );
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Only allow cancellation for COD orders that are pending
+    if (order.paymentMethod !== "Cash on Delivery") {
+      return res.status(400).json({
+        success: false,
+        message: "Only Cash on Delivery orders can be cancelled through this endpoint",
+      });
+    }
+
+    if (order.orderStatus === "Delivered" || order.orderStatus === "Shipped") {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot cancel order with status: ${order.orderStatus}`,
+      });
+    }
+
+    // Update order status
+    await db.updateDocument(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_ORDERS_COLLECTION,
+      orderId,
+      {
+        orderStatus: "Cancelled",
+        paymentStatus: "cancelled",
+        status: "Cancelled",
+        updatedAt: new Date().toISOString(),
+      }
+    );
+
+    // Archive to cancelled orders collection
+    await archiveCancelledOrder(order, "Order cancelled by customer", "user_cancelled");
+
+    // Restore stock if it was reduced
+    if (order.stockUpdated) {
+      try {
+        const cart = JSON.parse(order.items || "[]");
+        // Note: You'll need to implement restoreProductStock function
+        // For now, we'll just log it
+        console.log("TODO: Restore stock for cancelled COD order", cart);
+      } catch (e) {
+        console.warn("Stock restore error:", e.message);
+      }
+    }
+
+    // Send cancellation email
+    try {
+      const cart = JSON.parse(order.items || "[]");
+      await sendOrderCancellationEmail({
+        customerEmail: order.customerEmail,
+        customerName: order.username,
+        orderId,
+        orderTotal: parseFloat(order.amount),
+        cart,
+        cancellationReason: "Order cancelled by customer",
+      });
+      console.log("✅ Cancellation email sent");
+    } catch (emailError) {
+      console.warn("Cancellation email error:", emailError.message);
+    }
+
+    // Send notification
+    try {
+      await createNotification({
+        userId: order.users,
+        message: `Your Cash on Delivery order ${orderId} was cancelled successfully.`,
+        type: "order",
+        username: order.username,
+        email: order.customerEmail,
+      });
+    } catch (e) {
+      console.warn("Notification error:", e.message);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully",
+      orderId,
+    });
+  } catch (error) {
+    console.error("❌ Cancel COD order error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to cancel order",
+      error: error.message,
+    });
   }
 };
 
@@ -973,4 +1400,9 @@ module.exports = {
   cashonDelivery,
   verifyStripePayment,
   stripePaymentCancelled,
+  initiateMpesaPayment,
+  mpesaCallback,
+  mpesaPaymentStatus,
+  mpesaCancelPayment,
+  cancelCodOrder,
 };

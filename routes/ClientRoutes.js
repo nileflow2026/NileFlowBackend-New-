@@ -25,15 +25,18 @@ const {
   getCategoryById,
   getProducts2,
 } = require("../controllers/UserControllers/ClientController");
+const {
+  handleCancelRequest,
+} = require("../controllers/UserControllers/orderController");
 
 // Add this at the TOP of your routes file, before any routes
-router.use((req, res, next) => {
+/* router.use((req, res, next) => {
   console.log(`📥 ${req.method} ${req.originalUrl}`);
   console.log(`📥 Path: ${req.path}`);
   console.log(`📥 Params:`, req.params);
   console.log(`📥 Query:`, req.query);
   next();
-});
+}); */
 
 // Protected route
 router.get("/profile", authenticateToken, getCustomerProfile);
@@ -59,4 +62,8 @@ router.get("/products/category/:categoryId", getProductsByCategory);
 router.get("/featured-products", getFeaturedProducts);
 router.get("/deal-products", getDealProducts);
 router.get("/hero-products", getHeroProducts);
+
+// Order cancellation request
+router.post("/orders/cancel-request", authenticateToken, handleCancelRequest);
+
 module.exports = router;

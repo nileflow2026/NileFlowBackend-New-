@@ -16,6 +16,11 @@ const {
   Emailconfirmation,
   verifyStripePayment,
   cashonDelivery,
+  initiateMpesaPayment,
+  mpesaCallback,
+  mpesaPaymentStatus,
+  mpesaCancelPayment,
+  cancelCodOrder,
 } = require("../controllers/AdminControllers/PaymentController");
 
 router.post("/stripewebpayment", authenticateToken, stripewebpayment);
@@ -25,12 +30,19 @@ router.post("/paypal-capture-order", authenticateToken, PayPalCaptureOrder);
 router.post("/email-confirmation", authenticateToken, Emailconfirmation);
 router.get("/payment-success", authenticateToken, verifyStripePayment);
 
+// M-Pesa routes
+router.post("/mpesa/initiate", authenticateToken, initiateMpesaPayment);
+router.post("/mpesa/callback", mpesaCallback); // No auth middleware for M-Pesa callback
+router.get("/mpesa/status/:orderId", authenticateToken, mpesaPaymentStatus);
+router.post("/mpesa/cancel", authenticateToken, mpesaCancelPayment);
+
 router.post(
   "/email-orderStatus",
   authenticateToken,
   sendOrderStatusUpdateEmail
 );
 router.post("/cash-on-delivery", authenticateToken, cashonDelivery);
+router.post("/cash-on-delivery/cancel", authenticateToken, cancelCodOrder);
 router.post(
   "/webhook",
   express.raw({ type: "application/json" }), // IMPORTANT: raw body for Stripe verification

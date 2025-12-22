@@ -8,6 +8,10 @@ const {
   logoutcustomer,
   getCustomerPreferences,
   updateCustomerPreferences,
+  getGoogleOAuthUrl,
+  googleOAuthCallback,
+  getFacebookOAuthUrl,
+  facebookOAuthCallback,
 } = require("../controllers/UserControllers/ClientauthController");
 const {
   verifyCustomer,
@@ -29,4 +33,10 @@ router.get("/getCustomerProfile", authMiddleware, getCurrentCustomer);
 router.get("/preferences", authMiddleware, getCustomerPreferences);
 router.put("/preferences", authMiddleware, updateCustomerPreferences);
 router.post("/logoutCustomer", authMiddleware, logoutcustomer);
+
+// OAuth routes
+router.get("/oauth/google", getGoogleOAuthUrl);
+router.get("/oauth/google/callback", googleOAuthCallback);
+router.get("/oauth/facebook", getFacebookOAuthUrl);
+router.get("/oauth/facebook/callback", facebookOAuthCallback);
 module.exports = router;

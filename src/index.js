@@ -323,7 +323,7 @@ async function startServer() {
     console.log("Initializing Appwrite...");
     await appwriteService.initialize();
 
-    app.listen(PORT, "0.0.0.0", () => {
+    const server = app.listen(PORT, "0.0.0.0", () => {
       console.log(`
 ✅ Server running successfully!
 📍 Port: ${PORT}
@@ -332,6 +332,14 @@ async function startServer() {
 📚 API Docs: http://localhost:${PORT}/api/health
       `);
     });
+
+    // Prevent server from exiting
+    server.on("error", (error) => {
+      console.error("Server error:", error);
+    });
+
+    // Keep the process alive
+    process.stdin.resume();
   } catch (error) {
     console.error("❌ Failed to start server:");
     console.error("Error:", error.message);

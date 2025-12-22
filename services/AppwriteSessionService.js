@@ -61,7 +61,11 @@ class AppwriteService {
 
       // Test 3: Database operations
       try {
-        const collections = await this.db.listCollections(projectId, [], 1);
+        const collections = await this.db.listCollections(
+          env.APPWRITE_DATABASE_ID,
+          [],
+          1
+        );
         console.log(`✅ databases.read: OK (${collections.total} collections)`);
       } catch (error) {
         console.warn("⚠️  databases.read: Limited - ", error.message);
