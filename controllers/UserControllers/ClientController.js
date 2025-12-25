@@ -398,70 +398,22 @@ const getProducts = async (req, res) => {
   }
 };
 
-/* const getProducts = async (req, res) => {
-  try {
-    const { category, search } = req.query;
-
-    let filters = [];
-    if (category && category !== "all") {
-      filters.push(Query.equal("categoryId", category)); // ✅ query on real field
-    }
-
-    // Corrected: Only use one Query.search filter.
-    if (search) {
-      filters.push(Query.search("productName", search));
-    }
-    console.log("Appwrite Filters:", filters);
-
-    const allProducts = [];
-    let cursor = null;
-
-    while (true) {
-      const queries = [
-        Query.limit(100), // Appwrite's max batch size
-        Query.orderDesc("$createdAt"), // ✅ Sort by latest
-        ...(filters.length > 0 ? filters : []),
-        ...(cursor ? [Query.cursorAfter(cursor)] : []),
-      ];
-
-      const batch = await db.listDocuments(
-        env.APPWRITE_DATABASE_ID,
-        env.APPWRITE_PRODUCT_COLLECTION_ID,
-        queries
-      );
-
-      allProducts.push(...batch.documents);
-
-      if (batch.documents.length < 100) {
-        break; // no more documents
-      }
-
-      // advance cursor
-      cursor = batch.documents[batch.documents.length - 1].$id;
-    }
-
-    res.json({
-      success: true,
-      products: allProducts,
-      total: allProducts.length,
-    });
-  } catch (err) {
-    console.error("❌ Error fetching products:", err);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch products",
-    });
-  }
-};
- */
 const getProductsForMobile = async (req, res) => {
   try {
     const { category, search, limit = 20, cursor } = req.query;
 
     let filters = [];
+
+    // ✅ CRITICAL: Only show APPROVED and ACTIVE products
+    filters.push(Query.equal("isApproved", true));
+    filters.push(Query.equal("isActive", true));
+
+    // Category filter (use categoryId for consistency)
     if (category && category !== "all") {
-      filters.push(Query.equal("category", category));
+      filters.push(Query.equal("categoryId", category));
     }
+
+    // Search filter
     if (search) {
       filters.push(Query.search("productName", search));
     }
@@ -469,7 +421,7 @@ const getProductsForMobile = async (req, res) => {
     const queries = [
       Query.limit(parseInt(limit)),
       Query.orderDesc("$createdAt"),
-      ...(filters.length > 0 ? filters : []),
+      ...filters,
       ...(cursor ? [Query.cursorAfter(cursor)] : []),
     ];
 
@@ -479,25 +431,77 @@ const getProductsForMobile = async (req, res) => {
       queries
     );
 
-    // Pre-compute lightweight payload
-    const products = batch.documents.map((doc) => ({
-      $id: doc.$id,
-      productName: doc.productName,
-      price: doc.price,
-      brand: doc.brand,
-      image: doc.image,
-      // pre-aggregate review count if stored in doc or via trigger
-      totalRatings: doc.totalRatings || 0,
-      avgRating: doc.avgRating || 0,
-    }));
+    // ✅ ADD: Fetch review counts for all products in parallel
+    const productsWithReviews = await Promise.all(
+      batch.documents.map(async (doc) => {
+        try {
+          // Fetch review count and average rating
+          const reviews = await db.listDocuments(
+            env.APPWRITE_DATABASE_ID,
+            env.APPWRITE_REVIEW_COLLECTION_ID,
+            [Query.equal("productId", doc.$id), Query.select(["rating"])]
+          );
+
+          const reviewCount = reviews.total || 0;
+          const avgRating =
+            reviewCount > 0
+              ? reviews.documents.reduce((sum, r) => sum + (r.rating || 0), 0) /
+                reviewCount
+              : 0;
+
+          return {
+            $id: doc.$id,
+            productName: doc.productName,
+            price: doc.price,
+            brand: doc.brand,
+            image: doc.image,
+            description: doc.description,
+            stock: doc.stock,
+            category: doc.category,
+            categoryId: doc.categoryId,
+            vendorId: doc.vendorId,
+            isFeatured: doc.isFeatured || false,
+            // ✅ Include review data
+            reviewCount,
+            avgRating: parseFloat(avgRating.toFixed(1)),
+            totalRatings: reviewCount,
+          };
+        } catch (error) {
+          console.error(
+            `Error fetching reviews for product ${doc.$id}:`,
+            error
+          );
+          // Return product without review data on error
+          return {
+            $id: doc.$id,
+            productName: doc.productName,
+            price: doc.price,
+            brand: doc.brand,
+            image: doc.image,
+            description: doc.description,
+            stock: doc.stock,
+            category: doc.category,
+            categoryId: doc.categoryId,
+            vendorId: doc.vendorId,
+            isFeatured: doc.isFeatured || false,
+            reviewCount: 0,
+            avgRating: 0,
+            totalRatings: 0,
+          };
+        }
+      })
+    );
 
     res.json({
       success: true,
-      products,
-      total: products.length,
-      nextCursor: batch.documents.length
-        ? batch.documents[batch.documents.length - 1].$id
-        : null,
+      products: productsWithReviews,
+      total: batch.total,
+      count: productsWithReviews.length,
+      nextCursor:
+        batch.documents.length >= parseInt(limit)
+          ? batch.documents[batch.documents.length - 1].$id
+          : null,
+      hasMore: batch.documents.length >= parseInt(limit),
     });
   } catch (err) {
     console.error("❌ Error fetching products:", err);
@@ -686,6 +690,9 @@ const getProductReviews = async (req, res) => {
       return res.status(400).json({ message: "Product ID is required." });
     }
 
+    // console.log("\n🔍 === FETCHING REVIEWS FOR PRODUCT ===");
+    // console.log("Product ID:", productId);
+
     // Fetch reviews for the product
     const reviewResponse = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
@@ -696,33 +703,64 @@ const getProductReviews = async (req, res) => {
       ]
     );
 
+    // console.log(`\n📝 Found ${reviewResponse.documents.length} reviews`);
+    
+    // Log first review to see what fields exist
+    // if (reviewResponse.documents.length > 0) {
+    //   console.log("\n📋 FIRST REVIEW DOCUMENT STRUCTURE:");
+    //   console.log("Review ID:", reviewResponse.documents[0].$id);
+    //   console.log("Review userName field:", reviewResponse.documents[0].userName);
+    //   console.log("Review userId:", reviewResponse.documents[0].userId);
+    //   console.log("All review fields:", Object.keys(reviewResponse.documents[0]));
+    // }
+
     const uniqueUserIds = [
       ...new Set(reviewResponse.documents.map((doc) => doc.userId)),
     ];
+    // console.log("\n👥 Unique user IDs to fetch:", uniqueUserIds);
 
     // Fetch user details in bulk
     const userDetails = {};
     await Promise.all(
       uniqueUserIds.map(async (userId) => {
         try {
+          // console.log(`\n🔎 Fetching user profile for userId: ${userId}`);
+          
           const userResponse = await db.listDocuments(
             env.APPWRITE_DATABASE_ID,
             env.APPWRITE_USER_COLLECTION_ID,
             [Query.equal("$id", userId)]
           );
 
+          // console.log(`📊 User query results for ${userId}:`, userResponse.total, "documents found");
+
           if (userResponse.documents.length > 0) {
             const userDoc = userResponse.documents[0];
+            
+            // console.log(`\n✅ USER DOCUMENT FOUND for ${userId}:`);
+            // console.log("User $id:", userDoc.$id);
+            // console.log("User userName field:", userDoc.userName);
+            // console.log("User username field:", userDoc.username);
+            // console.log("User name field:", userDoc.name);
+            // console.log("User email:", userDoc.email);
+            // console.log("All user fields:", Object.keys(userDoc));
+            
+            const resolvedUserName = userDoc.userName || userDoc.username || userDoc.name || "Anonymous";
+            // console.log(`🎯 Resolved userName: "${resolvedUserName}"`);
+            
             userDetails[userId] = {
-              userName: userDoc.username || "Anonymous",
+              userName: resolvedUserName,
               avatar:
                 userDoc.avatar ||
+                userDoc.avatarUrl ||
                 "https://fra.cloud.appwrite.io/v1/storage/buckets/692a3b700039c02fb4bc/files/692b97e30027bf293efe/view?project=6926c7df002fa7831d94&mode=admin",
               avatarUrl:
                 userDoc.avatarUrl ||
+                userDoc.avatar ||
                 "https://fra.cloud.appwrite.io/v1/storage/buckets/692a3b700039c02fb4bc/files/692b97e30027bf293efe/view?project=6926c7df002fa7831d94&mode=admin",
             };
           } else {
+            // console.log(`❌ NO USER DOCUMENT FOUND for userId: ${userId}`);
             userDetails[userId] = {
               userName: "Anonymous",
               avatar:
@@ -732,7 +770,8 @@ const getProductReviews = async (req, res) => {
             };
           }
         } catch (err) {
-          console.error(`Error fetching user ${userId}:`, err);
+          console.error(`❌ ERROR fetching user ${userId}:`, err.message);
+          console.error("Full error:", err);
           userDetails[userId] = {
             userName: "Anonymous",
             avatar:
@@ -742,13 +781,32 @@ const getProductReviews = async (req, res) => {
       })
     );
 
+    // console.log("\n📦 Final userDetails object:", JSON.stringify(userDetails, null, 2));
+
+    console.log("\n📦 Final userDetails object:", JSON.stringify(userDetails, null, 2));
+
     // Enrich reviews with user data
     const enrichedReviews = reviewResponse.documents.map((doc) => {
-      const user = userDetails[doc.userId] || {
-        userName: "Anonymous",
-        avatar:
-          "https://fra.cloud.appwrite.io/v1/storage/buckets/692a3b700039c02fb4bc/files/692b97e30027bf293efe/view?project=6926c7df002fa7831d94&mode=admin",
-      };
+      // ✅ PRIORITY 1: Use userName stored in review document (in case user was deleted)
+      let userName = doc.userName || "Anonymous";
+      let avatar = doc.avatar || "https://fra.cloud.appwrite.io/v1/storage/buckets/692a3b700039c02fb4bc/files/692b97e30027bf293efe/view?project=6926c7df002fa7831d94&mode=admin";
+      let avatarUrl = avatar;
+      
+      // ✅ PRIORITY 2: Override with fresh user data if user still exists
+      if (userDetails[doc.userId]) {
+        const user = userDetails[doc.userId];
+        if (user.userName && user.userName !== "Anonymous") {
+          userName = user.userName;
+        }
+        avatar = user.avatar;
+        avatarUrl = user.avatarUrl;
+      }
+
+      // console.log(`\n🔄 Enriching review ${doc.$id}:`);
+      // console.log("  - Review userId:", doc.userId);
+      // console.log("  - Review stored userName:", doc.userName);
+      // console.log("  - User lookup result:", userDetails[doc.userId]?.userName || "Not found");
+      // console.log("  - Final userName:", userName);
 
       // Handle image URLs (single or multiple)
       let imageUrls = [];
@@ -766,16 +824,19 @@ const getProductReviews = async (req, res) => {
         id: doc.$id,
         text: doc.reviewText,
         rating: doc.rating ?? 0,
-        image: imageUrls.length > 0 ? imageUrls[0] : null, // First image for backward compatibility
-        images: imageUrls, // All images
+        image: imageUrls.length > 0 ? imageUrls[0] : null,
+        images: imageUrls,
         date: new Date(doc.createdAt).toDateString(),
-        userName: user.userName,
-        avatar: user.avatar,
-        avatarUrl: user.avatarUrl,
+        userName,
+        avatar,
+        avatarUrl,
         userId: doc.userId,
         productId: doc.productId,
       };
     });
+    
+    // console.log("\n✅ Enriched reviews count:", enrichedReviews.length);
+    // console.log("📤 Sending response...\n");
 
     return res.status(200).json(enrichedReviews);
   } catch (error) {
@@ -1248,12 +1309,25 @@ const getMobileCategories = async (req, res) => {
 
 const getMobileProducts = async (req, res) => {
   try {
-    const category = req.query.category || ""; // Get category from query parameters
-    const queries = [Query.limit(100), Query.orderAsc("$createdAt")]; // Default limit
+    const { category, limit = 50, page = 1 } = req.query;
+
+    const queries = [
+      // ✅ CRITICAL: Only show APPROVED and ACTIVE products
+      Query.equal("isApproved", true),
+      Query.equal("isActive", true),
+      Query.limit(parseInt(limit)),
+      Query.orderDesc("$createdAt"), // Show newest first
+    ];
 
     // If a category is specified, add a filter query
-    if (category) {
-      queries.push(Query.equal("category", category));
+    if (category && category !== "all") {
+      queries.push(Query.equal("categoryId", category));
+    }
+
+    // Add offset for pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    if (offset > 0) {
+      queries.push(Query.offset(offset));
     }
 
     const products = await db.listDocuments(
@@ -1262,7 +1336,46 @@ const getMobileProducts = async (req, res) => {
       queries
     );
 
-    res.json({ success: true, products: products.documents });
+    // ✅ ADD: Include review counts
+    const productsWithReviews = await Promise.all(
+      products.documents.map(async (doc) => {
+        try {
+          const reviews = await db.listDocuments(
+            env.APPWRITE_DATABASE_ID,
+            env.APPWRITE_REVIEW_COLLECTION_ID,
+            [Query.equal("productId", doc.$id), Query.select(["rating"])]
+          );
+
+          const reviewCount = reviews.total || 0;
+          const avgRating =
+            reviewCount > 0
+              ? reviews.documents.reduce((sum, r) => sum + (r.rating || 0), 0) /
+                reviewCount
+              : 0;
+
+          return {
+            ...doc,
+            reviewCount,
+            avgRating: parseFloat(avgRating.toFixed(1)),
+          };
+        } catch (error) {
+          return {
+            ...doc,
+            reviewCount: 0,
+            avgRating: 0,
+          };
+        }
+      })
+    );
+
+    res.json({
+      success: true,
+      products: productsWithReviews,
+      total: products.total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      hasMore: products.documents.length >= parseInt(limit),
+    });
   } catch (err) {
     console.error("❌ Error fetching products:", err);
     res

@@ -286,7 +286,6 @@ const signupcustomer = async (req, res) => {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
-      domain: "localhost",
       maxAge: 15 * 60 * 1000, // 15 minutes
       path: "/",
     });
@@ -295,7 +294,6 @@ const signupcustomer = async (req, res) => {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
-      domain: "localhost",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       path: "/",
     });
@@ -397,7 +395,6 @@ const signincustomer = async (req, res) => {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
-      domain: "localhost",
       maxAge: 15 * 60 * 1000,
       path: "/",
     });
@@ -406,7 +403,6 @@ const signincustomer = async (req, res) => {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
-      domain: "localhost",
       maxAge: 30 * 24 * 60 * 60 * 1000,
       path: "/",
     });
@@ -567,7 +563,6 @@ const handleRefreshToken = async (req, res) => {
         httpOnly: true,
         secure: false,
         sameSite: "lax",
-        domain: "localhost",
         maxAge: 15 * 60 * 1000,
         path: "/",
       });
@@ -597,7 +592,6 @@ const handleRefreshToken = async (req, res) => {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
-      domain: "localhost",
       maxAge: 15 * 60 * 1000,
       path: "/",
     });
@@ -606,7 +600,6 @@ const handleRefreshToken = async (req, res) => {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
-      domain: "localhost",
       maxAge: 30 * 24 * 60 * 60 * 1000,
       path: "/",
     });
@@ -662,8 +655,8 @@ const logoutcustomer = async (req, res) => {
     }
 
     // Clear cookies
-    res.clearCookie("accessToken", { domain: "localhost", path: "/" });
-    res.clearCookie("refreshToken", { domain: "localhost", path: "/" });
+    res.clearCookie("accessToken", { path: "/" });
+    res.clearCookie("refreshToken", { path: "/" });
 
     return res.status(200).json({ message: "Logged out successfully." });
   } catch (error) {
@@ -828,7 +821,6 @@ function getGoogleOAuthUrl(req, res) {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
-      domain: "localhost",
       maxAge: 10 * 60 * 1000,
       path: "/",
     });
@@ -957,7 +949,6 @@ function getFacebookOAuthUrl(req, res) {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
-      domain: "localhost",
       maxAge: 10 * 60 * 1000,
       path: "/",
     });

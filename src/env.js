@@ -18,6 +18,13 @@ const schema = Joi.object({
   APPWRITE_CART_COLLECTION_ID: Joi.string().required(),
   APPWRITE_CANCELLED_ORDERS_COLLECTION_ID: Joi.string().optional(),
   APPWRITE_CANCELLATION_REQUESTS_COLLECTION_ID: Joi.string().optional(),
+  // Subscriptions Collection
+  APPWRITE_SUBSCRIPTIONS_COLLECTION_ID: Joi.string().optional(),
+  // Products Collection
+  APPWRITE_PRODUCTS_COLLECTION_ID: Joi.string().optional(),
+  // African Facts & Proverbs Collections
+  AFRICAN_FACTS_COLLECTION_ID: Joi.string().optional(),
+  AFRICAN_PROVERBS_COLLECTION_ID: Joi.string().optional(),
   // Refresh tokens collection used by auth controllers
   APPWRITE_REFRESH_TOKEN_COLLECTION_ID: Joi.string().required(),
   // Frontend URL used for OAuth final redirect
@@ -40,6 +47,13 @@ const schema = Joi.object({
     .default("sandbox"),
   MPESA_CALLBACK_URL: Joi.string().uri().optional(),
   BACKEND_URL: Joi.string().uri().optional(),
+  // PayPal API
+  PAYPAL_CLIENT_ID: Joi.string().optional(),
+  PAYPAL_CLIENT_SECRET: Joi.string().optional(),
+  PAYPAL_MODE: Joi.string().valid("sandbox", "production").default("sandbox"),
+  // Stripe API
+  STRIPE_SECRET_KEY: Joi.string().optional(),
+  STRIPE_WEBHOOK_SECRET: Joi.string().optional(),
 }).unknown();
 
 const env = schema.validate(process.env, { stripUnknown: true }).value;

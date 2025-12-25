@@ -17,6 +17,13 @@ const {
   checkStockAvailability,
   reduceProductStock,
 } = require("./stockController");
+// Import premium tracking functions
+const {
+  checkUserPremiumStatus,
+  calculatePremiumSavings,
+  awardMilesToUser,
+  updateOrderWithPremiumData,
+} = require("../../services/premiumOrderTrackingService");
 
 const FRONTEND_URL = env.FRONTEND_UR || "http://localhost:5173";
 
@@ -26,7 +33,9 @@ const FRONTEND_URL = env.FRONTEND_UR || "http://localhost:5173";
 async function archiveCancelledOrder(order, reason, failureType) {
   // Only archive if collection is configured
   if (!env.APPWRITE_CANCELLED_ORDERS_COLLECTION_ID) {
-    console.warn("Cancelled orders collection not configured, skipping archive");
+    console.warn(
+      "Cancelled orders collection not configured, skipping archive"
+    );
     return null;
   }
 
@@ -56,7 +65,9 @@ async function archiveCancelledOrder(order, reason, failureType) {
       }
     );
 
-    console.log(`✅ Order archived to cancelled collection: ${archivedOrder.$id}`);
+    console.log(
+      `✅ Order archived to cancelled collection: ${archivedOrder.$id}`
+    );
     return archivedOrder;
   } catch (error) {
     console.error("❌ Failed to archive cancelled order:", error.message);
@@ -187,12 +198,58 @@ const cashonDelivery = async (req, res) => {
       }
     );
 
-    // 6. ADD NILE MILES AND OTHER OPERATIONS
-    try {
-      await addNileMilesOnPurchase(userId, totalAmount);
-      console.log("✅ Nile Miles added");
-    } catch (milesError) {
-      console.warn("Nile Miles error (non-critical):", milesError.message);
+    // 6. PREMIUM TRACKING AND MILES CALCULATION
+    console.log("Processing premium benefits and miles...");
+
+    // Get user ID from authentication token
+    const authenticatedUserId = req.user?.userId || req.user?.$id;
+
+    // Check if user has premium subscription
+    const premiumStatus = await checkUserPremiumStatus(
+      authenticatedUserId || userId
+    );
+
+    // Parse cart to calculate subtotal (excluding shipping)
+    const subtotal = cart.reduce((sum, item) => {
+      return sum + parseFloat(item.price) * parseInt(item.quantity);
+    }, 0);
+
+    // Assume shipping fee is 0 for premium orders, or standard rate
+    const shippingFee = premiumStatus.isPremium && subtotal >= 500 ? 0 : 200;
+
+    // Calculate premium savings
+    const premiumSavings = calculatePremiumSavings(
+      subtotal,
+      shippingFee,
+      premiumStatus.isPremium
+    );
+
+    console.log("Premium analysis:", {
+      isPremium: premiumStatus.isPremium,
+      subtotal,
+      shippingFee,
+      savings: premiumSavings,
+    });
+
+    // Update order with premium tracking data
+    if (orderId) {
+      await updateOrderWithPremiumData(
+        orderId,
+        premiumSavings,
+        authenticatedUserId || userId
+      );
+
+      // Award correct miles amount (premium service handles 2x multiplier)
+      if (premiumSavings.milesTotal > 0) {
+        await awardMilesToUser(
+          authenticatedUserId || userId,
+          premiumSavings.milesTotal,
+          orderId
+        );
+        console.log(
+          `✅ Awarded ${premiumSavings.milesTotal} Nile Miles (Premium: ${premiumStatus.isPremium})`
+        );
+      }
     }
 
     // Send email confirmation
@@ -211,8 +268,8 @@ const cashonDelivery = async (req, res) => {
       console.warn("Email confirmation failed:", emailError.message);
     }
 
-    // 7. RETURN SUCCESS RESPONSE
-    res.status(201).json({
+    // 7. RETURN SUCCESS RESPONSE WITH PREMIUM BENEFITS INFO
+    const responseData = {
       success: true,
       message:
         "Cash on Delivery order created successfully. Stock has been updated.",
@@ -223,7 +280,23 @@ const cashonDelivery = async (req, res) => {
         productsUpdated: stockUpdateResult.updatedProducts.length,
         details: stockUpdateResult.updatedProducts,
       },
-    });
+    };
+
+    // Add premium benefits info if user is premium
+    if (premiumStatus.isPremium) {
+      responseData.premiumBenefits = {
+        discountSaved: premiumSavings.discountAmount,
+        deliverySaved: premiumSavings.deliverySavings,
+        milesEarned: premiumSavings.milesTotal,
+        milesBonus: premiumSavings.milesBonus,
+        totalSavings:
+          premiumSavings.discountAmount +
+          premiumSavings.deliverySavings +
+          premiumSavings.milesBonus * 0.1,
+      };
+    }
+
+    res.status(201).json(responseData);
 
     console.log(`🎉 Order ${orderId} completed successfully`);
   } catch (error) {
@@ -1023,17 +1096,50 @@ const mpesaCallback = async (req, res) => {
         }
       );
 
-      // Add Nile Miles
-      try {
-        await addNileMilesOnPurchase(order.users, order.amount);
-      } catch (e) {
-        console.warn("Nile Miles error:", e.message);
+      // PREMIUM TRACKING AND MILES CALCULATION
+      console.log("Processing premium benefits for M-Pesa order...");
+
+      // Check if user has premium subscription
+      const premiumStatus = await checkUserPremiumStatus(order.users);
+
+      // Calculate subtotal from cart items
+      const orderCart = JSON.parse(order.items || "[]");
+      const subtotal = orderCart.reduce((sum, item) => {
+        return sum + parseFloat(item.price || 0) * parseInt(item.quantity || 0);
+      }, 0);
+
+      // Determine shipping fee (0 for premium users on orders >=500, otherwise 200)
+      const shippingFee = premiumStatus.isPremium && subtotal >= 500 ? 0 : 200;
+
+      // Calculate premium savings
+      const premiumSavings = calculatePremiumSavings(
+        subtotal,
+        shippingFee,
+        premiumStatus.isPremium
+      );
+
+      console.log("M-Pesa Premium analysis:", {
+        isPremium: premiumStatus.isPremium,
+        subtotal,
+        shippingFee,
+        savings: premiumSavings,
+      });
+
+      // Update order with premium tracking data
+      await updateOrderWithPremiumData(orderId, premiumSavings, order.users);
+
+      // Award correct miles amount (using premium service instead of old method)
+      if (premiumSavings.milesTotal > 0) {
+        await awardMilesToUser(order.users, premiumSavings.milesTotal, orderId);
+        console.log(
+          `✅ Awarded ${premiumSavings.milesTotal} Nile Miles via premium service (Premium: ${premiumStatus.isPremium})`
+        );
       }
 
       // Send confirmation email
       try {
         await Emailconfirmation({
-          cart,
+          cart: orderCart,
           customerEmail: order.customerEmail,
           customerName: order.username,
           orderId,
@@ -1045,11 +1151,15 @@ const mpesaCallback = async (req, res) => {
         console.warn("Email error:", e.message);
       }
 
-      // Create notification
+      // Create notification with premium benefits info
+      const notificationMessage = premiumStatus.isPremium
+        ? `Your M-Pesa payment of KES ${amount} was successful. Order ${orderId} confirmed. Premium benefits applied: ${premiumSavings.milesTotal} Nile Miles earned (2x bonus), ${premiumSavings.discountAmount} KSH discount saved.`
+        : `Your M-Pesa payment of KES ${amount} was successful. Order ${orderId} confirmed.`;
+
       try {
         await createNotification({
           userId: order.users,
-          message: `Your M-Pesa payment of KES ${amount} was successful. Order ${orderId} confirmed.`,
+          message: notificationMessage,
           type: "payment",
           username: order.username,
           email: order.customerEmail,
@@ -1224,7 +1334,11 @@ const mpesaCancelPayment = async (req, res) => {
       );
 
       // Archive to cancelled orders collection
-      await archiveCancelledOrder(order, "Cancelled by customer", "user_cancelled");
+      await archiveCancelledOrder(
+        order,
+        "Cancelled by customer",
+        "user_cancelled"
+      );
 
       // Send cancellation email
       try {
@@ -1309,7 +1423,8 @@ const cancelCodOrder = async (req, res) => {
     if (order.paymentMethod !== "Cash on Delivery") {
       return res.status(400).json({
         success: false,
-        message: "Only Cash on Delivery orders can be cancelled through this endpoint",
+        message:
+          "Only Cash on Delivery orders can be cancelled through this endpoint",
       });
     }
 
@@ -1334,7 +1449,11 @@ const cancelCodOrder = async (req, res) => {
     );
 
     // Archive to cancelled orders collection
-    await archiveCancelledOrder(order, "Order cancelled by customer", "user_cancelled");
+    await archiveCancelledOrder(
+      order,
+      "Order cancelled by customer",
+      "user_cancelled"
+    );
 
     // Restore stock if it was reduced
     if (order.stockUpdated) {

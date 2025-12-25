@@ -1,5 +1,6 @@
 // routes/cartRoutes.js
 const express = require("express");
+const { applyPremiumBenefits } = require("../middleware/premiumMiddleware");
 const {
   addToCart,
   fetchCart,
@@ -12,11 +13,12 @@ const {
 
 const router = express.Router();
 
-router.post("/add", addToCart);
-router.post("/validate-stock", validateCartStock);
-router.get("/fetch/:userId", fetchCart);
-router.get("/load/:userId", loadCart);
-router.put("/update/:cartItemId", updateQuantity);
+// Apply premium middleware only to POST/PUT requests that have cart data
+router.post("/add", applyPremiumBenefits, addToCart);
+router.post("/validate-stock", applyPremiumBenefits, validateCartStock);
+router.get("/fetch/:userId", fetchCart); // Remove middleware from GET requests
+router.get("/load/:userId", loadCart); // Remove middleware from GET requests
+router.put("/update/:cartItemId", applyPremiumBenefits, updateQuantity);
 router.delete("/remove/:cartItemId", removeFromCart);
 router.delete("/clear/:userId", clearCartAfterOrder);
 

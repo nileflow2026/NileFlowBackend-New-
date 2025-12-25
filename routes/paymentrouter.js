@@ -1,6 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const authenticateToken = require("../middleware/authMiddleware");
+const {
+  applyPremiumBenefits,
+  awardNileMiles,
+} = require("../middleware/premiumMiddleware");
 const { sendOrderStatusUpdateEmail } = require("../services/send-confirmation");
 const { env } = require("../src/env");
 const { functions } = require("../src/appwrite");
@@ -23,15 +27,41 @@ const {
   cancelCodOrder,
 } = require("../controllers/AdminControllers/PaymentController");
 
-router.post("/stripewebpayment", authenticateToken, stripewebpayment);
+// Apply premium benefits middleware to payment routes
+router.post(
+  "/stripewebpayment",
+  authenticateToken,
+  applyPremiumBenefits,
+  stripewebpayment
+);
 router.post("/stripe-cancelled", authenticateToken, stripePaymentCancelled);
-router.post("/paypal-create-order", authenticateToken, PayPalCreateOrder);
-router.post("/paypal-capture-order", authenticateToken, PayPalCaptureOrder);
+router.post(
+  "/paypal-create-order",
+  authenticateToken,
+  applyPremiumBenefits,
+  PayPalCreateOrder
+);
+router.post(
+  "/paypal-capture-order",
+  authenticateToken,
+  awardNileMiles,
+  PayPalCaptureOrder
+);
 router.post("/email-confirmation", authenticateToken, Emailconfirmation);
-router.get("/payment-success", authenticateToken, verifyStripePayment);
+router.get(
+  "/payment-success",
+  authenticateToken,
+  awardNileMiles,
+  verifyStripePayment
+);
 
 // M-Pesa routes
-router.post("/mpesa/initiate", authenticateToken, initiateMpesaPayment);
+router.post(
+  "/mpesa/initiate",
+  authenticateToken,
+  applyPremiumBenefits,
+  initiateMpesaPayment
+);
 router.post("/mpesa/callback", mpesaCallback); // No auth middleware for M-Pesa callback
 router.get("/mpesa/status/:orderId", authenticateToken, mpesaPaymentStatus);
 router.post("/mpesa/cancel", authenticateToken, mpesaCancelPayment);
@@ -41,7 +71,12 @@ router.post(
   authenticateToken,
   sendOrderStatusUpdateEmail
 );
-router.post("/cash-on-delivery", authenticateToken, cashonDelivery);
+router.post(
+  "/cash-on-delivery",
+  authenticateToken,
+  applyPremiumBenefits,
+  cashonDelivery
+);
 router.post("/cash-on-delivery/cancel", authenticateToken, cancelCodOrder);
 router.post(
   "/webhook",

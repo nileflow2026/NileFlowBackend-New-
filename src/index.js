@@ -64,6 +64,7 @@ const applyRoutes = require("../routes/applyRoutes");
 const productsrouter = require("../routes/productsRouter");
 const passwordRouter = require("../routes/passwordRoute");
 const cartRoutes = require("../routes/Cartrouter");
+const africanFactsRoutes = require("../routes/africanFactsRoutes");
 
 // Vendor Routes
 const vendorauth = require("../routes/Vendorroutes/vendorauth");
@@ -154,7 +155,16 @@ app.use(cors(corsOptions));
 /* app.use(authLimiter); */ // Apply to auth routes
 
 // ========== REQUEST PARSING ==========
-app.use(express.json({ limit: "50mb" }));
+// Preserve raw body for Stripe webhook signature verification
+app.use(
+  express.json({
+    limit: "50mb",
+    verify: (req, res, buf) => {
+      // Store raw body buffer for routes that need it (Stripe webhooks)
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser()); // Apply to all routes
 /* app.use(apiLimiter) */ // ========== LOGGING ==========
@@ -236,6 +246,7 @@ app.use("/api/gamification", gamificationRoutes);
 app.use("/api/contact-nile-flow", clientmessages);
 app.use("/api/products", productsrouter);
 app.use("/api/apply", applyRoutes);
+app.use("/api", africanFactsRoutes);
 
 // Vendor Routes
 app.use("/api/vendor/auth", /* authLimiter, */ vendorauth);
@@ -246,6 +257,11 @@ app.use("/api/vendor", vendorDashboardRoutes);
 app.use("/api/vendor", analyticstroutes);
 app.use("/api/vendor", vendorOrdersRoutes);
 app.use("/api/admin/customers", customerRoutes);
+
+// Subscription & Payment Routes
+app.use("/api/subscription", require("../routes/subscriptionRoutes"));
+app.use("/api/payments", require("../routes/paymentCallbackRoutes"));
+app.use("/api/premium", require("../routes/premiumRoutes"));
 
 // Rider Routes
 app.use("/api/rider/auth", riderAuthRoutes);
@@ -323,6 +339,11 @@ async function startServer() {
     console.log("Initializing Appwrite...");
     await appwriteService.initialize();
 
+    // Initialize subscription cron jobs
+    console.log("Initializing subscription services...");
+    const SubscriptionCronService = require("../services/subscriptionCronService");
+    SubscriptionCronService.initialize();
+
     const server = app.listen(PORT, "0.0.0.0", () => {
       console.log(`
 ✅ Server running successfully!
@@ -330,6 +351,7 @@ async function startServer() {
 📡 Environment: ${process.env.NODE_ENV || "development"}
 🔗 Health Check: http://localhost:${PORT}/health
 📚 API Docs: http://localhost:${PORT}/api/health
+⏰ Subscription Services: Active
       `);
     });
 
