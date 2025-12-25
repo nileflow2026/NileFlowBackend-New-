@@ -575,9 +575,6 @@ class SubscriptionController {
       }
 
       const isPremium = user.prefs?.isPremium || false;
-      logger.info(
-        `Premium deals request - User: ${userId}, isPremium: ${isPremium}`
-      );
 
       if (!isPremium) {
         return res.status(403).json({ error: "Premium subscription required" });
@@ -587,88 +584,41 @@ class SubscriptionController {
       let premiumDeals = [];
       if (env.APPWRITE_PRODUCT_COLLECTION_ID) {
         try {
-          logger.info("Fetching premium deals with filters...");
-
-          // First, let's try with more flexible queries
+          // Try boolean true first
           const dealsResponse = await db.listDocuments(
             env.APPWRITE_DATABASE_ID,
             env.APPWRITE_PRODUCT_COLLECTION_ID,
             [
-              Query.equal("premiumDeal", true), // Try boolean true first
+              Query.equal("premiumDeal", true),
+              Query.equal("isActive", true),
+              Query.greaterThan("stock", 0),
               Query.limit(50),
               Query.orderDesc("$createdAt"),
             ]
           );
 
-          logger.info(
-            `Found ${dealsResponse.documents.length} products with premiumDeal=true`
-          );
+          premiumDeals = dealsResponse.documents;
 
-          // If no results, try string "true"
-          if (dealsResponse.documents.length === 0) {
-            logger.info("Trying with premiumDeal as string 'true'...");
+          // If no results with boolean, try string "true"
+          if (premiumDeals.length === 0) {
             const stringDealsResponse = await db.listDocuments(
               env.APPWRITE_DATABASE_ID,
               env.APPWRITE_PRODUCT_COLLECTION_ID,
               [
-                Query.equal("premiumDeal", "true"), // Try string "true"
+                Query.equal("premiumDeal", "true"),
+                Query.equal("isActive", true),
+                Query.greaterThan("stock", 0),
                 Query.limit(50),
                 Query.orderDesc("$createdAt"),
               ]
             );
-            logger.info(
-              `Found ${stringDealsResponse.documents.length} products with premiumDeal="true"`
-            );
             premiumDeals = stringDealsResponse.documents;
-          } else {
-            // Filter the results manually for additional criteria
-            premiumDeals = dealsResponse.documents.filter((product) => {
-              const isActive =
-                product.isActive === true || product.isActive === "true";
-              const hasStock = (product.stock || 0) > 0;
-
-              logger.info(
-                `Product ${product.$id}: isActive=${product.isActive}, stock=${
-                  product.stock
-                }, filtered=${isActive && hasStock}`
-              );
-
-              return isActive && hasStock;
-            });
-          }
-
-          logger.info(`Final premium deals count: ${premiumDeals.length}`);
-
-          // Log first few products for debugging
-          if (premiumDeals.length > 0) {
-            logger.info(
-              "First premium deal:",
-              JSON.stringify(premiumDeals[0], null, 2)
-            );
           }
         } catch (dbError) {
           logger.error("Error fetching premium deals:", dbError);
-
-          // Try a basic query without filters to see if we can fetch anything
-          try {
-            logger.info("Trying basic query to debug...");
-            const basicResponse = await db.listDocuments(
-              env.APPWRITE_DATABASE_ID,
-              env.APPWRITE_PRODUCT_COLLECTION_ID,
-              [Query.limit(5)]
-            );
-            logger.info(
-              `Basic query returned ${basicResponse.documents.length} products`
-            );
-            if (basicResponse.documents.length > 0) {
-              logger.info(
-                "Sample product structure:",
-                JSON.stringify(basicResponse.documents[0], null, 2)
-              );
-            }
-          } catch (basicError) {
-            logger.error("Basic query also failed:", basicError);
-          }
+          return res
+            .status(500)
+            .json({ error: "Failed to fetch premium deals" });
         }
       } else {
         logger.error("APPWRITE_PRODUCT_COLLECTION_ID not configured");
