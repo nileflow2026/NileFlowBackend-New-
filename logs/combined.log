@@ -643,3 +643,16 @@
 [2025-12-26 02:28:30] INFO: Awarding 0 miles to user 694d920f001684841d6a (Premium: true) {"service":"nile-mart-api","env":"development"}
 [2025-12-26 02:32:31] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
 [2025-12-26 02:32:52] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-26 02:55:55] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-26 02:59:55] INFO: Awarding 0 miles to user 694d920f001684841d6a (Premium: true) {"service":"nile-mart-api","env":"development"}
+[2025-12-26 02:59:55] INFO: Awarding 0 miles to user 694d920f001684841d6a (Premium: true) {"service":"nile-mart-api","env":"development"}
+[2025-12-26 03:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-26 03:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-26 03:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-26 03:01:34] INFO: Awarding 0 miles to user 694d920f001684841d6a (Premium: true) {"service":"nile-mart-api","env":"development"}
+[2025-12-26 03:02:19] INFO: Checking premium status for user 694d920f001684841d6a {"service":"nile-mart-api","env":"development"}
+[2025-12-26 03:02:19] INFO: User prefs: {"isVerified":true,"preferredPaymentMethod":"cashOnDelivery","isPremium":true,"subscriptionId":"sub_stripe_1766693045422","subscriptionExpiresAt":"2026-01-24T20:04:05.422+00:00","subscriptionStartedAt":"2025-12-25T20:04:05.422+00:00","subscriptionCancelledAt":null,"nileMiles":346,"totalMilesEarned":346,"lastMilesUpdate":"2025-12-25T21:46:04.643Z"} {"service":"nile-mart-api","env":"development"}
+[2025-12-26 03:02:19] INFO: Premium check - isPremium: true, subscriptionExpiry: Sat Jan 24 2026 23:04:05 GMT+0300 (East Africa Time) {"service":"nile-mart-api","env":"development"}
+[2025-12-26 03:02:19] INFO: Subscription active: true (expires: Sat Jan 24 2026 23:04:05 GMT+0300 (East Africa Time)) {"service":"nile-mart-api","env":"development"}
+[2025-12-26 03:02:19] INFO: Updated order 694dd08800157671aa80 with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2025-12-26 03:02:20] INFO: Awarded 6 miles to user 694d920f001684841d6a for order 694dd08800157671aa80 {"service":"nile-mart-api","env":"development"}

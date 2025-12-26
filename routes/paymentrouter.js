@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const authenticateToken = require("../middleware/authMiddleware");
+const paymentSecurity = require("../middleware/paymentSecurity");
 const {
   applyPremiumBenefits,
   awardNileMiles,
@@ -27,23 +28,37 @@ const {
   cancelCodOrder,
 } = require("../controllers/AdminControllers/PaymentController");
 
-// Apply premium benefits middleware to payment routes
+// Apply premium benefits middleware to payment routes with security
 router.post(
   "/stripewebpayment",
   authenticateToken,
+  paymentSecurity.validateUserAuthorization,
+  paymentSecurity.sanitizePaymentData,
+  paymentSecurity.validatePaymentAmount,
+  paymentSecurity.paymentRateLimit,
   applyPremiumBenefits,
   stripewebpayment
 );
-router.post("/stripe-cancelled", authenticateToken, stripePaymentCancelled);
+router.post(
+  "/stripe-cancelled",
+  authenticateToken,
+  paymentSecurity.validateUserAuthorization,
+  stripePaymentCancelled
+);
 router.post(
   "/paypal-create-order",
   authenticateToken,
+  paymentSecurity.validateUserAuthorization,
+  paymentSecurity.sanitizePaymentData,
+  paymentSecurity.validatePaymentAmount,
+  paymentSecurity.paymentRateLimit,
   applyPremiumBenefits,
   PayPalCreateOrder
 );
 router.post(
   "/paypal-capture-order",
   authenticateToken,
+  paymentSecurity.validateUserAuthorization,
   awardNileMiles,
   PayPalCaptureOrder
 );
@@ -55,16 +70,25 @@ router.get(
   verifyStripePayment
 );
 
-// M-Pesa routes
+// M-Pesa routes with security
 router.post(
   "/mpesa/initiate",
   authenticateToken,
+  paymentSecurity.validateUserAuthorization,
+  paymentSecurity.sanitizePaymentData,
+  paymentSecurity.validatePaymentAmount,
+  paymentSecurity.paymentRateLimit,
   applyPremiumBenefits,
   initiateMpesaPayment
 );
 router.post("/mpesa/callback", mpesaCallback); // No auth middleware for M-Pesa callback
 router.get("/mpesa/status/:orderId", authenticateToken, mpesaPaymentStatus);
-router.post("/mpesa/cancel", authenticateToken, mpesaCancelPayment);
+router.post(
+  "/mpesa/cancel",
+  authenticateToken,
+  paymentSecurity.validateUserAuthorization,
+  mpesaCancelPayment
+);
 
 router.post(
   "/email-orderStatus",
@@ -74,10 +98,19 @@ router.post(
 router.post(
   "/cash-on-delivery",
   authenticateToken,
+  paymentSecurity.validateUserAuthorization,
+  paymentSecurity.sanitizePaymentData,
+  paymentSecurity.validatePaymentAmount,
+  paymentSecurity.paymentRateLimit,
   applyPremiumBenefits,
   cashonDelivery
 );
-router.post("/cash-on-delivery/cancel", authenticateToken, cancelCodOrder);
+router.post(
+  "/cash-on-delivery/cancel",
+  authenticateToken,
+  paymentSecurity.validateUserAuthorization,
+  cancelCodOrder
+);
 router.post(
   "/webhook",
   express.raw({ type: "application/json" }), // IMPORTANT: raw body for Stripe verification

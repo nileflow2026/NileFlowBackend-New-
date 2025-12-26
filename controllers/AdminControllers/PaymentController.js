@@ -25,6 +25,125 @@ const {
   updateOrderWithPremiumData,
 } = require("../../services/premiumOrderTrackingService");
 
+// Global cache for processed callbacks (in production, use Redis)
+const processedCallbacks = new Map();
+
+// Clean up old entries every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  const tenMinutes = 10 * 60 * 1000;
+  for (const [key, timestamp] of processedCallbacks.entries()) {
+    if (now - timestamp > tenMinutes) {
+      processedCallbacks.delete(key);
+    }
+  }
+}, 10 * 60 * 1000);
+
+/**
+ * Process successful M-Pesa payment atomically
+ */
+async function processSuccessfulMpesaPayment(order, orderId, paymentDetails) {
+  const { mpesaReceiptNumber, amount, phoneNumber } = paymentDetails;
+
+  try {
+    // 1. Parse cart for stock reduction
+    const cart = JSON.parse(order.items || "[]");
+    let stockUpdateResult = { success: true, updatedProducts: [] };
+
+    // 2. Reduce stock atomically
+    if (cart.length > 0) {
+      stockUpdateResult = await reduceProductStock(cart, orderId);
+      if (!stockUpdateResult.success) {
+        console.error("Stock update failed:", stockUpdateResult.errors);
+        // Continue processing - stock failure shouldn't fail payment
+      }
+    }
+
+    // 3. Update order status atomically
+    await db.updateDocument(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_ORDERS_COLLECTION,
+      orderId,
+      {
+        orderStatus: "Ordered",
+        paymentStatus: "succeeded",
+        status: "Pending",
+        mpesaReceiptNumber,
+        mpesaPhone: phoneNumber,
+        mpesaTransactionDate: new Date().toISOString(),
+        stockUpdated: stockUpdateResult.success,
+        stockUpdateDetails: JSON.stringify(
+          stockUpdateResult.updatedProducts || []
+        ),
+        updatedAt: new Date().toISOString(),
+      }
+    );
+
+    // 4. Process premium benefits (non-blocking)
+    try {
+      if (order.users) {
+        await processPremiumBenefits(order, orderId, cart);
+      }
+    } catch (premiumError) {
+      console.error("Premium benefits processing failed:", premiumError);
+      // Don't fail payment for premium processing errors
+    }
+
+    // 5. Send notifications (non-blocking)
+    try {
+      await createNotification({
+        users: order.users,
+        type: "payment_success",
+        title: "Payment Successful",
+        message: `Your M-Pesa payment of KES ${amount} has been confirmed.`,
+        orderId,
+        email: order.customerEmail,
+      });
+    } catch (notificationError) {
+      console.warn("Notification error:", notificationError.message);
+    }
+
+    console.log(`✅ M-Pesa payment processing completed for order ${orderId}`);
+  } catch (error) {
+    console.error(
+      `❌ Failed to process M-Pesa payment for order ${orderId}:`,
+      error
+    );
+    throw error; // Re-throw to trigger callback retry
+  }
+}
+
+/**
+ * Process premium benefits for M-Pesa orders
+ */
+async function processPremiumBenefits(order, orderId, cart) {
+  const userId = order.users;
+
+  // Check premium status
+  const premiumStatus = await checkUserPremiumStatus(userId);
+
+  // Calculate subtotal
+  const subtotal = cart.reduce((sum, item) => {
+    return sum + parseFloat(item.price || 0) * parseInt(item.quantity || 1);
+  }, 0);
+
+  // Calculate premium savings
+  const premiumSavings = calculatePremiumSavings(
+    subtotal,
+    0, // M-Pesa typically has no shipping
+    premiumStatus.isPremium
+  );
+
+  // Update order with premium data
+  if (premiumSavings.milesTotal > 0) {
+    await updateOrderWithPremiumData(orderId, premiumSavings, userId);
+    await awardMilesToUser(userId, premiumSavings.milesTotal, orderId);
+    console.log(
+      `✅ Awarded ${premiumSavings.milesTotal} Nile Miles to user ${userId}`
+    );
+  }
+}
+
 const FRONTEND_URL = env.FRONTEND_UR || "http://localhost:5173";
 
 /**
@@ -1016,7 +1135,7 @@ const initiateMpesaPayment = async (req, res) => {
 };
 
 /**
- * M-Pesa Payment Callback
+ * M-Pesa Payment Callback - PRODUCTION SAFE with idempotency
  */
 const mpesaCallback = async (req, res) => {
   try {
@@ -1038,20 +1157,56 @@ const mpesaCallback = async (req, res) => {
       CallbackMetadata,
     } = stkCallback;
 
-    // Find order by checkout request ID
-    const orders = await db.listDocuments(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_ORDERS_COLLECTION,
-      [Query.equal("mpesaCheckoutRequestID", CheckoutRequestID)]
-    );
+    // CRITICAL: Prevent duplicate processing with distributed lock
+    const lockKey = `mpesa_callback_${CheckoutRequestID}`;
+    if (processedCallbacks.has(lockKey)) {
+      console.log(`M-Pesa callback already processed: ${CheckoutRequestID}`);
+      return res
+        .status(200)
+        .json({ ResultCode: 0, ResultDesc: "Already processed" });
+    }
+
+    // Mark as processing
+    processedCallbacks.set(lockKey, Date.now());
+
+    // Find order by checkout request ID with proper error handling
+    let orders;
+    try {
+      orders = await db.listDocuments(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_ORDERS_COLLECTION,
+        [
+          Query.equal("mpesaCheckoutRequestID", CheckoutRequestID),
+          Query.limit(1),
+        ]
+      );
+    } catch (dbError) {
+      console.error("Database error finding order:", dbError);
+      processedCallbacks.delete(lockKey);
+      return res
+        .status(200)
+        .json({ ResultCode: 1, ResultDesc: "Database error" });
+    }
 
     if (!orders.documents || orders.documents.length === 0) {
       console.warn("No order found for CheckoutRequestID:", CheckoutRequestID);
-      return res.status(200).json({ message: "Order not found" });
+      processedCallbacks.delete(lockKey);
+      return res
+        .status(200)
+        .json({ ResultCode: 0, ResultDesc: "Order not found" });
     }
 
     const order = orders.documents[0];
     const orderId = order.$id;
+
+    // Check if order is already processed (double callback protection)
+    if (order.paymentStatus === "succeeded") {
+      console.log(`Order ${orderId} already marked as paid`);
+      processedCallbacks.delete(lockKey);
+      return res
+        .status(200)
+        .json({ ResultCode: 0, ResultDesc: "Already processed" });
+    }
 
     // ResultCode 0 = Success
     if (ResultCode === 0) {
@@ -1071,31 +1226,51 @@ const mpesaCallback = async (req, res) => {
         });
       }
 
-      // Reduce stock
-      const cart = JSON.parse(order.items || "[]");
-      if (cart.length > 0) {
-        const stockUpdateResult = await reduceProductStock(cart, orderId);
-        if (!stockUpdateResult.success) {
-          console.error("Stock update failed:", stockUpdateResult.errors);
-        }
-      }
+      // Process payment atomically
+      await processSuccessfulMpesaPayment(order, orderId, {
+        mpesaReceiptNumber,
+        amount,
+        phoneNumber,
+      });
+    } else {
+      // Payment failed
+      console.log(
+        `❌ M-Pesa payment failed for order ${orderId}: ${ResultDesc}`
+      );
 
-      // Update order status
       await db.updateDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_ORDERS_COLLECTION,
         orderId,
         {
-          orderStatus: "Ordered",
-          paymentStatus: "succeeded",
-          status: "Pending",
-          mpesaReceiptNumber,
-          mpesaTransactionDate: new Date().toISOString(),
-          stockUpdated: true,
+          orderStatus: "Failed",
+          paymentStatus: "failed",
+          failureReason: ResultDesc,
           updatedAt: new Date().toISOString(),
         }
       );
+    }
 
+    // Clear processing lock
+    processedCallbacks.delete(lockKey);
+
+    // Always respond with success to M-Pesa to prevent retries
+    return res
+      .status(200)
+      .json({ ResultCode: 0, ResultDesc: "Callback processed" });
+  } catch (error) {
+    console.error("❌ M-Pesa callback error:", error);
+    // Still return 200 to prevent retries
+    return res
+      .status(200)
+      .json({ ResultCode: 1, ResultDesc: "Internal error" });
+  }
+};
+
+/**
+ * Legacy M-Pesa Premium Tracking Code (Not Used - Replaced by processSuccessfulMpesaPayment)
+ */
+/*
       // PREMIUM TRACKING AND MILES CALCULATION
       console.log("Processing premium benefits for M-Pesa order...");
 
@@ -1223,21 +1398,14 @@ const mpesaCallback = async (req, res) => {
         });
       } catch (e) {
         console.warn("Notification error:", e.message);
+        }
       }
-    }
-
-    // Always respond with success to M-Pesa
-    return res
-      .status(200)
-      .json({ ResultCode: 0, ResultDesc: "Callback processed" });
-  } catch (error) {
-    console.error("❌ M-Pesa callback error:", error);
-    // Still return 200 to prevent retries
-    return res
-      .status(200)
-      .json({ ResultCode: 1, ResultDesc: "Internal error" });
-  }
-};
+  
+      // Always respond with success to M-Pesa
+      return res
+        .status(200)
+        .json({ ResultCode: 0, ResultDesc: "Callback processed" });
+  */
 
 /**
  * Check M-Pesa Payment Status
