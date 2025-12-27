@@ -9,7 +9,13 @@ const getNotifications = async (req, res) => {
 
     if (
       notificationType &&
-      ["user", "system", "order"].includes(notificationType)
+      [
+        "user",
+        "system",
+        "order",
+        "product_submission",
+        "delivery_update",
+      ].includes(notificationType)
     ) {
       query.unshift(Query.equal("type", notificationType));
     }
@@ -18,6 +24,7 @@ const getNotifications = async (req, res) => {
       env.APPWRITE_NOTIFICATIONS_COLLECTION_ID,
       query
     );
+    console.log("Fetched notifications:", notifications.documents);
 
     res.status(200).json({ notifications: notifications.documents });
   } catch (error) {
@@ -45,7 +52,12 @@ const fetchAdminNotifications = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_NOTIFICATIONS_COLLECTION_ID,
       [
-        Query.equal("type", ["order", "user", "product_submission"]),
+        Query.equal("type", [
+          "order",
+          "user",
+          "product_submission",
+          "delivery_update",
+        ]),
         Query.orderDesc("$createdAt"),
       ]
     );

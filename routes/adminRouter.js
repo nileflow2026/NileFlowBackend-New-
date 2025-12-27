@@ -23,6 +23,9 @@ const {
   getApprovedProducts,
   getRejectedProducts,
   getSingleProductDetails,
+  assignDeliveryToRider,
+  getCancelledOrders,
+  updatePremiumDeal,
 } = require("../controllers/AdminControllers/admin");
 const authenticateToken = require("../middleware/authMiddleware");
 const {
@@ -33,7 +36,7 @@ const {
 const router = express.Router();
 
 router.get("/orders", authenticateToken, getOrders);
-
+router.get("/orders/cancelled", authenticateToken, getCancelledOrders);
 router.get("/products", authenticateToken, getProducts);
 router.post("/orderStatus", authenticateToken, updateOrderStatus);
 router.post("/addproducts", authenticateToken, addProduct);
@@ -42,6 +45,7 @@ router.get("/messages", authenticateToken, clientmesseags);
 router.post("/contact/reply", authenticateToken, replyclientmessages);
 router.post("/products/feature", authenticateToken, addFeaturedProducts);
 router.post("/products/deal", authenticateToken, addProductsDeal);
+router.put("/premium-deal", authenticateToken, updatePremiumDeal);
 router.post("/products/addReward", authenticateToken, addReward);
 router.post("/products/updatereward", authenticateToken, updateReward);
 router.post("/products/deletereward", authenticateToken, deleteReward);
@@ -72,6 +76,7 @@ router.get("/products/pending", authenticateToken, getPendingProducts);
 router.get("/products/approved", authenticateToken, getApprovedProducts);
 router.get("/products/rejected", authenticateToken, getRejectedProducts);
 router.get("/products/:productId", authenticateToken, getSingleProductDetails);
+router.post("/assign-delivery", authenticateToken, assignDeliveryToRider);
 
 router.get("/products/:productId/stock", async (req, res) => {
   try {

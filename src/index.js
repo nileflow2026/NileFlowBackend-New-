@@ -217,6 +217,8 @@ app.use("/api/admin/auth", /* authLimiter, */ authRoutes); // Changed from /api/
 app.use("/api/admin/products", adminRouter);
 app.use("/api/orders", adminRouter);
 app.use("/api/products", adminRouter);
+app.use("/api/products", adminRouter);
+app.use("/api/deliveries", adminRouter);
 app.use("/api/admin/orderStatus", adminRouter);
 app.use("/api/admin/addproducts", adminRouter);
 app.use("/api/admin/customer-messages", adminRouter);

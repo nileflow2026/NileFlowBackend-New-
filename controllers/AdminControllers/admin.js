@@ -9,6 +9,40 @@ const {
 const { Resend } = require("resend");
 const resend = new Resend(env.RESEND_API_KEY);
 
+const getCancelledOrders = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .json({ error: "Unauthorized: No user information found." });
+    }
+
+    const { userId, role } = req.user;
+
+    console.log("Authenticated userId:", userId);
+    console.log("User role:", role);
+
+    if (!userId) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    if (role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: Admins only" });
+    }
+
+    const response = await db.listDocuments(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_CANCELLED_ORDERS_COLLECTION_ID,
+      [Query.orderDesc("$createdAt")]
+    );
+
+    res.status(200).json({ response: response.documents });
+  } catch (error) {
+    console.error("Fetching orders failed:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 const getOrders = async (req, res) => {
   try {
     if (!req.user) {
@@ -426,6 +460,69 @@ const addFlashSale = async (req, res) => {
   }
 };
 
+const updatePremiumDeal = async (req, res) => {
+  try {
+    const { productId, premiumDeal } = req.body;
+
+    // Validate required fields
+    if (!productId || typeof premiumDeal !== "boolean") {
+      return res.status(400).json({
+        error: "productId and premiumDeal (boolean) are required.",
+      });
+    }
+
+    // Verify the product exists first
+    try {
+      const existingProduct = await db.getDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_PRODUCT_COLLECTION_ID,
+        productId
+      );
+
+      // Check if the product is already in the desired state
+      if (existingProduct.premiumDeal === premiumDeal) {
+        const status = premiumDeal
+          ? "already marked as premium"
+          : "already not premium";
+        return res.status(409).json({
+          error: `Product is ${status}.`,
+        });
+      }
+    } catch (error) {
+      if (error.code === 404) {
+        return res.status(404).json({ error: "Product not found." });
+      }
+      throw error; // Re-throw if it's not a 404 error
+    }
+
+    // Update the product's premiumDeal attribute
+    const updatedProduct = await db.updateDocument(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_PRODUCT_COLLECTION_ID,
+      productId,
+      {
+        premiumDeal: premiumDeal,
+      }
+    );
+
+    // Send appropriate success message
+    const message = premiumDeal
+      ? "Product successfully marked as premium deal!"
+      : "Premium deal status removed successfully!";
+
+    res.status(200).json({
+      message: message,
+      productId: productId,
+      premiumDeal: premiumDeal,
+    });
+  } catch (error) {
+    console.error("Failed to update premium deal status:", error);
+    res.status(500).json({
+      error: "Failed to update premium deal status.",
+    });
+  }
+};
+
 const getFlashSales = async (req, res) => {
   try {
     const now = new Date().toISOString();
@@ -539,119 +636,6 @@ const listRewards = async (req, res) => {
 };
 // Add this debug useEffect
 
-/* const updateProduct = async (req, res) => {
-  const { productId, categoryId } = req.body;
-
-  console.log("=== UPDATE PRODUCT DEBUG ===");
-  console.log("1. Request received for productId:", productId);
-  console.log("2. Adding categoryId:", categoryId);
-  console.log("3. Request body:", req.body);
-
-  try {
-    // Get the SPECIFIC product
-    console.log("4. Fetching product with ID:", productId);
-    const currentProduct = await db.getDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId // Make sure this is correct!
-    );
-
-    console.log("5. Current product found:", {
-      id: currentProduct.$id,
-      name: currentProduct.productName,
-      currentCategories: currentProduct.category,
-    });
-
-    // Normalize existing categories
-    let existingCategories = [];
-
-    if (currentProduct.category) {
-      if (Array.isArray(currentProduct.category)) {
-        // Handle both object format and ID format
-        existingCategories = currentProduct.category.map((cat) => {
-          if (typeof cat === "object" && cat.id) {
-            return cat.id; // Extract ID from object
-          }
-          return cat; // Already an ID string
-        });
-      } else {
-        existingCategories = [currentProduct.category];
-      }
-    }
-
-    console.log("6. Normalized existing categories:", existingCategories);
-
-    // Check for duplicates
-    if (existingCategories.includes(categoryId)) {
-      console.log("7. Category already exists, skipping");
-      return res.status(400).json({
-        error: "Product already belongs to this category",
-        productId,
-        categoryId,
-      });
-    }
-
-    // Append new category
-    const updatedCategories = [...existingCategories, categoryId];
-    console.log("7. Updated categories array:", updatedCategories);
-
-    // Update ONLY this specific product
-    console.log("8. Updating document with ID:", productId);
-    const updatedDoc = await db.updateDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId, // CRITICAL: Ensure this is the specific product ID
-      {
-        category: updatedCategories,
-        $updatedAt: new Date().toISOString(),
-      }
-    );
-
-    console.log("9. Update successful! New document:", {
-      id: updatedDoc.$id,
-      categories: updatedDoc.category,
-      categoriesCount: updatedCategories.length,
-    });
-
-    // Verify the update
-    console.log("10. Verifying update by fetching again...");
-    const verifyProduct = await db.getDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId
-    );
-
-    console.log("11. Verified product categories:", verifyProduct.category);
-
-    res.status(200).json({
-      success: true,
-      message: `Category added to ${currentProduct.productName}`,
-      productId: updatedDoc.$id,
-      categoriesCount: updatedCategories.length,
-      categories: updatedDoc.category,
-    });
-  } catch (error) {
-    console.error("=== UPDATE ERROR ===");
-    console.error("Error details:", {
-      message: error.message,
-      code: error.code,
-      type: error.type,
-      stack: error.stack,
-    });
-
-    if (error.code === 404) {
-      console.error("Product not found. Was productId correct?", productId);
-      return res.status(404).json({
-        error: `Product with ID ${productId} not found`,
-      });
-    }
-
-    res.status(500).json({
-      error: "Failed to update product",
-      details: error.message,
-    });
-  }
-}; */
 // Updated updateProduct controller for Many-to-Many relationship
 const updateProduct = async (req, res) => {
   const { productId, categoryId } = req.body;
@@ -768,49 +752,6 @@ const updateProduct = async (req, res) => {
     });
   }
 };
-// Example backend updateProduct controller
-/* const updateProduct = async (req, res) => {
-  const { productId, categoryId } = req.body;
-  if (!productId || !categoryId) {
-    return res.status(400).json({
-      error: "Missing required fields: productId and categoryId are required",
-    });
-  }
-
-  console.log("Updating product:", { productId, categoryId }); // Add logging
-  try {
-    const updatedDoc = await db.updateDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId,
-      {
-        category: [categoryId], // Appwrite two-way relationship requires an array
-      }
-    );
-    res.status(200).json(updatedDoc);
-  } catch (error) {
-    console.error("Appwrite update error:", {
-      message: error.message,
-      code: error.code,
-      type: error.type,
-      response: error.response,
-    });
-
-    // Provide more specific error messages
-    if (error.code === 404) {
-      return res.status(404).json({ error: "Product not found" });
-    }
-
-    if (error.code === 401 || error.code === 403) {
-      return res.status(403).json({ error: "Permission denied" });
-    }
-
-    res.status(500).json({
-      error: "Failed to update product",
-      details: error.message,
-    });
-  }
-}; */
 
 const getUsers = async (_req, res) => {
   try {
@@ -1018,8 +959,225 @@ const getProductsBySubcategoryId = async (req, res) => {
     });
   }
 };
+
+const assignDeliveryToRider = async (req, res) => {
+  try {
+    const { deliveryId, riderId } = req.body;
+
+    // Validate input
+    if (!deliveryId || !riderId) {
+      return res.status(400).json({
+        success: false,
+        error: "Delivery ID and Rider ID are required",
+      });
+    }
+
+    console.log("Attempting to assign delivery:", { deliveryId, riderId });
+    console.log(
+      "Using database:",
+      env.RIDER_DATABASE_ID || env.APPWRITE_DATABASE_ID
+    );
+    console.log(
+      "Using collection:",
+      env.DELIVERIES_COLLECTION_ID || "UNDEFINED"
+    );
+
+    // First, check if this is an order ID and we need to find or create a delivery record
+    let delivery;
+
+    try {
+      // Try to find delivery in deliveries collection first
+      console.log("Trying to find delivery in deliveries collection...");
+      delivery = await db.getDocument(
+        env.RIDER_DATABASE_ID || env.APPWRITE_DATABASE_ID,
+        env.DELIVERIES_COLLECTION_ID,
+        deliveryId
+      );
+      console.log("Found existing delivery:", delivery.$id);
+    } catch (deliveryError) {
+      console.log(
+        "Delivery not found in deliveries collection, checking orders..."
+      );
+
+      try {
+        // Check if this is an order ID - try to find in orders collection
+        const order = await db.getDocument(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ORDERS_COLLECTION || env.APPWRITE_ORDERS_COLLECTION_ID,
+          deliveryId
+        );
+
+        console.log("Found order:", order.$id);
+
+        // Fetch customer details
+        let customerInfo = {};
+        try {
+          const customerId = order.userId || order.customerId;
+
+          // Check if customerId exists and is valid
+          if (!customerId) {
+            throw new Error("No customer ID found in order");
+          }
+
+          const customer = await db.getDocument(
+            env.APPWRITE_DATABASE_ID,
+            env.APPWRITE_USER_COLLECTION_ID,
+            customerId
+          );
+
+          // Build customer name with length validation
+          let customerName =
+            customer.name ||
+            customer.fullName ||
+            `${customer.firstName || ""} ${customer.lastName || ""}`.trim() ||
+            "Customer";
+
+          // Ensure customerName is within 25 character limit
+          if (customerName.length > 25) {
+            customerName = customerName.substring(0, 22) + "...";
+          }
+
+          customerInfo = {
+            customerName: customerName,
+            customerPhone: customer.phone || customer.phoneNumber || "",
+            customerEmail: customer.email || "",
+          };
+          console.log("Fetched customer info:", customerInfo.customerName);
+        } catch (customerError) {
+          console.log(
+            "Could not fetch customer details:",
+            customerError.message
+          );
+          customerInfo = {
+            customerName: "Unknown Customer", // Shorter fallback name
+            customerPhone: "",
+            customerEmail: "",
+          };
+        }
+
+        // Create a delivery record from the order
+        delivery = await db.createDocument(
+          env.RIDER_DATABASE_ID || env.APPWRITE_DATABASE_ID,
+          env.DELIVERIES_COLLECTION_ID,
+          deliveryId, // Use the same ID as the order
+          {
+            orderId: order.$id,
+            customerId: order.userId || order.customerId,
+            ...customerInfo, // Include customer name, phone, email
+            pickupAddress: order.pickupAddress || order.address,
+            deliveryAddress: order.deliveryAddress || order.address,
+            status: "pending",
+            totalAmount: order.totalAmount || order.total || order.amount,
+            deliveryFee: order.deliveryFee || 0,
+            subTotal: order.subTotal || order.subtotal,
+            tax: order.tax || 0,
+            discount: order.discount || 0,
+            items: order.items || [],
+            orderNotes: order.notes || order.specialInstructions || "",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        );
+
+        console.log("Created delivery record:", delivery.$id);
+      } catch (orderError) {
+        console.error("Order also not found:", orderError);
+        return res.status(404).json({
+          success: false,
+          error: "Neither delivery nor order found with the provided ID",
+          details: `Searched for ID: ${deliveryId} in both deliveries and orders collections`,
+        });
+      }
+    }
+
+    if (delivery.status !== "pending" && delivery.status !== "assigned") {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Delivery cannot be reassigned - current status: " + delivery.status,
+      });
+    }
+
+    // Check if rider exists and is available
+    const rider = await db.getDocument(
+      env.RIDER_DATABASE_ID,
+      env.RIDER_COLLECTION_ID,
+      riderId
+    );
+
+    if (!rider.isActive) {
+      return res.status(400).json({
+        success: false,
+        error: "Rider is not active",
+      });
+    }
+
+    if (rider.status === "offline") {
+      return res.status(400).json({
+        success: false,
+        error: "Rider is currently offline",
+      });
+    }
+
+    // Assign delivery to rider
+    const updatedDelivery = await db.updateDocument(
+      env.RIDER_DATABASE_ID,
+      env.DELIVERIES_COLLECTION_ID,
+      deliveryId,
+      {
+        riderId: riderId,
+        status: "assigned",
+        assignedAt: new Date().toISOString(),
+        assignedBy: req.admin ? req.admin.adminId : req.user.userId,
+        updatedAt: new Date().toISOString(),
+      }
+    );
+
+    // Update rider status to busy if they were online
+    if (rider.status === "online") {
+      await db.updateDocument(
+        env.RIDER_DATABASE_ID,
+        env.RIDER_COLLECTION_ID,
+        riderId,
+        {
+          status: "busy",
+          updatedAt: new Date().toISOString(),
+        }
+      );
+    }
+
+    res.json({
+      success: true,
+      message: "Delivery assigned successfully",
+      delivery: updatedDelivery,
+      rider: {
+        riderId: rider.$id,
+        name: rider.name,
+        phone: rider.phone,
+        status: "busy",
+      },
+    });
+  } catch (error) {
+    console.error("Assign delivery error:", error);
+
+    if (error.code === 404) {
+      return res.status(404).json({
+        success: false,
+        error: "Delivery or Rider not found",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: "Failed to assign delivery",
+      message: error.message,
+    });
+  }
+};
 module.exports = {
+  assignDeliveryToRider,
   getOrders,
+  getCancelledOrders,
   getProducts,
   getPendingProducts,
   getApprovedProducts,
@@ -1033,6 +1191,7 @@ module.exports = {
   addFeaturedProducts,
   addProductsDeal,
   addFlashSale,
+  updatePremiumDeal,
   updateProduct,
   createSubcategory,
   getSubcategoriesByCategoryId,

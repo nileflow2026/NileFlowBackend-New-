@@ -35,7 +35,7 @@ const getUsers = async (_req, res) => {
   try {
     const { documents } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_ADMIN_COLLECTION_ID
+      env.APPWRITE_USER_COLLECTION_ID
     );
     res.json(documents);
   } catch (e) {
