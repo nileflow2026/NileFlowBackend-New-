@@ -21,10 +21,20 @@ const schema = Joi.object({
   // Subscriptions Collection
   APPWRITE_SUBSCRIPTIONS_COLLECTION_ID: Joi.string().optional(),
   // Products Collection
-  APPWRITE_PRODUCTS_COLLECTION_ID: Joi.string().optional(),
+  APPWRITE_PRODUCT_COLLECTION_ID: Joi.string().optional(),
+  // Categories Collection
+  APPWRITE_CATEGORIES_COLLECTION_ID: Joi.string().optional(),
   // African Facts & Proverbs Collections
   AFRICAN_FACTS_COLLECTION_ID: Joi.string().optional(),
   AFRICAN_PROVERBS_COLLECTION_ID: Joi.string().optional(),
+  // Recommendation System Collections
+  EXPLORATION_PATTERNS_COLLECTION_ID: Joi.string().optional(),
+  USER_SESSIONS_COLLECTION_ID: Joi.string().optional(),
+  RECOMMENDATION_FEEDBACK_COLLECTION_ID: Joi.string().optional(),
+  CONTEXT_PROFILES_COLLECTION_ID: Joi.string().optional(),
+  RECOMMENDATION_WEIGHTS_COLLECTION_ID: Joi.string().optional(),
+  ITEM_SOCIAL_SIGNALS_COLLECTION_ID: Joi.string().optional(),
+  BUSINESS_METRICS_COLLECTION_ID: Joi.string().optional(),
   // Refresh tokens collection used by auth controllers
   APPWRITE_REFRESH_TOKEN_COLLECTION_ID: Joi.string().required(),
   // Frontend URL used for OAuth final redirect

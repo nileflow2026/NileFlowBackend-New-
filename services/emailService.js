@@ -19,18 +19,18 @@ async function sendRatingRequestEmail(deliveryData) {
     } = deliveryData;
 
     if (!customerEmail) {
-      console.log("❌ No customer email available for rating request");
+      // console.log("❌ No customer email available for rating request");
       return false;
     }
 
-    console.log(`📨 Preparing to send rating request email:`);
-    console.log(`  ✉️  To: ${customerEmail}`);
-    console.log(`  🚚 Order: #${orderId}`);
-    console.log(`  🚴 Delivery: ${deliveryId}`);
-    console.log(`  👤 Rider: ${riderName}`);
-    console.log(`  💰 Amount: $${totalAmount}`);
-    console.log(`  🔗 Rating URL: ${ratingUrl}`);
-    console.log(`  📅 Timestamp: ${new Date().toISOString()}`);
+    // console.log(`📨 Preparing to send rating request email:`);
+    // console.log(`  ✉️  To: ${customerEmail}`);
+    // console.log(`  🚚 Order: #${orderId}`);
+    // console.log(`  🚴 Delivery: ${deliveryId}`);
+    // console.log(`  👤 Rider: ${riderName}`);
+    // console.log(`  💰 Amount: $${totalAmount}`);
+    // console.log(`  🔗 Rating URL: ${ratingUrl}`);
+    // console.log(`  📅 Timestamp: ${new Date().toISOString()}`);
 
     const emailResponse = await resend.emails.send({
       from: "Nile Flow <no-reply@nileflowafrica.com>",
@@ -490,13 +490,13 @@ async function sendRatingRequestEmail(deliveryData) {
       `,
     });
 
-    console.log(`✅ Rating request email SENT successfully!`);
-    console.log(`  📧 Email ID: ${emailResponse.data?.id || "N/A"}`);
-    console.log(`  ✉️  To: ${customerEmail}`);
-    console.log(`  🚚 Order: #${orderId}`);
-    console.log(`  🚴 Delivery: ${deliveryId}`);
-    console.log(`  📊 Response:`, JSON.stringify(emailResponse, null, 2));
-    console.log(`  ⏰ Sent at: ${new Date().toISOString()}`);
+    // console.log(`✅ Rating request email SENT successfully!`);
+    // console.log(`  📧 Email ID: ${emailResponse.data?.id || "N/A"}`);
+    // console.log(`  ✉️  To: ${customerEmail}`);
+    // console.log(`  🚚 Order: #${orderId}`);
+    // console.log(`  🚴 Delivery: ${deliveryId}`);
+    // console.log(`  📊 Response:`, JSON.stringify(emailResponse, null, 2));
+    // console.log(`  ⏰ Sent at: ${new Date().toISOString()}`);
     return true;
   } catch (error) {
     console.error(`❌ FAILED to send rating request email!`);
@@ -515,27 +515,27 @@ async function sendRatingRequestEmail(deliveryData) {
  * Schedule rating reminder email (send 4 hours after delivery if not rated)
  */
 async function scheduleRatingReminder(deliveryId) {
-  console.log(`⏰ Scheduling rating reminder for delivery: ${deliveryId}`);
-  console.log(
-    `  📅 Will send in 4 hours at: ${new Date(
-      Date.now() + 4 * 60 * 60 * 1000
-    ).toISOString()}`
-  );
+  // console.log(`⏰ Scheduling rating reminder for delivery: ${deliveryId}`);
+  // console.log(
+  //   `  📅 Will send in 4 hours at: ${new Date(
+  //     Date.now() + 4 * 60 * 60 * 1000
+  //   ).toISOString()}`
+  // );
 
   // In a production app, use a job queue like Bull or Agenda
   // For now, we'll use setTimeout (not recommended for production)
   setTimeout(async () => {
     try {
-      console.log(`🔔 Executing rating reminder for delivery: ${deliveryId}`);
+      // console.log(`🔔 Executing rating reminder for delivery: ${deliveryId}`);
 
       const {
         getRatingReminder,
       } = require("../controllers/RatingController/ratingController");
 
       // Check if still needs rating
-      console.log(
-        `📋 Checking if delivery ${deliveryId} still needs rating...`
-      );
+      // console.log(
+      //   `📋 Checking if delivery ${deliveryId} still needs rating...`
+      // );
       const response = await getRatingReminder(
         { params: { deliveryId } },
         {
@@ -545,27 +545,27 @@ async function scheduleRatingReminder(deliveryId) {
       );
 
       if (response.success) {
-        console.log(
-          `✅ Delivery ${deliveryId} still needs rating - sending reminder email`
-        );
+        // console.log(
+        //   `✅ Delivery ${deliveryId} still needs rating - sending reminder email`
+        // );
         const reminderSent = await sendRatingRequestEmail({
           ...response.reminderData,
           ratingUrl: response.reminderData.ratingUrl,
         });
 
         if (reminderSent) {
-          console.log(
-            `📧 Rating reminder email sent successfully for delivery: ${deliveryId}`
-          );
+          // console.log(
+          //   `📧 Rating reminder email sent successfully for delivery: ${deliveryId}`
+          // );
         } else {
-          console.log(
-            `❌ Rating reminder email failed for delivery: ${deliveryId}`
-          );
+          // console.log(
+          //   `❌ Rating reminder email failed for delivery: ${deliveryId}`
+          // );
         }
       } else {
-        console.log(
-          `⏭️ Delivery ${deliveryId} no longer needs rating - skipping reminder`
-        );
+        // console.log(
+        //   `⏭️ Delivery ${deliveryId} no longer needs rating - skipping reminder`
+        // );
       }
     } catch (error) {
       console.error(

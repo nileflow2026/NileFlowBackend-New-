@@ -792,3 +792,253 @@
 [2025-12-27 06:45:54] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
 [2025-12-27 06:46:49] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
 [2025-12-27 06:47:20] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 06:48:56] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:29:53] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:31:04] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:32:17] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:33:49] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:35:26] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:37:09] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:38:49] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:39:36] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:40:30] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:42:01] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:43:52] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:45:11] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:45:28] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:45:55] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 07:47:22] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 23:25:38] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 23:36:10] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 23:46:23] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 23:46:41] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-27 23:55:44] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:11:27] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:11:47] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:15:42] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:16:08] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:16:20] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:16:27] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:16:33] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:17:07] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:17:33] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:17:55] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:18:38] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:18:54] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:19:26] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:19:39] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:19:46] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:20:07] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:22:31] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:22:54] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:23:20] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:23:46] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:24:05] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:25:13] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:25:54] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:28:33] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:30:27] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:30:35] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 00:44:39] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:04:06] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:10:18] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:12:20] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:17:08] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:17:20] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:18:07] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:18:27] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:19:00] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:23:46] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:24:10] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:28:17] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:28:41] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:29:09] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:29:20] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:29:38] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:29:45] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:32:21] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:32:27] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:32:37] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:32:49] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:33:18] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:39:37] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:41:32] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:49:48] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:49:56] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:51:46] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:54:44] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 01:55:02] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:00:00] INFO: Processing auto-renewals... {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:00:00] INFO: Found 0 subscriptions ready for renewal {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:00:00] INFO: Auto-renewal processing completed {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:02:35] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:03:07] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:20:58] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:21:20] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:30:54] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:31:10] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:32:47] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:55:18] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:56:08] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:56:26] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:56:36] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:57:22] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:57:33] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:58:06] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:59:30] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 02:59:58] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:00:10] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:00:31] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:03:39] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:07:35] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:08:01] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:16:44] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:16:55] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:17:08] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:22:53] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:23:16] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:29:18] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:29:33] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:30:13] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:30:34] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:34:43] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 03:41:41] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:14:17] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:19:32] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:20:58] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:21:17] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:21:43] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:23:17] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:23:52] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:24:08] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:28:23] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:28:36] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:28:54] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:29:21] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:39:25] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:41:21] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:43:48] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:43:56] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:48:07] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:48:13] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 12:48:34] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 13:54:37] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 13:57:34] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 13:57:43] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:02:04] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:04:36] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:04:42] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:05:47] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:05:53] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:06:05] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:06:12] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:06:29] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:06:44] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:07:31] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:07:51] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:08:55] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:09:00] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:09:11] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:09:21] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:14:12] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:16:51] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:16:56] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:18:15] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:18:22] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:18:41] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:18:59] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:26:13] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:28:37] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:28:42] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:30:35] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:32:54] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:33:02] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:33:19] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:33:29] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:35:16] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:35:30] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:35:40] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:37:35] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:38:26] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:42:37] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:42:57] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:44:43] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:44:57] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:48:11] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:50:33] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:52:08] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:54:58] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 14:55:57] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 15:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-28 15:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-28 15:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-28 15:04:38] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 15:04:45] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 15:04:58] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 15:05:29] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 15:06:41] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 17:55:09] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 17:59:44] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 17:59:53] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 18:00:06] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 18:04:43] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 18:08:07] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 18:29:14] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 18:30:50] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 18:56:52] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 18:57:00] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 18:57:12] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 18:59:04] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 18:59:16] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 18:59:31] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 18:59:46] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:00:12] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:00:22] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:00:36] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:00:41] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:00:47] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:00:58] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:01:05] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:01:17] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:01:28] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:01:49] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:02:08] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:02:38] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:02:54] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:03:02] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:03:17] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:03:23] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:03:31] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:03:39] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:03:51] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:04:32] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:04:52] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:05:06] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:05:11] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:05:30] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:05:41] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:05:55] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:06:04] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:06:13] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:06:26] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:06:43] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:07:00] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-28 19:07:14] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}

@@ -15,7 +15,7 @@ const AddressService = {
         env.APPWRITE_ADDRESS_COLLECTION_ID,
         [Query.equal("user", userId)]
       );
-      console.log("Fetched addresses for user:", userId, response.documents);
+      // console.log("Fetched addresses for user:", userId, response.documents);
       return response.documents;
     } catch (error) {
       console.error("Error fetching addresses:", error);

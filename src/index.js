@@ -249,6 +249,7 @@ app.use("/api/contact-nile-flow", clientmessages);
 app.use("/api/products", productsrouter);
 app.use("/api/apply", applyRoutes);
 app.use("/api", africanFactsRoutes);
+app.use("/api/recommendations", require("../routes/recommendations"));
 
 // Vendor Routes
 app.use("/api/vendor/auth", /* authLimiter, */ vendorauth);
