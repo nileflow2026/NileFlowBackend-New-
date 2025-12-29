@@ -250,6 +250,7 @@ app.use("/api/products", productsrouter);
 app.use("/api/apply", applyRoutes);
 app.use("/api", africanFactsRoutes);
 app.use("/api/recommendations", require("../routes/recommendations"));
+app.use("/api/nileflow/addresses", addressRoutes);
 
 // Vendor Routes
 app.use("/api/vendor/auth", /* authLimiter, */ vendorauth);

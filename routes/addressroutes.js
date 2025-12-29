@@ -5,6 +5,7 @@ const {
   getAddresses,
   updateAddress,
   deleteAddress,
+  getCustomerAddress,
 } = require("../controllers/UserControllers/addressController");
 const router = express.Router();
 
@@ -18,5 +19,8 @@ router.put("/addresses/:addressId", authenticateToken, updateAddress);
 
 // DELETE /api/addresses/:addressId - Delete a specific address by its ID
 router.delete("/addresses/:addressId", authenticateToken, deleteAddress);
+
+// GET /api/addresses/customer/:customerId - Get customer addresses by type (admin only)
+router.get("/customer/:customerId", authenticateToken, getCustomerAddress);
 
 module.exports = router;

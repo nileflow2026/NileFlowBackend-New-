@@ -1122,7 +1122,7 @@ async function upsertOAuthUser({ email, name, avatarUrl }) {
         role: "customer",
         avatarUrl: avatarUrl || null,
         phone: null,
-        createdAt: new Date().toISOString(),
+        $createdAt: new Date().toISOString(),
       }
     );
   } catch (e) {
@@ -1131,3 +1131,235 @@ async function upsertOAuthUser({ email, name, avatarUrl }) {
 
   return created.$id;
 }
+
+/**
+ * Save customer pickup address
+ */
+const savePickupAddress = async (req, res) => {
+  try {
+    const accessToken = req.cookies.accessToken;
+    if (!accessToken) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const decoded = verifyAccessToken(accessToken);
+    const userId = decoded.sub;
+
+    // Validate userId exists
+    if (!userId) {
+      log.error("Save pickup address: userId is missing from token");
+      return res.status(401).json({ error: "Invalid authentication token" });
+    }
+
+    log.info(`Save pickup address for user: ${userId}`);
+
+    const { address, phone, city, state, postalCode } = req.body;
+
+    // Validate required fields
+    if (!address || !phone || !city || !state) {
+      return res.status(400).json({
+        error: "Address, phone, city, and state are required fields",
+      });
+    }
+
+    // Validate phone number format
+    if (!/^\+?[\d\s\-()]+$/.test(phone)) {
+      return res.status(400).json({
+        error: "Please enter a valid phone number",
+      });
+    }
+
+    try {
+      // Check if user already has a pickup address
+      log.info(`Checking existing pickup addresses for user: ${userId}`);
+
+      let existingAddresses;
+      try {
+        // Try to query with type field first
+        existingAddresses = await db.listDocuments(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ADDRESS_COLLECTION_ID,
+          [Query.equal("user", userId), Query.equal("type", "pickup")]
+        );
+      } catch (queryError) {
+        log.warn(
+          "Query with type field failed, trying without type field:",
+          queryError.message
+        );
+        // Fallback: query without type field if it doesn't exist
+        existingAddresses = await db.listDocuments(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ADDRESS_COLLECTION_ID,
+          [Query.equal("user", userId)]
+        );
+        // Filter to find pickup addresses manually if needed
+        existingAddresses.documents = existingAddresses.documents.filter(
+          (addr) => addr.type === "pickup" || !addr.type // Include addresses without type
+        );
+      }
+
+      let pickupAddress;
+
+      if (existingAddresses.documents.length > 0) {
+        // Update existing pickup address
+        const existingAddress = existingAddresses.documents[0];
+        pickupAddress = await db.updateDocument(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ADDRESS_COLLECTION_ID,
+          existingAddress.$id,
+          {
+            address,
+            phone,
+            city,
+            state,
+            zipCode: postalCode || "",
+            $updatedAt: new Date().toISOString(),
+          }
+        );
+        log.info(`Updated pickup address for user ${userId}`);
+      } else {
+        // Create new pickup address
+        const addressId = ID.unique();
+        pickupAddress = await db.createDocument(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ADDRESS_COLLECTION_ID,
+          addressId,
+          {
+            user: userId,
+            type: "pickup", // Mark as pickup address
+            address,
+            phone,
+            city,
+            state,
+            zipCode: postalCode || "",
+            country: "Kenya", // Default country, can be made dynamic
+            fullName: "", // Will be populated from user profile if needed
+            $createdAt: new Date().toISOString(),
+            $updatedAt: new Date().toISOString(),
+          }
+        );
+        log.info(`Created new pickup address for user ${userId}`);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Pickup address saved successfully",
+        address: {
+          id: pickupAddress.$id,
+          address: pickupAddress.address,
+          phone: pickupAddress.phone,
+          city: pickupAddress.city,
+          state: pickupAddress.state,
+          postalCode: pickupAddress.zipCode,
+        },
+      });
+    } catch (dbError) {
+      log.error("Database error saving pickup address:", dbError);
+      return res.status(500).json({
+        error: "Failed to save pickup address. Please try again.",
+      });
+    }
+  } catch (error) {
+    log.error("Save pickup address failed:", error?.message || error);
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+};
+
+/**
+ * Get customer pickup address
+ */
+const getPickupAddress = async (req, res) => {
+  try {
+    const accessToken = req.cookies.accessToken;
+    if (!accessToken) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const decoded = verifyAccessToken(accessToken);
+    const userId = decoded.sub;
+
+    // Validate userId exists
+    if (!userId) {
+      log.error("Get pickup address: userId is missing from token");
+      return res.status(401).json({ error: "Invalid authentication token" });
+    }
+
+    log.info(`Get pickup address for user: ${userId}`);
+
+    try {
+      // Get pickup address for the user
+      let addresses;
+      try {
+        // Try to query with type field first
+        addresses = await db.listDocuments(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ADDRESS_COLLECTION_ID,
+          [Query.equal("user", userId), Query.equal("type", "pickup")]
+        );
+      } catch (queryError) {
+        log.warn(
+          "Query with type field failed, trying without type field:",
+          queryError.message
+        );
+        // Fallback: query without type field
+        addresses = await db.listDocuments(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ADDRESS_COLLECTION_ID,
+          [Query.equal("user", userId)]
+        );
+        // Filter manually for pickup addresses
+        addresses.documents = addresses.documents.filter(
+          (addr) => addr.type === "pickup"
+        );
+      }
+
+      if (addresses.documents.length === 0) {
+        return res.status(404).json({
+          error: "No pickup address found",
+        });
+      }
+
+      const pickupAddress = addresses.documents[0];
+
+      return res.status(200).json({
+        success: true,
+        address: {
+          id: pickupAddress.$id,
+          address: pickupAddress.address,
+          phone: pickupAddress.phone,
+          city: pickupAddress.city,
+          state: pickupAddress.state,
+          postalCode: pickupAddress.zipCode || "",
+        },
+      });
+    } catch (dbError) {
+      log.error("Database error getting pickup address:", dbError);
+      return res.status(500).json({
+        error: "Failed to retrieve pickup address",
+      });
+    }
+  } catch (error) {
+    log.error("Get pickup address failed:", error?.message || error);
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+};
+
+module.exports = {
+  signupcustomer,
+  signincustomer,
+  handleRefreshToken,
+  getCurrentCustomer,
+  logoutcustomer,
+  getCustomerPreferences,
+  updateCustomerPreferences,
+  getGoogleOAuthUrl,
+  googleOAuthCallback,
+  getFacebookOAuthUrl,
+  facebookOAuthCallback,
+  savePickupAddress,
+  getPickupAddress,
+};

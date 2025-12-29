@@ -23,7 +23,57 @@ const AddressService = {
     }
   },
 
-  // Add a new address for a user
+  // Get customer addresses filtered by type (admin function)
+  getCustomerAddressByType: async (customerId, addressType = "delivery") => {
+    if (!customerId) {
+      console.error(
+        "Error fetching customer addresses: Customer ID is missing."
+      );
+      return [];
+    }
+
+    try {
+      // Get all addresses for the customer
+      const allAddressesResponse = await db.listDocuments(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_ADDRESS_COLLECTION_ID,
+        [Query.equal("user", customerId)]
+      );
+
+      let filteredAddresses = allAddressesResponse.documents;
+
+      // Filter by type if addresses have type field
+      if (addressType && allAddressesResponse.documents.length > 0) {
+        // Check if any address has a type field
+        const hasTypeField = allAddressesResponse.documents.some(
+          (addr) => addr.type !== undefined
+        );
+
+        if (hasTypeField) {
+          // Handle semantic mapping: frontend requests "delivery" but customer addresses are stored as "pickup"
+          let actualTypeToSearch = addressType;
+          if (addressType === "delivery") {
+            actualTypeToSearch = "pickup"; // Map delivery requests to pickup type in database
+          }
+
+          filteredAddresses = allAddressesResponse.documents.filter(
+            (addr) => addr.type === actualTypeToSearch
+          );
+        }
+      }
+
+      console.log(
+        `Fetched ${addressType} addresses for customer ${customerId}: ${filteredAddresses.length} found`
+      );
+
+      return filteredAddresses;
+    } catch (error) {
+      console.error("Error fetching customer addresses:", error);
+      throw new Error("Failed to fetch customer addresses.");
+    }
+  },
+
+  // Add a new address
   addAddress: async (userId, newAddress) => {
     try {
       const payload = {

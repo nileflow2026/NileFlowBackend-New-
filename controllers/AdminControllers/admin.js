@@ -962,17 +962,20 @@ const getProductsBySubcategoryId = async (req, res) => {
 
 const assignDeliveryToRider = async (req, res) => {
   try {
-    const { deliveryId, riderId } = req.body;
-
-    // Validate input
+    const { deliveryId, riderId, pickupAddress } = req.body;
     if (!deliveryId || !riderId) {
       return res.status(400).json({
         success: false,
         error: "Delivery ID and Rider ID are required",
       });
     }
+    // Validate input
 
-    console.log("Attempting to assign delivery:", { deliveryId, riderId });
+    console.log("Attempting to assign delivery:", {
+      deliveryId,
+      riderId,
+      pickupAddress: pickupAddress || "Not provided by admin",
+    });
     console.log(
       "Using database:",
       env.RIDER_DATABASE_ID || env.APPWRITE_DATABASE_ID
@@ -1011,6 +1014,7 @@ const assignDeliveryToRider = async (req, res) => {
 
         // Fetch customer details
         let customerInfo = {};
+        let customerDeliveryAddress = null;
         try {
           const customerId = order.userId || order.customerId;
 
@@ -1025,8 +1029,18 @@ const assignDeliveryToRider = async (req, res) => {
             customerId
           );
 
-          // Build customer name with length validation
+          console.log("Customer document fields:", Object.keys(customer));
+          console.log("Customer name fields:", {
+            name: customer.name,
+            username: customer.username,
+            fullName: customer.fullName,
+            firstName: customer.firstName,
+            lastName: customer.lastName,
+          });
+
+          // Build customer name with better field checking
           let customerName =
+            customer.username ||
             customer.name ||
             customer.fullName ||
             `${customer.firstName || ""} ${customer.lastName || ""}`.trim() ||
@@ -1035,6 +1049,42 @@ const assignDeliveryToRider = async (req, res) => {
           // Ensure customerName is within 25 character limit
           if (customerName.length > 25) {
             customerName = customerName.substring(0, 22) + "...";
+          }
+
+          // Get customer delivery address (where to deliver TO)
+          try {
+            const deliveryAddresses = await db.listDocuments(
+              env.APPWRITE_DATABASE_ID,
+              env.APPWRITE_ADDRESS_COLLECTION_ID,
+              [Query.equal("user", customerId), Query.equal("type", "pickup")]
+            );
+
+            if (deliveryAddresses.documents.length > 0) {
+              const deliveryAddr = deliveryAddresses.documents[0];
+              customerDeliveryAddress = {
+                address: deliveryAddr.address,
+                phone: deliveryAddr.phone,
+                city: deliveryAddr.city,
+                state: deliveryAddr.state,
+                postalCode: deliveryAddr.zipCode || "",
+                fullAddress: `${deliveryAddr.address}, ${deliveryAddr.city}, ${
+                  deliveryAddr.state
+                }${deliveryAddr.zipCode ? " " + deliveryAddr.zipCode : ""}`,
+              };
+              console.log(
+                "Found customer delivery address:",
+                customerDeliveryAddress.fullAddress
+              );
+            } else {
+              console.log(
+                "No delivery address found for customer, using order address"
+              );
+            }
+          } catch (addressError) {
+            console.log(
+              "Error fetching customer delivery address:",
+              addressError.message
+            );
           }
 
           customerInfo = {
@@ -1064,15 +1114,32 @@ const assignDeliveryToRider = async (req, res) => {
             orderId: order.$id,
             customerId: order.userId || order.customerId,
             ...customerInfo, // Include customer name, phone, email
-            pickupAddress: order.pickupAddress || order.address,
-            deliveryAddress: order.deliveryAddress || order.address,
+            pickupAddress:
+              pickupAddress ||
+              order.pickupAddress ||
+              "Business location - To be assigned by admin",
+            deliveryAddress:
+              customerDeliveryAddress?.fullAddress ||
+              order.deliveryAddress ||
+              order.address ||
+              "Customer delivery address not provided",
+            // Include detailed delivery address information for riders as JSON string
+            pickupDetails: customerDeliveryAddress
+              ? JSON.stringify({
+                  address: customerDeliveryAddress.address,
+                  phone: customerDeliveryAddress.phone,
+                  city: customerDeliveryAddress.city,
+                  state: customerDeliveryAddress.state,
+                  postalCode: customerDeliveryAddress.postalCode,
+                })
+              : null,
             status: "pending",
             totalAmount: order.totalAmount || order.total || order.amount,
             deliveryFee: order.deliveryFee || 0,
             subTotal: order.subTotal || order.subtotal,
             tax: order.tax || 0,
             discount: order.discount || 0,
-            items: order.items || [],
+            items: order.items ? JSON.stringify(order.items) : "[]",
             orderNotes: order.notes || order.specialInstructions || "",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),

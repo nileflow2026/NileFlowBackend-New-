@@ -35,7 +35,21 @@ const paymentSecurity = {
 
       // Server-side cart validation if cart provided
       if (cart && Array.isArray(cart)) {
-        const calculatedTotal = cart.reduce((sum, item) => {
+        const {
+          shipping = 0,
+          deliveryFee = 0,
+          tax = 0,
+          discount = 0,
+          serviceFee = 0,
+          premiumDiscount = 0,
+          // Alternative field names
+          shippingFee = 0,
+          totalShipping = 0,
+          validDiscountAmount = 0,
+        } = req.body;
+
+        // Calculate subtotal from cart items
+        const calculatedSubtotal = cart.reduce((sum, item) => {
           const price = parseFloat(item.price || 0);
           const quantity = parseInt(item.quantity || 1);
 
@@ -48,11 +62,44 @@ const paymentSecurity = {
           return sum + price * quantity;
         }, 0);
 
+        // Use the highest shipping value provided (in case multiple fields are used)
+        const totalShippingCost = Math.max(
+          parseFloat(shipping),
+          parseFloat(deliveryFee),
+          parseFloat(shippingFee),
+          parseFloat(totalShipping)
+        );
+
+        // Use the highest discount value provided
+        const totalDiscountAmount = Math.max(
+          parseFloat(discount),
+          parseFloat(validDiscountAmount),
+          parseFloat(premiumDiscount)
+        );
+
+        // Calculate total with all fees and discounts
+        const calculatedTotal =
+          calculatedSubtotal +
+          totalShippingCost +
+          parseFloat(tax) +
+          parseFloat(serviceFee) -
+          totalDiscountAmount;
+
         // Allow small discrepancy for floating point precision
         const tolerance = 0.01;
         if (Math.abs(calculatedTotal - paymentAmount) > tolerance) {
           logger.warn(
-            `Payment amount mismatch: calculated=${calculatedTotal}, provided=${paymentAmount}`
+            `Payment amount mismatch: calculated=${calculatedTotal}, provided=${paymentAmount}`,
+            {
+              calculatedSubtotal,
+              totalShippingCost,
+              tax: parseFloat(tax),
+              totalDiscountAmount,
+              serviceFee: parseFloat(serviceFee),
+              calculatedTotal,
+              providedAmount: paymentAmount,
+              requestBody: req.body, // Log full request for debugging
+            }
           );
           return res.status(400).json({
             error: "Payment amount does not match cart total",
