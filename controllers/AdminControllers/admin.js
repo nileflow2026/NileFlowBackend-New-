@@ -1011,23 +1011,51 @@ const assignDeliveryToRider = async (req, res) => {
         );
 
         console.log("Found order:", order.$id);
+        console.log("🔍 Order document contains:", {
+          userId: order.userId,
+          customerId: order.userId,
+          customerName: order.username || order.customerName || order.name,
+          customerEmail: order.customerEmail,
+          customerPhone: order.customerPhone,
+          userEmail: order.userEmail,
+          userName: order.username,
+          email: order.email,
+          name: order.name,
+          allOrderFields: Object.keys(order),
+        });
 
         // Fetch customer details
         let customerInfo = {};
         let customerDeliveryAddress = null;
         try {
-          const customerId = order.userId || order.customerId;
+          const customerId = order.userId || order.userId || order.customerId;
+          console.log("🔍 Customer ID extracted from order:", customerId);
+          console.log("🔍 Order fields containing customer info:", {
+            userId: order.userId,
+            customerId: order.userId,
+            orderUserId: order.orderUserId,
+            user: order.user,
+          });
 
           // Check if customerId exists and is valid
           if (!customerId) {
             throw new Error("No customer ID found in order");
           }
 
+          console.log("🔍 Attempting to fetch customer from database...");
+          console.log("🔍 Using database ID:", env.APPWRITE_DATABASE_ID);
+          console.log(
+            "🔍 Using users collection ID:",
+            env.APPWRITE_USER_COLLECTION_ID
+          );
+
           const customer = await db.getDocument(
             env.APPWRITE_DATABASE_ID,
             env.APPWRITE_USER_COLLECTION_ID,
             customerId
           );
+
+          console.log("✅ Successfully fetched customer document");
 
           console.log("Customer document fields:", Object.keys(customer));
           console.log("Customer name fields:", {
@@ -1036,6 +1064,12 @@ const assignDeliveryToRider = async (req, res) => {
             fullName: customer.fullName,
             firstName: customer.firstName,
             lastName: customer.lastName,
+          });
+          console.log("🔍 Customer email field:", {
+            email: customer.email,
+            emailType: typeof customer.email,
+            emailLength: customer.email ? customer.email.length : "N/A",
+            emailTrimmed: customer.email ? customer.email.trim() : "N/A",
           });
 
           // Build customer name with better field checking
@@ -1090,19 +1124,84 @@ const assignDeliveryToRider = async (req, res) => {
           customerInfo = {
             customerName: customerName,
             customerPhone: customer.phone || customer.phoneNumber || "",
-            customerEmail: customer.email || "",
+            customerEmail:
+              customer.email && customer.email.trim() !== ""
+                ? customer.email
+                : "unknown@nileflow.com",
           };
+          console.log("✅ Customer info prepared:", {
+            name: customerInfo.customerName,
+            phone: customerInfo.customerPhone,
+            email: customerInfo.customerEmail,
+            usingFallbackEmail: !customer.email || customer.email.trim() === "",
+          });
           console.log("Fetched customer info:", customerInfo.customerName);
         } catch (customerError) {
+          console.log("❌ Could not fetch customer details:");
+          console.log("Error type:", customerError.type);
+          console.log("Error code:", customerError.code);
+          console.log("Error message:", customerError.message);
           console.log(
-            "Could not fetch customer details:",
-            customerError.message
+            "🔍 Was looking for customer ID:",
+            order.userId || order.customerId
           );
+          console.log("🔍 In database:", env.APPWRITE_DATABASE_ID);
+          console.log("🔍 In collection:", env.APPWRITE_USER_COLLECTION_ID);
+
+          // Try to use customer information from the order itself as fallback
+          console.log(
+            "🔄 Attempting to use order customer info as fallback..."
+          );
+
+          // Try to get phone from customer's address records as additional fallback
+          let fallbackPhone = "";
+          try {
+            console.log("🔄 Trying to get phone from customer addresses...");
+            const customerAddresses = await db.listDocuments(
+              env.APPWRITE_DATABASE_ID,
+              env.APPWRITE_ADDRESS_COLLECTION_ID,
+              [Query.equal("user", order.userId || order.customerId)]
+            );
+
+            if (customerAddresses.documents.length > 0) {
+              // Get phone from any address that has it
+              const addressWithPhone = customerAddresses.documents.find(
+                (addr) => addr.phone
+              );
+              if (addressWithPhone) {
+                fallbackPhone = addressWithPhone.phone;
+                console.log(
+                  "✅ Found phone in address records:",
+                  fallbackPhone
+                );
+              }
+            }
+          } catch (addressPhoneError) {
+            console.log(
+              "⚠️ Could not fetch phone from addresses:",
+              addressPhoneError.message
+            );
+          }
+
           customerInfo = {
-            customerName: "Unknown Customer", // Shorter fallback name
-            customerPhone: "",
-            customerEmail: "",
+            customerName:
+              order.customerName ||
+              order.username ||
+              order.userName ||
+              order.name ||
+              "Unknown Customer",
+            customerPhone: order.customerPhone || fallbackPhone || "",
+            customerEmail:
+              (
+                order.customerEmail ||
+                order.userEmail ||
+                order.email ||
+                ""
+              ).trim() !== ""
+                ? order.customerEmail || order.userEmail || order.email
+                : "unknown@nileflow.com",
           };
+          console.log("✅ Using order-based customer info:", customerInfo);
         }
 
         // Create a delivery record from the order

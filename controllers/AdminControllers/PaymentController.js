@@ -81,7 +81,8 @@ async function processSuccessfulMpesaPayment(order, orderId, paymentDetails) {
 
     // 4. Process premium benefits (non-blocking)
     try {
-      if (order.users) {
+      const userId = order.userId || order.users;
+      if (userId) {
         await processPremiumBenefits(order, orderId, cart);
       }
     } catch (premiumError) {
@@ -92,7 +93,7 @@ async function processSuccessfulMpesaPayment(order, orderId, paymentDetails) {
     // 5. Send notifications (non-blocking)
     try {
       await createNotification({
-        users: order.users,
+        userId: order.userId || order.users,
         type: "payment_success",
         title: "Payment Successful",
         message: `Your M-Pesa payment of KES ${amount} has been confirmed.`,
@@ -117,7 +118,7 @@ async function processSuccessfulMpesaPayment(order, orderId, paymentDetails) {
  * Process premium benefits for M-Pesa orders
  */
 async function processPremiumBenefits(order, orderId, cart) {
-  const userId = order.users;
+  const userId = order.userId || order.users;
 
   // Check premium status
   const premiumStatus = await checkUserPremiumStatus(userId);
@@ -165,7 +166,7 @@ async function archiveCancelledOrder(order, reason, failureType) {
       ID.unique(),
       {
         originalOrderId: order.$id,
-        users: order.users,
+        userId: order.userId || order.users,
         customerEmail: order.customerEmail,
         username: order.username,
         items: order.items,
@@ -204,6 +205,9 @@ const cashonDelivery = async (req, res) => {
     const { cart, userId, customerEmail, username, totalAmount, currency } =
       req.body;
 
+    // Ensure userId is a string, not an array
+    const userIdValue = Array.isArray(userId) ? userId[0] : userId;
+
     // VALIDATION - Only do this once
     if (!cart || !Array.isArray(cart) || cart.length === 0) {
       return res.status(400).json({
@@ -211,7 +215,7 @@ const cashonDelivery = async (req, res) => {
       });
     }
 
-    if (!userId)
+    if (!userIdValue)
       return res.status(400).json({ message: "User ID is required" });
     if (!customerEmail)
       return res.status(400).json({ message: "Customer email is required" });
@@ -243,12 +247,14 @@ const cashonDelivery = async (req, res) => {
 
     // 2. CREATE ORDER DOCUMENT
     const orderDocument = {
-      users: userId,
-      customerEmail,
-      username,
+      userId: userIdValue, // Changed from 'users' to 'userId' for clarity
+      customerEmail: Array.isArray(customerEmail)
+        ? customerEmail[0]
+        : customerEmail,
+      username: Array.isArray(username) ? username[0] : username,
       items: JSON.stringify(cart),
       amount: Math.round(parseFloat(totalAmount)), // Convert string to number
-      currency,
+      currency: Array.isArray(currency) ? currency[0] : currency,
       paymentMethod: "Cash on Delivery",
       status: "Pending",
       orderStatus: "Ordered",
@@ -322,11 +328,12 @@ const cashonDelivery = async (req, res) => {
 
     // Get user ID from authentication token
     const authenticatedUserId = req.user?.userId || req.user?.$id;
+    const finalUserId = Array.isArray(authenticatedUserId)
+      ? authenticatedUserId[0]
+      : authenticatedUserId || userIdValue;
 
     // Check if user has premium subscription
-    const premiumStatus = await checkUserPremiumStatus(
-      authenticatedUserId || userId
-    );
+    const premiumStatus = await checkUserPremiumStatus(finalUserId);
 
     // Parse cart to calculate subtotal (excluding shipping)
     const subtotal = cart.reduce((sum, item) => {
@@ -352,22 +359,11 @@ const cashonDelivery = async (req, res) => {
 
     // Update order with premium tracking data
     if (orderId) {
-      await updateOrderWithPremiumData(
-        orderId,
-        premiumSavings,
-        authenticatedUserId || userId
-      );
+      await updateOrderWithPremiumData(orderId, premiumSavings, finalUserId);
 
       // Award correct miles amount (premium service handles 2x multiplier)
       if (premiumSavings.milesTotal > 0) {
-        await awardMilesToUser(
-          authenticatedUserId || userId,
-          premiumSavings.milesTotal,
-          orderId
-        );
-        console.log(
-          `✅ Awarded ${premiumSavings.milesTotal} Nile Miles (Premium: ${premiumStatus.isPremium})`
-        );
+        await awardMilesToUser(finalUserId, premiumSavings.milesTotal, orderId);
       }
     }
 
@@ -455,11 +451,15 @@ const stripewebpayment = async (req, res) => {
   try {
     const { cart, userId, customerEmail, username } = req.body;
 
-    if (!cart || !cart.length || !userId || !customerEmail) {
+    // Ensure userId is a string, not an array
+    const userIdValue = Array.isArray(userId) ? userId[0] : userId;
+    console.log("User ID processed:", userIdValue, "Original:", userId);
+
+    if (!cart || !cart.length || !userIdValue || !customerEmail) {
       return res.status(400).json({ message: "Missing cart or user details" });
     }
 
-    if (!userId)
+    if (!userIdValue)
       return res.status(400).json({ message: "User ID is required" });
     if (!customerEmail)
       return res.status(400).json({ message: "Customer email is required" });
@@ -497,7 +497,7 @@ const stripewebpayment = async (req, res) => {
     // Create order document for database (before stripe session)
     const orderDocument = {
       orderId,
-      users: userId,
+      userId: userIdValue,
       customerEmail,
       username,
       items: JSON.stringify(cart),
@@ -549,7 +549,7 @@ const stripewebpayment = async (req, res) => {
       mode: "payment",
       customer_email: customerEmail,
       metadata: {
-        users: userId,
+        userId: userIdValue,
         username,
         orderId,
         stockReduced: "true", // Flag to indicate stock was reduced
@@ -750,7 +750,7 @@ const stripePaymentCancelled = async (req, res) => {
           message: `❌ Payment cancelled for order #${orderId}. Stock restored.`,
           type: "payment_cancelled",
           username: order.username,
-          userId: order.users,
+          userId: order.userId || order.users,
           email: order.customerEmail,
           metadata: JSON.stringify({
             orderId,
@@ -788,7 +788,7 @@ const verifyStripePayment = async (req, res) => {
       // ✅ Update your DB order to "Paid"
       const order = {
         orderId: session.metadata.orderId,
-        userId: session.metadata.users,
+        userId: session.metadata.userId || session.metadata.users,
         username: session.metadata.username,
         totalAmount: (session.amount_total / 100).toFixed(2),
         status: "Paid",
@@ -945,6 +945,10 @@ const initiateMpesaPayment = async (req, res) => {
       currency,
     } = req.body;
 
+    // Ensure userId is a string, not an array
+    const userIdValue = Array.isArray(userId) ? userId[0] : userId;
+    console.log("User ID processed:", userIdValue, "Original:", userId);
+
     // Validation
     if (!phoneNumber || !amount || !accountReference) {
       return res.status(400).json({
@@ -992,7 +996,7 @@ const initiateMpesaPayment = async (req, res) => {
     // Create order in database first
     const orderId = ID.unique();
     const orderDocument = {
-      users: userId,
+      userId: userIdValue,
       customerEmail,
       username,
       items: JSON.stringify(cart || []),
@@ -1275,7 +1279,7 @@ const mpesaCallback = async (req, res) => {
       console.log("Processing premium benefits for M-Pesa order...");
 
       // Check if user has premium subscription
-      const premiumStatus = await checkUserPremiumStatus(order.users);
+      const premiumStatus = await checkUserPremiumStatus(order.userId || order.users);
 
       // Calculate subtotal from cart items
       const orderCart = JSON.parse(order.items || "[]");
@@ -1301,11 +1305,11 @@ const mpesaCallback = async (req, res) => {
       });
 
       // Update order with premium tracking data
-      await updateOrderWithPremiumData(orderId, premiumSavings, order.users);
+      await updateOrderWithPremiumData(orderId, premiumSavings, order.userId || order.users);
 
       // Award correct miles amount (using premium service instead of old method)
       if (premiumSavings.milesTotal > 0) {
-        await awardMilesToUser(order.users, premiumSavings.milesTotal, orderId);
+        await awardMilesToUser(order.userId || order.users, premiumSavings.milesTotal, orderId);
         console.log(
           `✅ Awarded ${premiumSavings.milesTotal} Nile Miles via premium service (Premium: ${premiumStatus.isPremium})`
         );
@@ -1333,7 +1337,7 @@ const mpesaCallback = async (req, res) => {
 
       try {
         await createNotification({
-          userId: order.users,
+          userId: order.userId || order.users,
           message: notificationMessage,
           type: "payment",
           username: order.username,
@@ -1390,7 +1394,7 @@ const mpesaCallback = async (req, res) => {
       // Notify user
       try {
         await createNotification({
-          userId: order.users,
+          userId: order.userId || order.users,
           message: `Your M-Pesa payment failed: ${ResultDesc}`,
           type: "payment",
           username: order.username,
@@ -1527,7 +1531,7 @@ const mpesaCancelPayment = async (req, res) => {
       // Send notification
       try {
         await createNotification({
-          userId: order.users,
+          userId: order.userId || order.users,
           message: `Your M-Pesa payment for order ${orderId} was cancelled.`,
           type: "payment",
           username: order.username,
@@ -1654,7 +1658,7 @@ const cancelCodOrder = async (req, res) => {
     // Send notification
     try {
       await createNotification({
-        userId: order.users,
+        userId: order.userId || order.users,
         message: `Your Cash on Delivery order ${orderId} was cancelled successfully.`,
         type: "order",
         username: order.username,

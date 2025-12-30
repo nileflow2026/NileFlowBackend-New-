@@ -567,102 +567,6 @@ const storeRefreshToken = async (
   }
 };
 
-const sendOrderConfirmationEmails = async ({
-  customerEmail,
-  customerName,
-  orderId,
-  orderTotal,
-  cart,
-}) => {
-  console.log("Preparing to send email to:", customerEmail);
-  console.log("cart passed to email:", cart);
-
-  try {
-    await resend.emails.send({
-      from: "Nile Flow <orders@nileflowafrica.com>",
-      to: customerEmail,
-      subject: `Order #${orderId} Confirmed`,
-      html: `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4; padding: 40px 0; color: #333;">
-            <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
-            <div style="background-color: #1c1c1c; padding: 20px;">
-                <h1 style="margin: 0; color: #fff; font-size: 24px; text-align: center;">🛍️ Nile Flow Africa</h1>
-            </div>
-
-            <div style="padding: 30px;">
-                <h2 style="font-size: 20px; margin-top: 0;">Hi ${customerName},</h2>
-                <p style="font-size: 16px;">Thank you for your order <strong>#${orderId}</strong>! Here’s what you bought:</p>
-
-                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                <thead>
-                    <tr style="background: #f9f9f9;">
-                    <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Item</th>
-                    <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">Qty</th>
-                    <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">Price</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${
-                      Array.isArray(cart)
-                        ? cart
-                            .map(
-                              (item) => `
-                  
-                    <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 10px; display: flex; align-items: center;">
-                            <img src="${item.productImage}" alt="${
-                                item.productName
-                              }" width="60" style="margin-right: 15px; border-radius: 4px;" />
-                            <div style="font-size: 14px;">${
-                              item.productName
-                            }</div>
-                        </td>
-                        <td style="padding: 10px; text-align: right;">${
-                          item.quantity
-                        }</td>
-                        <td style="padding: 10px; text-align: right;">Ksh ${item.price.toFixed(
-                          2
-                        )}</td>
-                        </tr>
-
-                    `
-                            )
-                            .join("")
-                        : ""
-                    }
-                </tbody>
-                </table>
-
-                <div style="text-align: right; font-size: 16px; margin-top: 20px;">
-                <p><strong>Total:</strong> Ksh ${orderTotal.toFixed(2)}</p>
-                </div>
-
-                <div style="text-align: center; margin: 30px 0;">
-                <a href="https://nileflowafrica.com/track/${orderId}" 
-                    style="background: #1c1c1c; color: #fff; padding: 12px 20px; border-radius: 5px; text-decoration: none; font-weight: bold;">
-                    🚚 Track Your Order
-                </a>
-                </div>
-
-                <p style="font-size: 15px;">We’ll email you again when your package ships. If you have questions, reply to this email anytime.</p>
-
-                <p style="margin-top: 30px; font-size: 16px;">— The Nile Flow Team</p>
-            </div>
-
-            <div style="background-color: #1c1c1c; padding: 15px; text-align: center;">
-                <p style="margin: 0; font-size: 12px; color: #bbb;">
-                Nile Flow | Nairobi, Kenya | <a href="mailto:support@nileflowafrica.com" style="color: #bbb;">support@nileflowafrica.com</a>
-                </p>
-            </div>
-            </div>
-        </div>
-        `,
-    });
-  } catch (err) {
-    console.error("Email sending failed:", err);
-    throw err;
-  }
-};
 
 const sendOrderStatusUpdateEmail = async ({
   customerEmail,
@@ -773,42 +677,7 @@ const sendVerificationEmail = async ({
   }
 };
 
-const verifyCustomers = async (req, res) => {
-  const { email, verificationCode } = req.body;
 
-  if (!email || !verificationCode) {
-    return res
-      .status(400)
-      .json({ error: "Email and verification code are required." });
-  }
-
-  try {
-    // Retrieve the stored verification code for this email
-    // This is a placeholder; you would use a database, Redis, or similar
-    const storedCode = await getStoredVerificationCode(email);
-
-    if (!storedCode || storedCode !== verificationCode) {
-      return res
-        .status(400)
-        .json({ error: "Invalid or expired verification code." });
-    }
-
-    // Mark the user as verified in your database
-    await markUserAsVerified(email); // A new function you'll create
-
-    // Invalidate the verification code so it can't be reused
-    await deleteVerificationCode(email);
-
-    return res
-      .status(200)
-      .json({ message: "Email and phone number verified successfully." });
-  } catch (error) {
-    console.error("Verification error:", error);
-    return res
-      .status(500)
-      .json({ error: "Verification failed. Please try again." });
-  }
-};
 
 const verifyCustomer = async (req, res) => {
   const { email, verificationCode, deviceId } = req.body;

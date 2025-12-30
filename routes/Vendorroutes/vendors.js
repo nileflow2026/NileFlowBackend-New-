@@ -1,8 +1,8 @@
 // routes/vendors.js
 const express = require("express");
 const router = express.Router();
-const vendorController = require("../../controllers/VendorControllers/vendorController");
-const authenticateToken = require("../../middleware/authMiddleware");
+const vendorController = require("../../../controllers/VendorControllers/vendorController");
+const authenticateToken = require("../../../middleware/authMiddleware");
 const multer = require("multer");
 
 // Use memory storage for Appwrite uploads

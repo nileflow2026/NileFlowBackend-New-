@@ -129,7 +129,7 @@ const getCustomerOrders = async (req, res) => {
     const result = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_ORDER_COLLECTION_ID,
-      [Query.equal("users", userId), Query.orderDesc("$createdAt")]
+      [Query.equal("userId", userId), Query.orderDesc("$createdAt")]
     );
 
     res.status(200).json({ orders: result.documents });
@@ -704,7 +704,7 @@ const getProductReviews = async (req, res) => {
     );
 
     // console.log(`\n📝 Found ${reviewResponse.documents.length} reviews`);
-    
+
     // Log first review to see what fields exist
     // if (reviewResponse.documents.length > 0) {
     //   console.log("\n📋 FIRST REVIEW DOCUMENT STRUCTURE:");
@@ -725,7 +725,7 @@ const getProductReviews = async (req, res) => {
       uniqueUserIds.map(async (userId) => {
         try {
           // console.log(`\n🔎 Fetching user profile for userId: ${userId}`);
-          
+
           const userResponse = await db.listDocuments(
             env.APPWRITE_DATABASE_ID,
             env.APPWRITE_USER_COLLECTION_ID,
@@ -736,7 +736,7 @@ const getProductReviews = async (req, res) => {
 
           if (userResponse.documents.length > 0) {
             const userDoc = userResponse.documents[0];
-            
+
             // console.log(`\n✅ USER DOCUMENT FOUND for ${userId}:`);
             // console.log("User $id:", userDoc.$id);
             // console.log("User userName field:", userDoc.userName);
@@ -744,10 +744,14 @@ const getProductReviews = async (req, res) => {
             // console.log("User name field:", userDoc.name);
             // console.log("User email:", userDoc.email);
             // console.log("All user fields:", Object.keys(userDoc));
-            
-            const resolvedUserName = userDoc.userName || userDoc.username || userDoc.name || "Anonymous";
+
+            const resolvedUserName =
+              userDoc.userName ||
+              userDoc.username ||
+              userDoc.name ||
+              "Anonymous";
             // console.log(`🎯 Resolved userName: "${resolvedUserName}"`);
-            
+
             userDetails[userId] = {
               userName: resolvedUserName,
               avatar:
@@ -783,15 +787,20 @@ const getProductReviews = async (req, res) => {
 
     // console.log("\n📦 Final userDetails object:", JSON.stringify(userDetails, null, 2));
 
-    console.log("\n📦 Final userDetails object:", JSON.stringify(userDetails, null, 2));
+    console.log(
+      "\n📦 Final userDetails object:",
+      JSON.stringify(userDetails, null, 2)
+    );
 
     // Enrich reviews with user data
     const enrichedReviews = reviewResponse.documents.map((doc) => {
       // ✅ PRIORITY 1: Use userName stored in review document (in case user was deleted)
       let userName = doc.userName || "Anonymous";
-      let avatar = doc.avatar || "https://fra.cloud.appwrite.io/v1/storage/buckets/692a3b700039c02fb4bc/files/692b97e30027bf293efe/view?project=6926c7df002fa7831d94&mode=admin";
+      let avatar =
+        doc.avatar ||
+        "https://fra.cloud.appwrite.io/v1/storage/buckets/692a3b700039c02fb4bc/files/692b97e30027bf293efe/view?project=6926c7df002fa7831d94&mode=admin";
       let avatarUrl = avatar;
-      
+
       // ✅ PRIORITY 2: Override with fresh user data if user still exists
       if (userDetails[doc.userId]) {
         const user = userDetails[doc.userId];
@@ -834,7 +843,7 @@ const getProductReviews = async (req, res) => {
         productId: doc.productId,
       };
     });
-    
+
     // console.log("\n✅ Enriched reviews count:", enrichedReviews.length);
     // console.log("📤 Sending response...\n");
 
