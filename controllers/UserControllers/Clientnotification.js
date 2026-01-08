@@ -189,12 +189,31 @@ const fetchCustomerNotification = async (req, res) => {
         .json({ error: "Unauthorized: No user information found." });
     }
 
-    const userId = req.user.userId; // Now safely extract
-    console.log("userId:", userId);
+    let userId = req.user.userId; // Now safely extract
+    console.log("Raw userId:", userId);
 
     if (!userId) {
       return res.status(400).json({ error: "Invalid token: Missing user ID." });
     }
+
+    // Validate and sanitize userId for Appwrite UID requirements
+    if (typeof userId !== "string") {
+      userId = String(userId);
+    }
+
+    // Remove invalid characters and ensure it meets Appwrite UID requirements
+    userId = userId
+      .replace(/[^a-zA-Z0-9_]/g, "") // Keep only valid characters
+      .replace(/^_+/, "") // Remove leading underscores
+      .substring(0, 36); // Limit to 36 characters
+
+    if (!userId || userId.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "Invalid user ID format after sanitization." });
+    }
+
+    console.log("Sanitized userId:", userId);
 
     const result = await db.listDocuments(
       process.env.APPWRITE_DATABASE_ID,

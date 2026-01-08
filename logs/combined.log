@@ -1428,3 +1428,337 @@
 [2025-12-30 20:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
 [2025-12-30 20:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
 [2025-12-30 20:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-30 21:30:45] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-30 21:31:08] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-30 21:31:30] ERROR: Health check failed: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors. {"service":"nile-mart-api","env":"development","status":429,"headers":{},"requestID":"req_9871d53c32c043fb9759270e227dc432","error":{"message":"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.","type":"insufficient_quota","param":null,"code":"insufficient_quota"},"code":"insufficient_quota","param":null,"type":"insufficient_quota","stack":"Error: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\n    at APIError.generate (C:\\Users\\ANTHONY WAI\\Desktop\\NileFlowBackend2\\node_modules\\openai\\core\\error.js:63:20)\n    at OpenAI.makeStatusError (C:\\Users\\ANTHONY WAI\\Desktop\\NileFlowBackend2\\node_modules\\openai\\client.js:165:32)\n    at OpenAI.makeRequest (C:\\Users\\ANTHONY WAI\\Desktop\\NileFlowBackend2\\node_modules\\openai\\client.js:333:30)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async healthCheck (C:\\Users\\ANTHONY WAI\\Desktop\\NileFlowBackend2\\controllers\\aiChatController.js:462:28)"}
+[2025-12-30 21:35:24] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-30 21:35:37] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-30 21:36:27] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-30 22:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-30 22:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-30 22:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-30 23:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-30 23:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-30 23:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 00:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 00:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-31 00:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 02:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 02:00:00] INFO: Processing auto-renewals... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 02:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-31 02:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 02:00:00] INFO: Found 0 subscriptions ready for renewal {"service":"nile-mart-api","env":"development"}
+[2025-12-31 02:00:00] INFO: Auto-renewal processing completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 03:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 03:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-31 03:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 03:50:40] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-31 04:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 04:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-31 04:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 14:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 14:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-31 14:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 14:52:04] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:10:04] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:10:04] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 "} {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:10:04] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:10:04] INFO: Updated order 695512980013c88bf1d1 with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:10:05] INFO: Awarded 6 miles to user 69545bb20024eab5ce75 for order 695512980013c88bf1d1 {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:15:30] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:15:30] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 ","nileMiles":6,"totalMilesEarned":6,"lastMilesUpdate":"2025-12-31T12:10:05.322Z"} {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:15:30] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:15:31] INFO: Updated order 695513df001c184882bb with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:15:32] INFO: Awarded 6 miles to user 69545bb20024eab5ce75 for order 695513df001c184882bb {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:21:14] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:21:14] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 ","nileMiles":12,"totalMilesEarned":12,"lastMilesUpdate":"2025-12-31T12:15:32.080Z"} {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:21:14] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:21:15] INFO: Updated order 69551537001ad686802f with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:21:16] INFO: Awarded 6 miles to user 69545bb20024eab5ce75 for order 69551537001ad686802f {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:25:50] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:25:50] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 ","nileMiles":18,"totalMilesEarned":18,"lastMilesUpdate":"2025-12-31T12:21:15.709Z"} {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:25:50] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:25:51] INFO: Updated order 6955164b003e6e51ddda with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:25:51] INFO: Awarded 6 miles to user 69545bb20024eab5ce75 for order 6955164b003e6e51ddda {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:29:30] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:29:30] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 ","nileMiles":24,"totalMilesEarned":24,"lastMilesUpdate":"2025-12-31T12:25:51.405Z"} {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:29:30] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:29:31] INFO: Updated order 695517270024217d4a4e with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:29:31] INFO: Awarded 6 miles to user 69545bb20024eab5ce75 for order 695517270024217d4a4e {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:35:17] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:46:46] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:46:46] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 ","nileMiles":30,"totalMilesEarned":30,"lastMilesUpdate":"2025-12-31T12:29:31.465Z"} {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:46:46] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:46:47] INFO: Updated order 69551b340001948a7b9e with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2025-12-31 15:46:47] INFO: Awarded 6 miles to user 69545bb20024eab5ce75 for order 69551b340001948a7b9e {"service":"nile-mart-api","env":"development"}
+[2025-12-31 16:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 16:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-31 16:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 17:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 17:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-31 17:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 19:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 19:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-31 19:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 20:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 20:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-31 20:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 20:35:50] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-31 20:36:51] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-31 20:37:33] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-31 20:41:42] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-31 21:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 21:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-31 21:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 22:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 22:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-31 22:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 22:57:35] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-31 23:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2025-12-31 23:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2025-12-31 23:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2025-12-31 23:08:23] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-31 23:10:51] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-31 23:11:04] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2025-12-31 23:15:02] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 18:56:25] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:08:47] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:17:04] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:17:16] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:17:22] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:17:35] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:18:37] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:22:47] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:23:34] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:23:54] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:24:11] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:36:00] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 19:38:14] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 20:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-01 20:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-01 20:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-01 20:11:57] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 20:20:03] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 20:20:21] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 20:32:53] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 20:33:11] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 20:33:46] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 21:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-01 21:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-01 21:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-01 22:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-01 22:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-01 22:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-01 22:18:24] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-01 22:18:24] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 ","nileMiles":36,"totalMilesEarned":36,"lastMilesUpdate":"2025-12-31T12:46:47.507Z"} {"service":"nile-mart-api","env":"development"}
+[2026-01-01 22:18:24] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2026-01-01 22:18:24] INFO: Updated order 6956c87d0015a939a5ed with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2026-01-01 22:18:25] INFO: Awarded 45 miles to user 69545bb20024eab5ce75 for order 6956c87d0015a939a5ed {"service":"nile-mart-api","env":"development"}
+[2026-01-01 22:50:45] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 22:50:56] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:09:34] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:09:34] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 ","nileMiles":81,"totalMilesEarned":81,"lastMilesUpdate":"2026-01-01T19:18:25.337Z"} {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:09:34] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:09:34] INFO: Updated order 6956d47a001824fdb759 with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:09:36] INFO: Awarded 3 miles to user 69545bb20024eab5ce75 for order 6956d47a001824fdb759 {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:17:12] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:17:12] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 ","nileMiles":84,"totalMilesEarned":84,"lastMilesUpdate":"2026-01-01T20:09:35.378Z"} {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:17:12] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:17:12] INFO: Updated order 6956d6440028f25ac08f with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:17:14] INFO: Awarded 3 miles to user 69545bb20024eab5ce75 for order 6956d6440028f25ac08f {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:34:45] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:34:45] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 ","nileMiles":87,"totalMilesEarned":87,"lastMilesUpdate":"2026-01-01T20:17:13.563Z"} {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:34:45] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:34:45] INFO: Updated order 6956da62002cbd2bdd2a with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:34:46] INFO: Awarded 34 miles to user 69545bb20024eab5ce75 for order 6956da62002cbd2bdd2a {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:36:56] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:36:56] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 ","nileMiles":121,"totalMilesEarned":121,"lastMilesUpdate":"2026-01-01T20:34:46.212Z"} {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:36:56] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:36:57] INFO: Updated order 6956dae500038a2f8e30 with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:36:58] INFO: Awarded 3 miles to user 69545bb20024eab5ce75 for order 6956dae500038a2f8e30 {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:40:51] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:40:51] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 ","nileMiles":124,"totalMilesEarned":124,"lastMilesUpdate":"2026-01-01T20:36:58.057Z"} {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:40:51] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:40:52] INFO: Updated order 6956dbcf002b1edafd05 with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:40:53] INFO: Awarded 3 miles to user 69545bb20024eab5ce75 for order 6956dbcf002b1edafd05 {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:44:23] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:44:23] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 ","nileMiles":127,"totalMilesEarned":127,"lastMilesUpdate":"2026-01-01T20:40:52.877Z"} {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:44:23] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:44:24] INFO: Updated order 6956dca4003e3cbea616 with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:44:25] INFO: Awarded 3 miles to user 69545bb20024eab5ce75 for order 6956dca4003e3cbea616 {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:47:59] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:47:59] INFO: User prefs: {"theme":"light","role":"customer","avatar":[],"phone":"0111 579473 ","nileMiles":130,"totalMilesEarned":130,"lastMilesUpdate":"2026-01-01T20:44:24.903Z"} {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:47:59] INFO: Premium check - isPremium: false, subscriptionExpiry: null {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:48:00] INFO: Updated order 6956dd7d000707cc18b3 with premium tracking data {"service":"nile-mart-api","env":"development"}
+[2026-01-01 23:48:01] INFO: Awarded 34 miles to user 69545bb20024eab5ce75 for order 6956dd7d000707cc18b3 {"service":"nile-mart-api","env":"development"}
+[2026-01-02 07:53:05] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-02 08:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-02 08:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-02 08:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-02 09:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-02 09:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-02 09:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-02 10:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-02 10:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-02 10:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-02 11:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-02 11:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-02 11:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-02 12:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-02 12:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-02 12:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-02 16:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-02 16:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-02 16:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-02 17:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-02 17:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-02 17:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-02 18:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-02 18:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-02 18:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-02 19:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-02 19:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-02 19:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-02 20:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-02 20:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-02 20:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-02 22:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-02 22:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-02 22:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-03 04:22:35] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-03 04:26:34] INFO: Subscription attempt - User: 69545bb20024eab5ce75, Method: mpesa, TxnID: TXN-1767403594862-fhki48pvj {"service":"nile-mart-api","env":"development"}
+[2026-01-03 04:26:35] INFO: Processing M-Pesa payment for user 69545bb20024eab5ce75: 200 KSH {"service":"nile-mart-api","env":"development"}
+[2026-01-03 04:26:37] INFO: M-Pesa STK Push response: {"service":"nile-mart-api","env":"development","MerchantRequestID":"98a5-4b8c-bf97-5bdb978412c912716","CheckoutRequestID":"ws_CO_03012026042636358111579473","ResponseCode":"0","ResponseDescription":"Success. Request accepted for processing","CustomerMessage":"Success. Request accepted for processing"}
+[2026-01-03 04:26:37] INFO: Pending subscription created for user 69545bb20024eab5ce75, waiting for payment confirmation {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:00:30] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:02:18] WARN: User 69545bb20024eab5ce75 already has a pending subscription {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:07:30] INFO: Subscription attempt - User: 69545bb20024eab5ce75, Method: mpesa, TxnID: TXN-1767406050044-8chfjqpkz {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:07:30] INFO: Processing M-Pesa payment for user 69545bb20024eab5ce75: 200 KSH {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:07:32] INFO: M-Pesa STK Push response: {"service":"nile-mart-api","env":"development","MerchantRequestID":"98a5-4b8c-bf97-5bdb978412c913033","CheckoutRequestID":"ws_CO_03012026050731533111579473","ResponseCode":"0","ResponseDescription":"Success. Request accepted for processing","CustomerMessage":"Success. Request accepted for processing"}
+[2026-01-03 05:07:32] INFO: Pending subscription created for user 69545bb20024eab5ce75, waiting for payment confirmation {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:11:04] INFO: Subscription attempt - User: 69545bb20024eab5ce75, Method: mpesa, TxnID: TXN-1767406264662-f8uhrjqz1 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:11:05] INFO: Processing M-Pesa payment for user 69545bb20024eab5ce75: 200 KSH {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:11:06] INFO: M-Pesa STK Push response: {"service":"nile-mart-api","env":"development","MerchantRequestID":"121e-4a6a-bea5-1494f879fb148366","CheckoutRequestID":"ws_CO_03012026051106307111579473","ResponseCode":"0","ResponseDescription":"Success. Request accepted for processing","CustomerMessage":"Success. Request accepted for processing"}
+[2026-01-03 05:11:07] INFO: Pending subscription created for user 69545bb20024eab5ce75, waiting for payment confirmation {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:26:44] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:29:18] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:30:00] INFO: Subscription attempt - User: 69545bb20024eab5ce75, Method: stripe, TxnID: TXN-1767407400217-x4q1m5e2h {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:30:00] INFO: Processing Stripe mobile payment for user 69545bb20024eab5ce75: 200 KSH {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:30:03] INFO: Stripe PaymentIntent created: pi_3SlKbOJABwlNBb9P0ZKxXbjU {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:30:03] INFO: Pending subscription created for user 69545bb20024eab5ce75, waiting for payment confirmation {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:38:55] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:39:32] INFO: Subscription attempt - User: 69545bb20024eab5ce75, Method: stripe, TxnID: TXN-1767407972509-48q7sa7t5 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:39:33] INFO: Processing Stripe mobile payment for user 69545bb20024eab5ce75: 200 KSH {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:39:34] INFO: Stripe PaymentIntent created: pi_3SlKkcJABwlNBb9P1tjjIsm7 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:39:35] INFO: ✅ Stripe mobile payment activated immediately for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:39:37] INFO: ✅ User 69545bb20024eab5ce75 premium activated via Stripe mobile payment until 2026-02-02T02:39:34.975Z {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:50:00] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-03 05:51:58] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:00:00] INFO: Running subscription expiry check... {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:00:00] INFO: Found 0 subscriptions expiring within 7 days {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:00:00] INFO: Subscription expiry check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:07:37] INFO: Subscription attempt - User: 69545bb20024eab5ce75, Method: stripe, TxnID: TXN-1767409657943-gv3dw6jze {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:07:38] INFO: Processing Stripe mobile payment for user 69545bb20024eab5ce75: 200 KSH {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:07:40] INFO: Stripe PaymentIntent created: pi_3SlLBnJABwlNBb9P080mu5Rs {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:07:40] INFO: Pending subscription created for user 69545bb20024eab5ce75, waiting for payment confirmation {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:08:17] ERROR: Error confirming Stripe payment: Cannot read properties of undefined (reading 'userId') {"service":"nile-mart-api","env":"development","stack":"TypeError: Cannot read properties of undefined (reading 'userId')\n    at confirmStripePayment (C:\\Users\\ANTHONY WAI\\Desktop\\NileFlowBackend2\\controllers\\subscriptionController.js:124:31)\n    at Layer.handleRequest (C:\\Users\\ANTHONY WAI\\Desktop\\NileFlowBackend2\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\Users\\ANTHONY WAI\\Desktop\\NileFlowBackend2\\node_modules\\router\\lib\\route.js:157:13)\n    at handleValidationErrors (C:\\Users\\ANTHONY WAI\\Desktop\\NileFlowBackend2\\routes\\subscriptionRoutes.js:46:3)\n    at Layer.handleRequest (C:\\Users\\ANTHONY WAI\\Desktop\\NileFlowBackend2\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\Users\\ANTHONY WAI\\Desktop\\NileFlowBackend2\\node_modules\\router\\lib\\route.js:157:13)\n    at middleware (C:\\Users\\ANTHONY WAI\\Desktop\\NileFlowBackend2\\node_modules\\express-validator\\lib\\middlewares\\check.js:16:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)"}
+[2026-01-03 06:12:08] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:12:54] INFO: Subscription attempt - User: 69545bb20024eab5ce75, Method: stripe, TxnID: TXN-1767409974283-h4972jkop {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:12:55] INFO: Processing Stripe mobile payment for user 69545bb20024eab5ce75: 200 KSH {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:12:56] INFO: Stripe PaymentIntent created: pi_3SlLGuJABwlNBb9P0QWzh6sq {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:12:57] INFO: Pending subscription created for user 69545bb20024eab5ce75, waiting for payment confirmation {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:13:50] INFO: Confirming Stripe payment for user 69545bb20024eab5ce75, PaymentIntent: pi_3SlLGuJABwlNBb9P0QWzh6sq {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:13:53] INFO: ✅ Stripe payment confirmed! User 69545bb20024eab5ce75 premium activated until 2026-02-02T03:12:56.831+00:00 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:33:25] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:33:25] INFO: User prefs: {"theme":"light","role":"customer","phone":"0111 579473 ","nileMiles":164,"totalMilesEarned":164,"lastMilesUpdate":"2026-01-01T20:48:00.763Z","isPremium":true,"subscriptionId":"sub_stripe_mobile_1767409976831","subscriptionExpiresAt":"2026-02-02T03:12:56.831+00:00","subscriptionStartedAt":"2026-01-03T03:12:56.831+00:00","subscriptionCancelledAt":null} {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:33:25] INFO: Premium check - isPremium: true, subscriptionExpiry: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:33:25] INFO: Subscription active: true (expires: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time)) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:36:50] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:36:50] INFO: User prefs: {"theme":"light","role":"customer","phone":"0111 579473 ","nileMiles":164,"totalMilesEarned":164,"lastMilesUpdate":"2026-01-01T20:48:00.763Z","isPremium":true,"subscriptionId":"sub_stripe_mobile_1767409976831","subscriptionExpiresAt":"2026-02-02T03:12:56.831+00:00","subscriptionStartedAt":"2026-01-03T03:12:56.831+00:00","subscriptionCancelledAt":null} {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:36:50] INFO: Premium check - isPremium: true, subscriptionExpiry: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:36:51] INFO: Subscription active: true (expires: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time)) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:37:58] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:37:58] INFO: User prefs: {"theme":"light","role":"customer","phone":"0111 579473 ","nileMiles":164,"totalMilesEarned":164,"lastMilesUpdate":"2026-01-01T20:48:00.763Z","isPremium":true,"subscriptionId":"sub_stripe_mobile_1767409976831","subscriptionExpiresAt":"2026-02-02T03:12:56.831+00:00","subscriptionStartedAt":"2026-01-03T03:12:56.831+00:00","subscriptionCancelledAt":null} {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:37:58] INFO: Premium check - isPremium: true, subscriptionExpiry: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:37:58] INFO: Subscription active: true (expires: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time)) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:38:11] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:38:11] INFO: User prefs: {"theme":"light","role":"customer","phone":"0111 579473 ","nileMiles":164,"totalMilesEarned":164,"lastMilesUpdate":"2026-01-01T20:48:00.763Z","isPremium":true,"subscriptionId":"sub_stripe_mobile_1767409976831","subscriptionExpiresAt":"2026-02-02T03:12:56.831+00:00","subscriptionStartedAt":"2026-01-03T03:12:56.831+00:00","subscriptionCancelledAt":null} {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:38:11] INFO: Premium check - isPremium: true, subscriptionExpiry: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:38:11] INFO: Subscription active: true (expires: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time)) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:38:29] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:38:29] INFO: User prefs: {"theme":"light","role":"customer","phone":"0111 579473 ","nileMiles":164,"totalMilesEarned":164,"lastMilesUpdate":"2026-01-01T20:48:00.763Z","isPremium":true,"subscriptionId":"sub_stripe_mobile_1767409976831","subscriptionExpiresAt":"2026-02-02T03:12:56.831+00:00","subscriptionStartedAt":"2026-01-03T03:12:56.831+00:00","subscriptionCancelledAt":null} {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:38:29] INFO: Premium check - isPremium: true, subscriptionExpiry: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:38:29] INFO: Subscription active: true (expires: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time)) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:39:51] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:39:51] INFO: User prefs: {"theme":"light","role":"customer","phone":"0111 579473 ","nileMiles":164,"totalMilesEarned":164,"lastMilesUpdate":"2026-01-01T20:48:00.763Z","isPremium":true,"subscriptionId":"sub_stripe_mobile_1767409976831","subscriptionExpiresAt":"2026-02-02T03:12:56.831+00:00","subscriptionStartedAt":"2026-01-03T03:12:56.831+00:00","subscriptionCancelledAt":null} {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:39:51] INFO: Premium check - isPremium: true, subscriptionExpiry: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:39:51] INFO: Subscription active: true (expires: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time)) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:41:58] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:41:58] INFO: User prefs: {"theme":"light","role":"customer","phone":"0111 579473 ","nileMiles":164,"totalMilesEarned":164,"lastMilesUpdate":"2026-01-01T20:48:00.763Z","isPremium":true,"subscriptionId":"sub_stripe_mobile_1767409976831","subscriptionExpiresAt":"2026-02-02T03:12:56.831+00:00","subscriptionStartedAt":"2026-01-03T03:12:56.831+00:00","subscriptionCancelledAt":null} {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:41:58] INFO: Premium check - isPremium: true, subscriptionExpiry: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:41:58] INFO: Subscription active: true (expires: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time)) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:43:05] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:43:05] INFO: User prefs: {"theme":"light","role":"customer","phone":"0111 579473 ","nileMiles":164,"totalMilesEarned":164,"lastMilesUpdate":"2026-01-01T20:48:00.763Z","isPremium":true,"subscriptionId":"sub_stripe_mobile_1767409976831","subscriptionExpiresAt":"2026-02-02T03:12:56.831+00:00","subscriptionStartedAt":"2026-01-03T03:12:56.831+00:00","subscriptionCancelledAt":null} {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:43:06] INFO: Premium check - isPremium: true, subscriptionExpiry: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:43:06] INFO: Subscription active: true (expires: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time)) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:45:22] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:45:22] INFO: User prefs: {"theme":"light","role":"customer","phone":"0111 579473 ","nileMiles":164,"totalMilesEarned":164,"lastMilesUpdate":"2026-01-01T20:48:00.763Z","isPremium":true,"subscriptionId":"sub_stripe_mobile_1767409976831","subscriptionExpiresAt":"2026-02-02T03:12:56.831+00:00","subscriptionStartedAt":"2026-01-03T03:12:56.831+00:00","subscriptionCancelledAt":null} {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:45:22] INFO: Premium check - isPremium: true, subscriptionExpiry: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:45:22] INFO: Subscription active: true (expires: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time)) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:45:50] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:45:50] INFO: User prefs: {"theme":"light","role":"customer","phone":"0111 579473 ","nileMiles":164,"totalMilesEarned":164,"lastMilesUpdate":"2026-01-01T20:48:00.763Z","isPremium":true,"subscriptionId":"sub_stripe_mobile_1767409976831","subscriptionExpiresAt":"2026-02-02T03:12:56.831+00:00","subscriptionStartedAt":"2026-01-03T03:12:56.831+00:00","subscriptionCancelledAt":null} {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:45:50] INFO: Premium check - isPremium: true, subscriptionExpiry: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 06:45:50] INFO: Subscription active: true (expires: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time)) {"service":"nile-mart-api","env":"development"}
+[2026-01-03 07:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-03 07:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-03 07:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-03 10:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-03 10:00:10] ERROR: Error in expireOverdueSubscriptions: fetch failed {"service":"nile-mart-api","env":"development","stack":"TypeError: fetch failed\n    at node:internal/deps/undici/undici:15845:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async _Client.call (C:\\Users\\ANTHONY WAI\\Desktop\\NileFlowBackend2\\node_modules\\node-appwrite\\dist\\client.js:274:22)\n    at async SubscriptionCronService.expireOverdueSubscriptions (C:\\Users\\ANTHONY WAI\\Desktop\\NileFlowBackend2\\services\\subscriptionCronService.js:430:29)","cause":{"name":"ConnectTimeoutError","code":"UND_ERR_CONNECT_TIMEOUT"}}
+[2026-01-03 11:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-03 11:00:01] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-03 11:00:01] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-03 12:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-03 12:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-03 12:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-03 13:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-03 13:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-03 13:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-03 14:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-03 14:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-03 14:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-05 01:50:24] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"development"}
+[2026-01-05 02:00:00] INFO: Processing auto-renewals... {"service":"nile-mart-api","env":"development"}
+[2026-01-05 02:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-05 02:00:00] INFO: Found 0 subscriptions ready for renewal {"service":"nile-mart-api","env":"development"}
+[2026-01-05 02:00:00] INFO: Auto-renewal processing completed {"service":"nile-mart-api","env":"development"}
+[2026-01-05 02:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-05 02:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-05 02:16:30] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-05 02:16:30] INFO: User prefs: {"theme":"light","role":"customer","phone":"0111 579473 ","nileMiles":164,"totalMilesEarned":164,"lastMilesUpdate":"2026-01-01T20:48:00.763Z","isPremium":true,"subscriptionId":"sub_stripe_mobile_1767409976831","subscriptionExpiresAt":"2026-02-02T03:12:56.831+00:00","subscriptionStartedAt":"2026-01-03T03:12:56.831+00:00","subscriptionCancelledAt":null} {"service":"nile-mart-api","env":"development"}
+[2026-01-05 02:16:30] INFO: Premium check - isPremium: true, subscriptionExpiry: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time) {"service":"nile-mart-api","env":"development"}
+[2026-01-05 02:16:30] INFO: Subscription active: true (expires: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time)) {"service":"nile-mart-api","env":"development"}
+[2026-01-05 03:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-05 03:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-05 03:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}
+[2026-01-05 03:06:30] INFO: Checking premium status for user 69545bb20024eab5ce75 {"service":"nile-mart-api","env":"development"}
+[2026-01-05 03:06:30] INFO: User prefs: {"theme":"light","role":"customer","phone":"0111 579473 ","nileMiles":164,"totalMilesEarned":164,"lastMilesUpdate":"2026-01-01T20:48:00.763Z","isPremium":true,"subscriptionId":"sub_stripe_mobile_1767409976831","subscriptionExpiresAt":"2026-02-02T03:12:56.831+00:00","subscriptionStartedAt":"2026-01-03T03:12:56.831+00:00","subscriptionCancelledAt":null} {"service":"nile-mart-api","env":"development"}
+[2026-01-05 03:06:30] INFO: Premium check - isPremium: true, subscriptionExpiry: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time) {"service":"nile-mart-api","env":"development"}
+[2026-01-05 03:06:30] INFO: Subscription active: true (expires: Mon Feb 02 2026 06:12:56 GMT+0300 (East Africa Time)) {"service":"nile-mart-api","env":"development"}
+[2026-01-05 04:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"development"}
+[2026-01-05 04:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"development"}
+[2026-01-05 04:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"development"}

@@ -116,6 +116,155 @@ class SubscriptionController {
   }
 
   /**
+   * POST /api/subscription/confirm-payment
+   * Confirm Stripe payment and activate subscription after Payment Sheet success
+   */
+  static async confirmStripePayment(req, res) {
+    try {
+      const userId = req.user.userId || req.user.$id;
+      const { paymentIntentId, subscriptionId } = req.body;
+
+      if (!paymentIntentId) {
+        return res.status(400).json({ error: "Payment Intent ID required" });
+      }
+
+      logger.info(
+        `Confirming Stripe payment for user ${userId}, PaymentIntent: ${paymentIntentId}`
+      );
+
+      // Initialize Stripe to check payment status
+      const Stripe = require("stripe");
+      const stripe = new Stripe(require("../src/env").env.STRIPE_SECRET_KEY);
+
+      // Retrieve the PaymentIntent to check its status
+      const paymentIntent = await stripe.paymentIntents.retrieve(
+        paymentIntentId
+      );
+
+      if (paymentIntent.status !== "succeeded") {
+        logger.warn(
+          `PaymentIntent ${paymentIntentId} status is ${paymentIntent.status}, not succeeded`
+        );
+        return res.status(400).json({
+          error: "Payment not completed",
+          status: paymentIntent.status,
+        });
+      }
+
+      // Find the pending subscription
+      if (env.APPWRITE_SUBSCRIPTIONS_COLLECTION_ID) {
+        try {
+          let subscriptions;
+
+          if (subscriptionId) {
+            // Search by subscriptionId if provided
+            subscriptions = await db.listDocuments(
+              env.APPWRITE_DATABASE_ID,
+              env.APPWRITE_SUBSCRIPTIONS_COLLECTION_ID,
+              [
+                Query.equal("subscriptionId", subscriptionId),
+                Query.equal("userId", userId),
+                Query.equal("status", "pending"),
+                Query.limit(1),
+              ]
+            );
+          } else {
+            // Search by paymentIntentId (transactionId)
+            subscriptions = await db.listDocuments(
+              env.APPWRITE_DATABASE_ID,
+              env.APPWRITE_SUBSCRIPTIONS_COLLECTION_ID,
+              [
+                Query.equal("transactionId", paymentIntentId),
+                Query.equal("userId", userId),
+                Query.equal("status", "pending"),
+                Query.limit(1),
+              ]
+            );
+          }
+
+          if (subscriptions.documents.length === 0) {
+            return res
+              .status(404)
+              .json({ error: "Pending subscription not found" });
+          }
+
+          const subscription = subscriptions.documents[0];
+
+          // Update subscription to active
+          await db.updateDocument(
+            env.APPWRITE_DATABASE_ID,
+            env.APPWRITE_SUBSCRIPTIONS_COLLECTION_ID,
+            subscription.$id,
+            {
+              status: "active",
+              transactionId: paymentIntentId,
+            }
+          );
+
+          // Get user and update premium status
+          const user = await users.get(userId);
+
+          // Update user prefs with premium status
+          await users.updatePrefs(userId, {
+            ...user.prefs,
+            isPremium: true,
+            subscriptionId: subscription.subscriptionId,
+            subscriptionExpiresAt: subscription.expiresAt,
+            subscriptionStartedAt: subscription.startedAt,
+            subscriptionCancelledAt: null,
+          });
+
+          // Update user collection document attributes if exists
+          if (env.APPWRITE_USER_COLLECTION_ID) {
+            try {
+              const userDocs = await db.listDocuments(
+                env.APPWRITE_DATABASE_ID,
+                env.APPWRITE_USER_COLLECTION_ID,
+                [Query.equal("email", user.email)]
+              );
+              if (userDocs.documents.length > 0) {
+                await db.updateDocument(
+                  env.APPWRITE_DATABASE_ID,
+                  env.APPWRITE_USER_COLLECTION_ID,
+                  userDocs.documents[0].$id,
+                  {
+                    isPremium: true,
+                    subscriptionId: subscription.subscriptionId,
+                    startedAt: subscription.startedAt,
+                    cancelledAt: null,
+                  }
+                );
+              }
+            } catch (docError) {
+              logger.error("Error updating user document:", docError);
+            }
+          }
+
+          logger.info(
+            `✅ Stripe payment confirmed! User ${userId} premium activated until ${subscription.expiresAt}`
+          );
+
+          return res.json({
+            success: true,
+            message: "Premium subscription activated successfully!",
+            isPremium: true,
+            expiresAt: subscription.expiresAt,
+            subscriptionId: subscription.subscriptionId,
+          });
+        } catch (dbError) {
+          logger.error("Error confirming payment:", dbError);
+          return res.status(500).json({ error: "Failed to confirm payment" });
+        }
+      }
+
+      return res.status(500).json({ error: "Subscriptions not configured" });
+    } catch (error) {
+      logger.error("Error confirming Stripe payment:", error);
+      return res.status(500).json({ error: "Failed to confirm payment" });
+    }
+  }
+
+  /**
    * POST /api/subscription/subscribe
    * Subscribe user to premium
    */
@@ -190,13 +339,34 @@ class SubscriptionController {
           description: "Nile Premium Subscription - 1 Month",
         });
       } else if (paymentMethod === "stripe") {
+        // Check if this is a mobile client by checking user agent or a specific header
+        const isMobile =
+          req.headers["x-client-type"] === "mobile" ||
+          req.headers["user-agent"]?.includes("Mobile");
+
+        if (isMobile) {
+          paymentResult = await PaymentService.processStripeMobilePayment({
+            userId,
+            amount,
+            currency,
+            description: "Nile Premium Subscription - 1 Month",
+          });
+        } else {
+          paymentResult = await PaymentService.processStripePayment({
+            userId,
+            amount,
+            currency,
+            description: "Nile Premium Subscription - 1 Month",
+          });
+        }
+      } /* else if (paymentMethod === "stripe") {
         paymentResult = await PaymentService.processStripePayment({
           userId,
           amount,
           currency,
           description: "Nile Premium Subscription - 1 Month",
         });
-      }
+      } */
 
       if (!paymentResult.success) {
         return res.status(400).json({
@@ -234,18 +404,18 @@ class SubscriptionController {
             `Pending subscription created for user ${userId}, waiting for payment confirmation`
           );
         } catch (dbError) {
-          logger.error("Error creating pending subscription:", dbError);
+          logger.error("Error creating subscription:", dbError);
           return res.status(500).json({
             error: "Failed to create subscription request",
           });
         }
       }
 
-      // Return pending status - user must confirm payment
+      // Return appropriate response based on payment method and activation status
       const responseMessage =
         paymentMethod === "mpesa"
           ? "Payment request sent to your phone. Please enter your M-Pesa PIN to confirm."
-          : "Redirecting to Stripe checkout. Complete payment to activate premium.";
+          : "Complete payment to activate premium.";
 
       const responseData = {
         success: true,
@@ -253,6 +423,8 @@ class SubscriptionController {
         checkoutRequestId: paymentResult.paymentDetails?.checkoutRequestId,
         message: responseMessage,
         paymentDetails: paymentResult.paymentDetails,
+        transactionId: paymentResult.transactionId,
+        subscriptionId: paymentResult.subscriptionId,
       };
 
       // Add checkout URL for Stripe

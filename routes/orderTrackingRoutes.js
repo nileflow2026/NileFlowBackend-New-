@@ -1,12 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const authenticateToken = require("../../middleware/authMiddleware");
+const authenticateToken = require("../middleware/authMiddleware");
 const {
   getOrderStatus,
   updateLiveLocation,
   getLiveLocation,
   getUserOrders,
-} = require("../../controllers/UserControllers/orderTrackingController");
+} = require("../controllers/UserControllers/orderTrackingController");
 
 /**
  * Order Tracking Routes

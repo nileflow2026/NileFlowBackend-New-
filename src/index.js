@@ -1,5 +1,3 @@
-// src/index.js
-
 // EMERGENCY DEBUG - Add to VERY TOP of index.js
 /* process.on("uncaughtException", (error) => {
   console.error("💥 UNCAUGHT EXCEPTION:");
@@ -39,48 +37,48 @@ const {
   validateSignup,
   validateLogin,
 } = require("../middleware/validate.middleware");
-const healthRoutes = require("../md files/routes/health.routes");
+const healthRoutes = require("../routes/health.routes");
 
-const adminRouter = require("../md files/routes/adminRouter");
-const authRoutes = require("../md files/routes/authRoutes");
-const userRoutes = require("../md files/routes/userRoutes");
-const notificationRoutes = require("../md files/routes/notificationRoutes");
-const customernotifications = require("../md files/routes/ClientnotificationsRouter");
-const staffRoutes = require("../md files/routes/staffroutes");
-const settingRoutes = require("../md files/routes/settingsRouter");
-const ClientRoute = require("../md files/routes/ClientauthRouter");
-const ClientRouter = require("../md files/routes/ClientRoutes");
-const PaymentRouter = require("../md files/routes/paymentrouter");
-const nilemiles = require("../md files/routes/reward");
-const addressRoutes = require("../md files/routes/addressroutes");
-const questions = require("../md files/routes/questionRoutes");
-const Promotion = require("../md files/routes/promotionRoutes");
-const groupOrderRoutes = require("../md files/routes/groupOrderRoutes");
-const gamificationRoutes = require("../md files/routes/gamificationRoutes");
-const newsletterRoutes = require("../md files/routes/newsletterRoutes");
-const clientmessages = require("../md files/routes/clientmessagerouter");
-const careersRoutes = require("../md files/routes/careersRoutes");
-const applyRoutes = require("../md files/routes/applyRoutes");
-const productsrouter = require("../md files/routes/productsRouter");
-const passwordRouter = require("../md files/routes/passwordRoute");
-const cartRoutes = require("../md files/routes/Cartrouter");
-const africanFactsRoutes = require("../md files/routes/africanFactsRoutes");
-const orderTrackingRoutes = require("../md files/routes/orderTrackingRoutes");
+const adminRouter = require("../routes/adminRouter");
+const authRoutes = require("../routes/authRoutes");
+const userRoutes = require("../routes/userRoutes");
+const notificationRoutes = require("../routes/notificationRoutes");
+const customernotifications = require("../routes/ClientnotificationsRouter");
+const staffRoutes = require("../routes/staffroutes");
+const settingRoutes = require("../routes/settingsRouter");
+const ClientRoute = require("../routes/ClientauthRouter");
+const ClientRouter = require("../routes/ClientRoutes");
+const PaymentRouter = require("../routes/paymentrouter");
+const nilemiles = require("../routes/reward");
+const addressRoutes = require("../routes/addressroutes");
+const questions = require("../routes/questionRoutes");
+const Promotion = require("../routes/promotionRoutes");
+const groupOrderRoutes = require("../routes/groupOrderRoutes");
+const gamificationRoutes = require("../routes/gamificationRoutes");
+const newsletterRoutes = require("../routes/newsletterRoutes");
+const clientmessages = require("../routes/clientmessagerouter");
+const careersRoutes = require("../routes/careersRoutes");
+const applyRoutes = require("../routes/applyRoutes");
+const productsrouter = require("../routes/productsRouter");
+const passwordRouter = require("../routes/passwordRoute");
+const cartRoutes = require("../routes/Cartrouter");
+const africanFactsRoutes = require("../routes/africanFactsRoutes");
+const orderTrackingRoutes = require("../routes/orderTrackingRoutes");
 
 // Vendor Routes
-const vendorauth = require("../md files/routes/Vendorroutes/vendorauth");
-const vendorRoutes = require("../md files/routes/Vendorroutes/vendors");
-const productRoutes = require("../md files/routes/Vendorroutes/productsRouter");
-const vendorDashboardRoutes = require("../md files/routes/Vendorroutes/vendorDashboardRoutes");
-const analyticstroutes = require("../md files/routes/Vendorroutes/analyticsRoutes");
-const vendorOrdersRoutes = require("../md files/routes/Vendorroutes/vendorOrdersRoutes");
-const customerRoutes = require("../md files/routes/Vendorroutes/customerRoutes");
+const vendorauth = require("../routes/Vendorroutes/vendorauth");
+const vendorRoutes = require("../routes/Vendorroutes/vendors");
+const productRoutes = require("../routes/Vendorroutes/productsRouter");
+const vendorDashboardRoutes = require("../routes/Vendorroutes/vendorDashboardRoutes");
+const analyticstroutes = require("../routes/Vendorroutes/analyticsRoutes");
+const vendorOrdersRoutes = require("../routes/Vendorroutes/vendorOrdersRoutes");
+const customerRoutes = require("../routes/Vendorroutes/customerRoutes");
 
 // Rider Routes
-const riderAuthRoutes = require("../md files/routes/Riderroutes/riderAuthRoutes");
-const riderRoutes = require("../md files/routes/Riderroutes/riderRoutes");
-const riderTrackingRoutes = require("../md files/routes/riderTrackingRoutes");
-const vendorNotificationRoutes = require("../md files/routes/Vendorroutes/vendornotification");
+const riderAuthRoutes = require("../routes/Riderroutes/riderAuthRoutes");
+const riderRoutes = require("../routes/Riderroutes/riderRoutes");
+const riderTrackingRoutes = require("../routes/riderTrackingRoutes");
+const vendorNotificationRoutes = require("../routes/Vendorroutes/vendornotification");
 const {
   processScheduledCampaigns,
 } = require("../controllers/AdminControllers/newsletterController");
@@ -245,6 +243,7 @@ app.use("/api/admin/newsletter", newsletterRoutes);
 app.use("/api", userRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/customernotifications", customernotifications);
+app.use("/api/ai", require("../routes/aiChatRoutes")); // AI Chat Routes
 app.use("/api/audit-logs", userRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/settings", settingRoutes);
@@ -264,7 +263,7 @@ app.use("/api/contact-nile-flow", clientmessages);
 app.use("/api/products", productsrouter);
 app.use("/api/apply", applyRoutes);
 app.use("/api", africanFactsRoutes);
-app.use("/api/recommendations", require("../md files/routes/recommendations"));
+app.use("/api/recommendations", require("../routes/recommendations"));
 app.use("/api/nileflow/addresses", addressRoutes);
 
 // Vendor Routes
@@ -278,12 +277,12 @@ app.use("/api/vendor", vendorOrdersRoutes);
 app.use("/api/admin/customers", customerRoutes);
 
 // Subscription & Payment Routes
-app.use("/api/subscription", require("../md files/routes/subscriptionRoutes"));
-app.use("/api/payments", require("../md files/routes/paymentCallbackRoutes"));
-app.use("/api/premium", require("../md files/routes/premiumRoutes"));
+app.use("/api/subscription", require("../routes/subscriptionRoutes"));
+app.use("/api/payments", require("../routes/paymentCallbackRoutes"));
+app.use("/api/premium", require("../routes/premiumRoutes"));
 
 // Rider Routes
-app.use("/api/rider/auth", riderAuthRoutes);
+app.use("/api/rider/auth", /* authLimiter, */ riderAuthRoutes);
 app.use("/api/rider", riderRoutes);
 app.use("/api/rider", riderTrackingRoutes);
 

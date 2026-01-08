@@ -27,6 +27,7 @@ const {
 
 // Global cache for processed callbacks (in production, use Redis)
 const processedCallbacks = new Map();
+const FRONTEND_URL = env.FRONTEND_UR || "http://localhost:5173";
 
 // Clean up old entries every 10 minutes
 setInterval(() => {
@@ -144,8 +145,6 @@ async function processPremiumBenefits(order, orderId, cart) {
     );
   }
 }
-
-const FRONTEND_URL = env.FRONTEND_UR || "http://localhost:5173";
 
 /**
  * Helper function to archive cancelled/failed order to separate collection
@@ -684,6 +683,190 @@ const stripewebpayment = async (req, res) => {
   }
 };
 
+// NEW: Stripe mobile payment using PaymentSheets with enhanced error handling
+const stripeMobilePaymentSheet = async (req, res) => {
+  try {
+    console.log("=== STRIPE MOBILE PAYMENT SHEET REQUEST ===");
+    const { cart, userId, customerEmail, username } = req.body;
+
+    console.log("Request data:", { cart, userId, customerEmail, username });
+
+    if (!cart || !cart.length || !userId || !customerEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing cart or user details",
+      });
+    }
+
+    // 1. CHECK STOCK AVAILABILITY
+    const stockCheck = await checkStockAvailability(cart);
+    if (!stockCheck.isAvailable) {
+      return res.status(400).json({
+        success: false,
+        message: "Some items are out of stock or insufficient quantity",
+        unavailableItems: stockCheck.unavailableItems,
+      });
+    }
+
+    const createdAt = new Date().toISOString();
+
+    // Calculate amount in KES
+    const totalAmountKES = cart.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+
+    console.log(`Total amount calculated: ${totalAmountKES} KES`);
+
+    if (!totalAmountKES || isNaN(totalAmountKES) || totalAmountKES <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid amount calculated from cart.",
+      });
+    }
+
+    // For small amounts, suggest alternative payment methods
+    const MINIMUM_RECOMMENDED_AMOUNT = 50; // Soft minimum
+    const ABSOLUTE_MINIMUM_AMOUNT = 30; // Hard minimum
+
+    if (totalAmountKES < ABSOLUTE_MINIMUM_AMOUNT) {
+      return res.status(400).json({
+        success: false,
+        message: `Cart amount is too small. Minimum cart value is KES ${ABSOLUTE_MINIMUM_AMOUNT}. Please add more items.`,
+        minimumAmount: ABSOLUTE_MINIMUM_AMOUNT,
+        currentAmount: totalAmountKES,
+        error: "amount_too_small",
+      });
+    }
+
+    // For amounts below recommended minimum, suggest M-Pesa but allow card payment
+    let warningMessage = null;
+    if (totalAmountKES < MINIMUM_RECOMMENDED_AMOUNT) {
+      warningMessage = `For small amounts like KES ${totalAmountKES}, we recommend using M-Pesa for faster processing.`;
+    }
+
+    const currency = "kes";
+    const orderId = `ORD-${Date.now()}`;
+
+    console.log(`Creating order ${orderId} for ${totalAmountKES} KES`);
+
+    // 2. CREATE ORDER
+    const orderData = {
+      orderId,
+      products: cart,
+      customerEmail,
+      username,
+      userId: userId,
+      paymentStatus: "initiated",
+      timestamp: createdAt,
+      stockChecked: true,
+      stockCheckedAt: new Date().toISOString(),
+      amountKES: totalAmountKES,
+      currency: currency,
+    };
+
+    try {
+      await functions.createExecution(
+        env.ORDER_FUNCTION_MOBILE_ID,
+        JSON.stringify(orderData)
+      );
+      console.log(`✅ Order ${orderId} created successfully`);
+    } catch (orderError) {
+      console.error("Order creation failed:", orderError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create order",
+        error: orderError.message,
+      });
+    }
+
+    // 3. CREATE PAYMENT INTENT
+    try {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(totalAmountKES * 100), // Convert to cents
+        currency: currency,
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        metadata: {
+          customerEmail,
+          userId: userId,
+          orderId,
+          stockReserved: "true",
+          productsCount: cart.length,
+          amountKES: totalAmountKES.toString(),
+        },
+        description: `NileMart Order ${orderId} - ${cart.length} items (KES ${totalAmountKES})`,
+      });
+
+      console.log(`✅ Payment intent created: ${paymentIntent.id}`);
+
+      // Send email confirmation
+      try {
+        await Emailconfirmation({
+          cart,
+          customerEmail,
+          customerName: username,
+          orderId,
+          orderTotal: totalAmountKES,
+          paymentMethod: "Card Payment",
+          status: "Payment Initiated",
+        });
+        console.log("✅ Email confirmation sent");
+      } catch (emailError) {
+        console.warn("Email confirmation failed:", emailError.message);
+      }
+
+      const response = {
+        success: true,
+        client_secret: paymentIntent.client_secret,
+        orderId,
+        orderStatus: "Ordered",
+        createdAt,
+        stockChecked: true,
+        amountKES: totalAmountKES,
+        currency: currency,
+        paymentIntentId: paymentIntent.id,
+      };
+
+      if (warningMessage) {
+        response.warning = warningMessage;
+        response.suggestedPaymentMethod = "M-Pesa";
+      }
+
+      return res.json(response);
+    } catch (stripeError) {
+      console.error("Stripe error:", stripeError);
+
+      // Handle specific Stripe errors
+      if (stripeError.code === "amount_too_small") {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Amount too small for card payments. Please add more items to your cart or use M-Pesa payment.",
+          error: "amount_too_small",
+          suggestedPaymentMethod: "M-Pesa",
+          minimumAmount: 50,
+          currentAmount: totalAmountKES,
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Payment processing failed",
+        error: stripeError.message,
+      });
+    }
+  } catch (error) {
+    console.error("❌ Mobile payment sheet error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Payment failed",
+      error: error.message,
+    });
+  }
+};
+
 // Add to your payments controller
 const stripePaymentCancelled = async (req, res) => {
   try {
@@ -1141,7 +1324,7 @@ const initiateMpesaPayment = async (req, res) => {
 /**
  * M-Pesa Payment Callback - PRODUCTION SAFE with idempotency
  */
-const mpesaCallback = async (req, res) => {
+const mpesaCallback1 = async (req, res) => {
   try {
     console.log("=== M-PESA CALLBACK RECEIVED ===");
     console.log("Callback Body:", JSON.stringify(req.body, null, 2));
@@ -1271,88 +1454,247 @@ const mpesaCallback = async (req, res) => {
   }
 };
 
-/**
- * Legacy M-Pesa Premium Tracking Code (Not Used - Replaced by processSuccessfulMpesaPayment)
- */
-/*
-      // PREMIUM TRACKING AND MILES CALCULATION
-      console.log("Processing premium benefits for M-Pesa order...");
+const mpesaCallback = async (req, res) => {
+  try {
+    console.log("=== M-PESA CALLBACK RECEIVED ===");
+    console.log("Callback Body:", JSON.stringify(req.body, null, 2));
 
-      // Check if user has premium subscription
-      const premiumStatus = await checkUserPremiumStatus(order.userId || order.users);
+    const { Body } = req.body;
+    const stkCallback = Body?.stkCallback;
 
-      // Calculate subtotal from cart items
-      const orderCart = JSON.parse(order.items || "[]");
-      const subtotal = orderCart.reduce((sum, item) => {
-        return sum + parseFloat(item.price || 0) * parseInt(item.quantity || 0);
-      }, 0);
+    if (!stkCallback) {
+      return res.status(400).json({ message: "Invalid callback data" });
+    }
 
-      // Determine shipping fee (0 for premium users on orders >=500, otherwise 200)
-      const shippingFee = premiumStatus.isPremium && subtotal >= 500 ? 0 : 200;
+    const {
+      MerchantRequestID,
+      CheckoutRequestID,
+      ResultCode,
+      ResultDesc,
+      CallbackMetadata,
+    } = stkCallback;
 
-      // Calculate premium savings
-      const premiumSavings = calculatePremiumSavings(
-        subtotal,
-        shippingFee,
-        premiumStatus.isPremium
+    // CRITICAL: Prevent duplicate processing with distributed lock
+    const lockKey = `mpesa_callback_${CheckoutRequestID}`;
+    if (processedCallbacks.has(lockKey)) {
+      console.log(`M-Pesa callback already processed: ${CheckoutRequestID}`);
+      return res
+        .status(200)
+        .json({ ResultCode: 0, ResultDesc: "Already processed" });
+    }
+
+    // Mark as processing
+    processedCallbacks.set(lockKey, Date.now());
+
+    // Find order by checkout request ID with proper error handling
+    let orders;
+    try {
+      orders = await db.listDocuments(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_ORDERS_COLLECTION,
+        [
+          Query.equal("mpesaCheckoutRequestID", CheckoutRequestID),
+          Query.limit(1),
+        ]
       );
+    } catch (dbError) {
+      console.error("Database error finding order:", dbError);
+      processedCallbacks.delete(lockKey);
+      return res
+        .status(200)
+        .json({ ResultCode: 1, ResultDesc: "Database error" });
+    }
 
-      console.log("M-Pesa Premium analysis:", {
-        isPremium: premiumStatus.isPremium,
-        subtotal,
-        shippingFee,
-        savings: premiumSavings,
+    // If no order found, check for subscription
+    if (!orders.documents || orders.documents.length === 0) {
+      console.warn("No order found for CheckoutRequestID:", CheckoutRequestID);
+
+      // Try to find a pending subscription instead
+      if (env.APPWRITE_SUBSCRIPTIONS_COLLECTION_ID) {
+        try {
+          const subscriptions = await db.listDocuments(
+            env.APPWRITE_DATABASE_ID,
+            env.APPWRITE_SUBSCRIPTIONS_COLLECTION_ID,
+            [
+              Query.equal("checkoutRequestId", CheckoutRequestID),
+              Query.equal("status", "pending"),
+              Query.limit(1),
+            ]
+          );
+
+          if (subscriptions.documents && subscriptions.documents.length > 0) {
+            console.log(
+              "Found pending subscription for CheckoutRequestID:",
+              CheckoutRequestID
+            );
+
+            // Process subscription payment
+            const subscription = subscriptions.documents[0];
+            const userId = subscription.userId;
+
+            // ResultCode 0 = Success
+            if (ResultCode === 0) {
+              console.log("✅ M-Pesa subscription payment successful");
+
+              // Extract payment details from metadata
+              let mpesaReceiptNumber = "";
+              let amount = 0;
+              let phoneNumber = "";
+
+              if (CallbackMetadata && CallbackMetadata.Item) {
+                CallbackMetadata.Item.forEach((item) => {
+                  if (item.Name === "MpesaReceiptNumber")
+                    mpesaReceiptNumber = item.Value;
+                  if (item.Name === "Amount") amount = item.Value;
+                  if (item.Name === "PhoneNumber") phoneNumber = item.Value;
+                });
+              }
+
+              // Update subscription to active
+              await db.updateDocument(
+                env.APPWRITE_DATABASE_ID,
+                env.APPWRITE_SUBSCRIPTIONS_COLLECTION_ID,
+                subscription.$id,
+                {
+                  status: "active",
+                  transactionId: mpesaReceiptNumber,
+                }
+              );
+
+              // Get user and update premium status
+              const { users } = require("../../services/appwriteService");
+              const user = await users.get(userId);
+
+              // Update user prefs with premium status
+              await users.updatePrefs(userId, {
+                ...user.prefs,
+                isPremium: true,
+                subscriptionId: subscription.subscriptionId,
+                subscriptionExpiresAt: subscription.expiresAt,
+                subscriptionStartedAt: subscription.startedAt,
+                subscriptionCancelledAt: null,
+              });
+
+              // Update user collection document attributes if exists
+              if (env.APPWRITE_USER_COLLECTION_ID) {
+                try {
+                  const userDocs = await db.listDocuments(
+                    env.APPWRITE_DATABASE_ID,
+                    env.APPWRITE_USER_COLLECTION_ID,
+                    [Query.equal("email", user.email)]
+                  );
+                  if (userDocs.documents.length > 0) {
+                    await db.updateDocument(
+                      env.APPWRITE_DATABASE_ID,
+                      env.APPWRITE_USER_COLLECTION_ID,
+                      userDocs.documents[0].$id,
+                      {
+                        isPremium: true,
+                        subscriptionId: subscription.subscriptionId,
+                        startedAt: subscription.startedAt,
+                        cancelledAt: null,
+                      }
+                    );
+                  }
+                } catch (docError) {
+                  console.error("Error updating user document:", docError);
+                }
+              }
+
+              console.log(
+                `✅ User ${userId} premium activated until ${subscription.expiresAt}`
+              );
+
+              // Send welcome email
+              try {
+                const SubscriptionEmailService = require("../../services/subscriptionEmailService");
+                const userName =
+                  user.name || user.prefs?.name || "Valued Customer";
+                await SubscriptionEmailService.sendWelcomeEmail({
+                  email: user.email,
+                  name: userName,
+                  expiresAt: subscription.expiresAt,
+                  subscriptionId: subscription.subscriptionId,
+                  amount: subscription.amount || 200,
+                  paymentMethod: "mpesa",
+                });
+              } catch (emailError) {
+                console.error("Failed to send welcome email:", emailError);
+              }
+            } else {
+              // Subscription payment failed
+              console.log(
+                `❌ M-Pesa subscription payment failed: ${ResultDesc}`
+              );
+
+              await db.updateDocument(
+                env.APPWRITE_DATABASE_ID,
+                env.APPWRITE_SUBSCRIPTIONS_COLLECTION_ID,
+                subscription.$id,
+                {
+                  status: "failed",
+                  failureReason: ResultDesc,
+                }
+              );
+            }
+
+            processedCallbacks.delete(lockKey);
+            return res.status(200).json({
+              ResultCode: 0,
+              ResultDesc: "Subscription callback processed",
+            });
+          }
+        } catch (subError) {
+          console.error("Error processing subscription callback:", subError);
+        }
+      }
+
+      processedCallbacks.delete(lockKey);
+      return res
+        .status(200)
+        .json({ ResultCode: 0, ResultDesc: "No order or subscription found" });
+    }
+
+    const order = orders.documents[0];
+    const orderId = order.$id;
+
+    // Check if order is already processed (double callback protection)
+    if (order.paymentStatus === "succeeded") {
+      console.log(`Order ${orderId} already marked as paid`);
+      processedCallbacks.delete(lockKey);
+      return res
+        .status(200)
+        .json({ ResultCode: 0, ResultDesc: "Already processed" });
+    }
+
+    // ResultCode 0 = Success
+    if (ResultCode === 0) {
+      console.log("✅ M-Pesa payment successful for order:", orderId);
+
+      // Extract payment details from metadata
+      let mpesaReceiptNumber = "";
+      let amount = 0;
+      let phoneNumber = "";
+
+      if (CallbackMetadata && CallbackMetadata.Item) {
+        CallbackMetadata.Item.forEach((item) => {
+          if (item.Name === "MpesaReceiptNumber")
+            mpesaReceiptNumber = item.Value;
+          if (item.Name === "Amount") amount = item.Value;
+          if (item.Name === "PhoneNumber") phoneNumber = item.Value;
+        });
+      }
+
+      // Process payment atomically
+      await processSuccessfulMpesaPayment(order, orderId, {
+        mpesaReceiptNumber,
+        amount,
+        phoneNumber,
       });
-
-      // Update order with premium tracking data
-      await updateOrderWithPremiumData(orderId, premiumSavings, order.userId || order.users);
-
-      // Award correct miles amount (using premium service instead of old method)
-      if (premiumSavings.milesTotal > 0) {
-        await awardMilesToUser(order.userId || order.users, premiumSavings.milesTotal, orderId);
-        console.log(
-          `✅ Awarded ${premiumSavings.milesTotal} Nile Miles via premium service (Premium: ${premiumStatus.isPremium})`
-        );
-      }
-
-      // Send confirmation email
-      try {
-        await Emailconfirmation({
-          cart: orderCart,
-          customerEmail: order.customerEmail,
-          customerName: order.username,
-          orderId,
-          orderTotal: parseFloat(order.amount),
-          paymentMethod: "M-Pesa",
-          status: "Confirmed",
-        });
-      } catch (e) {
-        console.warn("Email error:", e.message);
-      }
-
-      // Create notification with premium benefits info
-      const notificationMessage = premiumStatus.isPremium
-        ? `Your M-Pesa payment of KES ${amount} was successful. Order ${orderId} confirmed. Premium benefits applied: ${premiumSavings.milesTotal} Nile Miles earned (2x bonus), ${premiumSavings.discountAmount} KSH discount saved.`
-        : `Your M-Pesa payment of KES ${amount} was successful. Order ${orderId} confirmed.`;
-
-      try {
-        await createNotification({
-          userId: order.userId || order.users,
-          message: notificationMessage,
-          type: "payment",
-          username: order.username,
-          email: order.customerEmail,
-        });
-      } catch (e) {
-        console.warn("Notification error:", e.message);
-      }
-
-      console.log("🎉 M-Pesa order completed:", orderId);
     } else {
-      // Payment failed or cancelled
-      console.warn(
-        `❌ M-Pesa payment failed for order ${orderId}:`,
-        ResultDesc
+      // Payment failed
+      console.log(
+        `❌ M-Pesa payment failed for order ${orderId}: ${ResultDesc}`
       );
 
       await db.updateDocument(
@@ -1363,53 +1705,26 @@ const mpesaCallback = async (req, res) => {
           orderStatus: "Failed",
           paymentStatus: "failed",
           failureReason: ResultDesc,
-          mpesaResultCode: ResultCode?.toString() || "",
           updatedAt: new Date().toISOString(),
         }
       );
+    }
 
-      // Archive to cancelled orders collection
-      await archiveCancelledOrder(
-        order,
-        ResultDesc,
-        ResultCode === 1032 ? "user_cancelled" : "payment_failed"
-      );
+    // Clear processing lock
+    processedCallbacks.delete(lockKey);
 
-      // Send cancellation email
-      try {
-        const cart = JSON.parse(order.items || "[]");
-        await sendOrderCancellationEmail({
-          customerEmail: order.customerEmail,
-          customerName: order.username,
-          orderId,
-          orderTotal: parseFloat(order.amount),
-          cart,
-          cancellationReason: ResultDesc,
-        });
-        console.log("✅ Cancellation email sent");
-      } catch (emailError) {
-        console.warn("Cancellation email error:", emailError.message);
-      }
-
-      // Notify user
-      try {
-        await createNotification({
-          userId: order.userId || order.users,
-          message: `Your M-Pesa payment failed: ${ResultDesc}`,
-          type: "payment",
-          username: order.username,
-          email: order.customerEmail,
-        });
-      } catch (e) {
-        console.warn("Notification error:", e.message);
-        }
-      }
-  
-      // Always respond with success to M-Pesa
-      return res
-        .status(200)
-        .json({ ResultCode: 0, ResultDesc: "Callback processed" });
-  */
+    // Always respond with success to M-Pesa to prevent retries
+    return res
+      .status(200)
+      .json({ ResultCode: 0, ResultDesc: "Callback processed" });
+  } catch (error) {
+    console.error("❌ M-Pesa callback error:", error);
+    // Still return 200 to prevent retries
+    return res
+      .status(200)
+      .json({ ResultCode: 1, ResultDesc: "Internal error" });
+  }
+};
 
 /**
  * Check M-Pesa Payment Status
@@ -1696,4 +2011,5 @@ module.exports = {
   mpesaPaymentStatus,
   mpesaCancelPayment,
   cancelCodOrder,
+  stripeMobilePaymentSheet, // New PaymentSheet endpoint
 };

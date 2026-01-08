@@ -64,6 +64,8 @@ const schema = Joi.object({
   // Stripe API
   STRIPE_SECRET_KEY: Joi.string().optional(),
   STRIPE_WEBHOOK_SECRET: Joi.string().optional(),
+  // OpenAI API
+  OPENAI_API_KEY: Joi.string().optional(),
 }).unknown();
 
 const env = schema.validate(process.env, { stripUnknown: true }).value;

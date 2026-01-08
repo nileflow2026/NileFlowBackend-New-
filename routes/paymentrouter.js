@@ -26,6 +26,7 @@ const {
   mpesaPaymentStatus,
   mpesaCancelPayment,
   cancelCodOrder,
+  stripeMobilePaymentSheet,
 } = require("../controllers/AdminControllers/PaymentController");
 
 // Apply premium benefits middleware to payment routes with security
@@ -38,6 +39,13 @@ router.post(
   paymentSecurity.paymentRateLimit,
   applyPremiumBenefits,
   stripewebpayment
+);
+
+router.post(
+  "/stripe-mobile-paymentsheet",
+  authenticateToken,
+  paymentSecurity.validateUserAuthorization,
+  stripeMobilePaymentSheet
 );
 router.post(
   "/stripe-cancelled",

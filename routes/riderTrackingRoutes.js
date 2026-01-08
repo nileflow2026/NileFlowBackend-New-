@@ -1,12 +1,12 @@
 // routes/riderTrackingRoutes.js
 const express = require("express");
 const router = express.Router();
-const riderAuth = require("../../middleware/RiderMiddleware/riderAuthMiddleware");
+const riderAuth = require("../middleware/RiderMiddleware/riderAuthMiddleware");
 const {
   updateRiderLocation,
   startDelivery,
   completeDelivery,
-} = require("../../controllers/riderControllers/riderTrackingController");
+} = require("../controllers/riderControllers/riderTrackingController");
 
 // Apply rider authentication middleware to all routes
 router.use(riderAuth);
