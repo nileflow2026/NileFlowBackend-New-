@@ -155,7 +155,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-app.use(authLimiter); // Apply to auth routes
+/* app.use(authLimiter); // Apply to auth routes */
 
 // ========== REQUEST PARSING ==========
 // Preserve raw body for Stripe webhook signature verification
