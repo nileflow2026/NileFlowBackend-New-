@@ -155,7 +155,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-/* app.use(authLimiter); */ // Apply to auth routes
+app.use(authLimiter); // Apply to auth routes
 
 // ========== REQUEST PARSING ==========
 // Preserve raw body for Stripe webhook signature verification
@@ -224,8 +224,8 @@ app.use("/api/health", healthRoutes);
 
 // ========== DIRECT ROUTE DEFINITIONS ==========
 // Vendor Routes
-app.use("/api/vendor/auth", /* authLimiter, */ vendorauth);
-app.use("/api/admin/auth", /* authLimiter, */ authRoutes); // Changed from /api/admin/auth/signup/customer
+app.use("/api/vendor/auth", authLimiter, vendorauth);
+app.use("/api/admin/auth", authLimiter, authRoutes); // Changed from /api/admin/auth/signup/customer
 app.use("/api/admin/products", adminRouter);
 app.use("/api/orders", adminRouter);
 app.use("/api/orders", orderTrackingRoutes);
@@ -267,7 +267,7 @@ app.use("/api/recommendations", require("../routes/recommendations"));
 app.use("/api/nileflow/addresses", addressRoutes);
 
 // Vendor Routes
-app.use("/api/vendor/auth", /* authLimiter, */ vendorauth);
+app.use("/api/vendor/auth", authLimiter, vendorauth);
 app.use("/api/vendors", vendorRoutes);
 app.use("/api/vendor/products", productRoutes);
 app.use("/api/vendor/notifications", vendorNotificationRoutes);
@@ -282,7 +282,7 @@ app.use("/api/payments", require("../routes/paymentCallbackRoutes"));
 app.use("/api/premium", require("../routes/premiumRoutes"));
 
 // Rider Routes
-app.use("/api/rider/auth", /* authLimiter, */ riderAuthRoutes);
+app.use("/api/rider/auth", authLimiter, riderAuthRoutes);
 app.use("/api/rider", riderRoutes);
 app.use("/api/rider", riderTrackingRoutes);
 

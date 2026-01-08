@@ -281,18 +281,18 @@ const signup = async (req, res) => {
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      domain: "localhost", // ADD THIS
+      secure: true,
+      sameSite: "strict",
+      domain: "admin.nileflowafrica.com",
       maxAge: 15 * 60 * 1000,
       path: "/",
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      domain: "localhost", // ADD THIS
+      secure: true,
+      sameSite: "strict",
+      domain: "admin.nileflowafrica.com",
       maxAge: 30 * 24 * 60 * 60 * 1000,
       path: "/",
     });
@@ -310,15 +310,6 @@ const signup = async (req, res) => {
     });
 
     // Production level: send verification email here (if needed)
-    /* 
-        res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: true, // Change to true in production
-      sameSite: 'strict', // Change to strict in production
-      domain: 'yourdomain.com', // Your actual domain
-      maxAge: 15 * 60 * 1000,
-      path: '/',
-    }); */
   } catch (error) {
     log.error("Signup error:", error?.message || error);
 
@@ -379,18 +370,18 @@ const signin = async (req, res) => {
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      domain: "localhost", // ADD THIS
+      secure: true,
+      sameSite: "strict",
+      domain: "admin.nileflowafrica.com",
       maxAge: 15 * 60 * 1000,
       path: "/",
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      domain: "localhost", // ADD THIS
+      secure: true,
+      sameSite: "strict",
+      domain: "admin.nileflowafrica.com",
       maxAge: 30 * 24 * 60 * 60 * 1000,
       path: "/",
     });
@@ -565,9 +556,11 @@ const handleRefreshToken = async (req, res) => {
       // Return access token only without rotation
       res.cookie("accessToken", newAccessToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        secure: true,
+        sameSite: "strict",
+        domain: "admin.nileflowafrica.com",
         maxAge: 15 * 60 * 1000,
+        path: "/",
       });
       return res.status(200).json({ message: "Token refreshed (partial)" });
     }
@@ -595,18 +588,18 @@ const handleRefreshToken = async (req, res) => {
 
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      domain: "localhost", // ADD THIS
+      secure: true,
+      sameSite: "strict",
+      domain: "admin.nileflowafrica.com",
       maxAge: 15 * 60 * 1000,
       path: "/",
     });
 
     res.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      domain: "localhost", // ADD THIS
+      secure: true,
+      sameSite: "strict",
+      domain: "admin.nileflowafrica.com",
       maxAge: 30 * 24 * 60 * 60 * 1000,
       path: "/",
     });
@@ -663,8 +656,20 @@ const logout = async (req, res) => {
       }
     }
 
-    res.clearCookie("accessToken");
-    res.clearCookie("refreshToken");
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      domain: "admin.nileflowafrica.com",
+      path: "/",
+    });
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      domain: "admin.nileflowafrica.com",
+      path: "/",
+    });
 
     return res.status(200).json({ message: "Logged out." });
   } catch (error) {
