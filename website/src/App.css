@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/* fallback body style */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* body {
+  @apply bg-secondary text-darkText antialiased;
+}
+ */
+/* small UI tweaks */
+.card-rounded {
+  border-radius: 14px;
+}
+.pill {
+  @apply rounded-full px-4 py-2 text-sm;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

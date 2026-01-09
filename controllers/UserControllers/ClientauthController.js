@@ -41,6 +41,30 @@ const log = {
 };
 
 /**
+ * Get appropriate cookie domain based on request origin
+ */
+function getCookieDomain(req) {
+  const origin = req.get("origin") || req.get("referer");
+
+  // Development - no domain restriction
+  if (!origin || origin.includes("localhost") || origin.includes("127.0.0.1")) {
+    return undefined; // No domain restriction for localhost
+  }
+
+  // Production domains
+  if (origin.includes("nileflowafrica.com")) {
+    return ".nileflowafrica.com"; // Allow both www and non-www
+  }
+
+  if (origin.includes("nileflow.co.ke")) {
+    return ".nileflow.co.ke";
+  }
+
+  // Default - no domain restriction
+  return undefined;
+}
+
+/**
  * Persist refresh token (store hashed token only) into Appwrite refresh_tokens collection.
  */
 async function persistRefreshToken({
@@ -282,22 +306,26 @@ const signupcustomer = async (req, res) => {
     }
 
     // 7) Set cookies
-    res.cookie("accessToken", accessToken, {
+    const cookieDomain = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "nileflowafrica.com",
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       path: "/",
+    };
+
+    if (cookieDomain) {
+      cookieOptions.domain = cookieDomain;
+    }
+
+    res.cookie("accessToken", accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "nileflowafrica.com",
+      ...cookieOptions,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      path: "/",
     });
 
     // 8) Create notification (if you have this function)
@@ -393,22 +421,26 @@ const signincustomer = async (req, res) => {
     }
 
     // Set cookies
-    res.cookie("accessToken", accessToken, {
+    const cookieDomain = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "nileflowafrica.com",
-      maxAge: 15 * 60 * 1000,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       path: "/",
+    };
+
+    if (cookieDomain) {
+      cookieOptions.domain = cookieDomain;
+    }
+
+    res.cookie("accessToken", accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "nileflowafrica.com",
+      ...cookieOptions,
       maxAge: 30 * 24 * 60 * 60 * 1000,
-      path: "/",
     });
 
     log.info("Customer signin successful:", user.email);
@@ -563,14 +595,20 @@ const handleRefreshToken = async (req, res) => {
       );
 
       // Return access token only
-      res.cookie("accessToken", newAccessToken, {
+      const cookieDomain = getCookieDomain(req);
+      const cookieOptions = {
         httpOnly: true,
-        secure: true,
-        sameSite: "strict",
-        domain: "nileflowafrica.com",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
         maxAge: 15 * 60 * 1000,
         path: "/",
-      });
+      };
+
+      if (cookieDomain) {
+        cookieOptions.domain = cookieDomain;
+      }
+
+      res.cookie("accessToken", newAccessToken, cookieOptions);
       return res.status(200).json({ message: "Token refreshed (partial)" });
     }
 
@@ -593,22 +631,26 @@ const handleRefreshToken = async (req, res) => {
     }
 
     // 11) Set new cookies
-    res.cookie("accessToken", newAccessToken, {
+    const cookieDomain = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "nileflowafrica.com",
-      maxAge: 15 * 60 * 1000,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       path: "/",
+    };
+
+    if (cookieDomain) {
+      cookieOptions.domain = cookieDomain;
+    }
+
+    res.cookie("accessToken", newAccessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", newRefreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "nileflowafrica.com",
+      ...cookieOptions,
       maxAge: 30 * 24 * 60 * 60 * 1000,
-      path: "/",
     });
 
     return res.status(200).json({ message: "Tokens refreshed" });
@@ -662,20 +704,20 @@ const logoutcustomer = async (req, res) => {
     }
 
     // Clear cookies
-    res.clearCookie("accessToken", {
+    const cookieDomain = getCookieDomain(req);
+    const clearOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "nileflowafrica.com",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       path: "/",
-    });
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "nileflowafrica.com",
-      path: "/",
-    });
+    };
+
+    if (cookieDomain) {
+      clearOptions.domain = cookieDomain;
+    }
+
+    res.clearCookie("accessToken", clearOptions);
+    res.clearCookie("refreshToken", clearOptions);
 
     return res.status(200).json({ message: "Logged out successfully." });
   } catch (error) {
@@ -965,14 +1007,20 @@ function getFacebookOAuthUrl(req, res) {
     }
 
     const state = crypto.randomBytes(16).toString("hex");
-    res.cookie("oauth_state", state, {
+    const cookieDomain = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "nileflowafrica.com",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       maxAge: 10 * 60 * 1000,
       path: "/",
-    });
+    };
+
+    if (cookieDomain) {
+      cookieOptions.domain = cookieDomain;
+    }
+
+    res.cookie("oauth_state", state, cookieOptions);
 
     const params = new URLSearchParams({
       client_id: appId,
