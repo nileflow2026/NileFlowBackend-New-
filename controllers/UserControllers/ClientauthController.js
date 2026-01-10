@@ -44,46 +44,63 @@ const log = {
  * Get appropriate cookie domain based on request origin
  */
 function getCookieDomain(req) {
-  const origin = req.get("origin") || req.get("referer") || req.headers.host;
-  const protocol = req.protocol || req.headers["x-forwarded-proto"] || "http";
+  const origin = req.get("origin") || req.get("referer");
+  const host = req.headers.host;
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
 
   console.log("[Cookie Domain Debug]", {
     origin,
-    host: req.headers.host,
+    host,
     protocol,
     isSecure: protocol === "https",
   });
+
+  // Check if backend and frontend are on different domains (cross-origin)
+  const isCrossOrigin =
+    origin &&
+    host &&
+    !origin.includes(host) &&
+    !host.includes(origin.replace("https://", "").replace("http://", ""));
+
+  if (isCrossOrigin) {
+    console.log("[Cookie] Cross-origin detected - no domain restriction");
+    return {
+      domain: undefined, // No domain restriction for cross-origin
+      secure: protocol === "https",
+      sameSite: "none", // Required for cross-origin cookies
+    };
+  }
 
   // Development - no domain restriction
   if (
     !origin ||
     origin.includes("localhost") ||
     origin.includes("127.0.0.1") ||
-    (req.headers.host && req.headers.host.includes("localhost"))
+    (host && host.includes("localhost"))
   ) {
     console.log("[Cookie] Using localhost - no domain restriction");
     return { domain: undefined, secure: false, sameSite: "lax" };
   }
 
-  // Production domains - check for nileflowafrica.com
+  // Same-origin production domains
   if (
     (origin && origin.includes("nileflowafrica.com")) ||
-    (req.headers.host && req.headers.host.includes("nileflowafrica.com"))
+    (host && host.includes("nileflowafrica.com"))
   ) {
-    console.log("[Cookie] Using nileflowafrica.com domain");
+    console.log("[Cookie] Using nileflowafrica.com domain (same-origin)");
     return {
       domain: ".nileflowafrica.com",
-      secure: protocol === "https", // Only secure if actually HTTPS
-      sameSite: "lax", // Less restrictive than 'strict'
+      secure: protocol === "https",
+      sameSite: "lax",
     };
   }
 
   // nileflow.co.ke domain
   if (
     (origin && origin.includes("nileflow.co.ke")) ||
-    (req.headers.host && req.headers.host.includes("nileflow.co.ke"))
+    (host && host.includes("nileflow.co.ke"))
   ) {
-    console.log("[Cookie] Using nileflow.co.ke domain");
+    console.log("[Cookie] Using nileflow.co.ke domain (same-origin)");
     return {
       domain: ".nileflow.co.ke",
       secure: protocol === "https",
@@ -91,7 +108,7 @@ function getCookieDomain(req) {
     };
   }
 
-  // Default - no domain restriction but check if secure
+  // Default - no domain restriction
   console.log("[Cookie] Using default - no domain restriction");
   return {
     domain: undefined,
