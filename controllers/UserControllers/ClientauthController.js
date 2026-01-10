@@ -44,24 +44,60 @@ const log = {
  * Get appropriate cookie domain based on request origin
  */
 function getCookieDomain(req) {
-  const origin = req.get("origin") || req.get("referer");
+  const origin = req.get("origin") || req.get("referer") || req.headers.host;
+  const protocol = req.protocol || req.headers["x-forwarded-proto"] || "http";
+
+  console.log("[Cookie Domain Debug]", {
+    origin,
+    host: req.headers.host,
+    protocol,
+    isSecure: protocol === "https",
+  });
 
   // Development - no domain restriction
-  if (!origin || origin.includes("localhost") || origin.includes("127.0.0.1")) {
-    return undefined; // No domain restriction for localhost
+  if (
+    !origin ||
+    origin.includes("localhost") ||
+    origin.includes("127.0.0.1") ||
+    (req.headers.host && req.headers.host.includes("localhost"))
+  ) {
+    console.log("[Cookie] Using localhost - no domain restriction");
+    return { domain: undefined, secure: false, sameSite: "lax" };
   }
 
-  // Production domains
-  if (origin.includes("nileflowafrica.com")) {
-    return ".nileflowafrica.com"; // Allow both www and non-www
+  // Production domains - check for nileflowafrica.com
+  if (
+    (origin && origin.includes("nileflowafrica.com")) ||
+    (req.headers.host && req.headers.host.includes("nileflowafrica.com"))
+  ) {
+    console.log("[Cookie] Using nileflowafrica.com domain");
+    return {
+      domain: ".nileflowafrica.com",
+      secure: protocol === "https", // Only secure if actually HTTPS
+      sameSite: "lax", // Less restrictive than 'strict'
+    };
   }
 
-  if (origin.includes("nileflow.co.ke")) {
-    return ".nileflow.co.ke";
+  // nileflow.co.ke domain
+  if (
+    (origin && origin.includes("nileflow.co.ke")) ||
+    (req.headers.host && req.headers.host.includes("nileflow.co.ke"))
+  ) {
+    console.log("[Cookie] Using nileflow.co.ke domain");
+    return {
+      domain: ".nileflow.co.ke",
+      secure: protocol === "https",
+      sameSite: "lax",
+    };
   }
 
-  // Default - no domain restriction
-  return undefined;
+  // Default - no domain restriction but check if secure
+  console.log("[Cookie] Using default - no domain restriction");
+  return {
+    domain: undefined,
+    secure: protocol === "https",
+    sameSite: "lax",
+  };
 }
 
 /**
@@ -306,17 +342,19 @@ const signupcustomer = async (req, res) => {
     }
 
     // 7) Set cookies
-    const cookieDomain = getCookieDomain(req);
+    const cookieConfig = getCookieDomain(req);
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
     };
 
-    if (cookieDomain) {
-      cookieOptions.domain = cookieDomain;
+    if (cookieConfig.domain) {
+      cookieOptions.domain = cookieConfig.domain;
     }
+
+    console.log("[Signup] Cookie options:", cookieOptions);
 
     res.cookie("accessToken", accessToken, {
       ...cookieOptions,
@@ -421,17 +459,19 @@ const signincustomer = async (req, res) => {
     }
 
     // Set cookies
-    const cookieDomain = getCookieDomain(req);
+    const cookieConfig = getCookieDomain(req);
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
     };
 
-    if (cookieDomain) {
-      cookieOptions.domain = cookieDomain;
+    if (cookieConfig.domain) {
+      cookieOptions.domain = cookieConfig.domain;
     }
+
+    console.log("[Signin] Cookie options:", cookieOptions);
 
     res.cookie("accessToken", accessToken, {
       ...cookieOptions,
@@ -595,19 +635,20 @@ const handleRefreshToken = async (req, res) => {
       );
 
       // Return access token only
-      const cookieDomain = getCookieDomain(req);
+      const cookieConfig = getCookieDomain(req);
       const cookieOptions = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        secure: cookieConfig.secure,
+        sameSite: cookieConfig.sameSite,
         maxAge: 15 * 60 * 1000,
         path: "/",
       };
 
-      if (cookieDomain) {
-        cookieOptions.domain = cookieDomain;
+      if (cookieConfig.domain) {
+        cookieOptions.domain = cookieConfig.domain;
       }
 
+      console.log("[Refresh Fallback] Cookie options:", cookieOptions);
       res.cookie("accessToken", newAccessToken, cookieOptions);
       return res.status(200).json({ message: "Token refreshed (partial)" });
     }
@@ -631,17 +672,19 @@ const handleRefreshToken = async (req, res) => {
     }
 
     // 11) Set new cookies
-    const cookieDomain = getCookieDomain(req);
+    const cookieConfig = getCookieDomain(req);
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
     };
 
-    if (cookieDomain) {
-      cookieOptions.domain = cookieDomain;
+    if (cookieConfig.domain) {
+      cookieOptions.domain = cookieConfig.domain;
     }
+
+    console.log("[Refresh] Cookie options:", cookieOptions);
 
     res.cookie("accessToken", newAccessToken, {
       ...cookieOptions,
@@ -704,18 +747,19 @@ const logoutcustomer = async (req, res) => {
     }
 
     // Clear cookies
-    const cookieDomain = getCookieDomain(req);
+    const cookieConfig = getCookieDomain(req);
     const clearOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
     };
 
-    if (cookieDomain) {
-      clearOptions.domain = cookieDomain;
+    if (cookieConfig.domain) {
+      clearOptions.domain = cookieConfig.domain;
     }
 
+    console.log("[Logout] Clear cookie options:", clearOptions);
     res.clearCookie("accessToken", clearOptions);
     res.clearCookie("refreshToken", clearOptions);
 

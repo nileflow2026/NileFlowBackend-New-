@@ -126,6 +126,8 @@ const corsOptions = {
       "https://nileflow.co.ke",
       "http://localhost:5176",
       "https://new-nile-flow-backend.onrender.com",
+      "https://nileflowvendordashboard.onrender.com",
+      "https://nile-flow-website.onrender.com",
     ];
 
     // Allow requests with no origin (like mobile apps or curl requests)
@@ -134,7 +136,7 @@ const corsOptions = {
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.warn(`CORS blocked: ${origin}`);
+      // console.warn(`CORS blocked: ${origin}`);
       callback(new Error("Not allowed by CORS"));
     }
   },
