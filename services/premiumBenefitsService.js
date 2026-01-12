@@ -83,7 +83,7 @@ class PremiumBenefitsService {
             earnedHistory: JSON.stringify([earnedEntry]),
             redeemed: JSON.stringify([]),
             lastEarned: currentTime,
-            createdAt: currentTime,
+            $createdAt: currentTime,
           }
         );
       }
