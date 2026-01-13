@@ -112,34 +112,37 @@ app.use(
 // ========== CORS CONFIGURATION ==========
 const corsOptions = {
   origin: (origin, callback) => {
-    console.log("CORS Origin: ", origin);
+    console.log("🌍 CORS Origin Check: ", origin);
     const allowedOrigins = [
       "http://localhost:5173",
       "http://localhost:5174",
-      "http://localhost:5174",
       "http://localhost:5175",
+      "http://localhost:5176",
+      "http://localhost:3000",
       "https://nile-mart-backend-2.onrender.com",
       "https://nileflow-com.onrender.com",
       "https://nileflowafrica.com",
       "https://www.nileflowafrica.com",
-      "http://localhost:3000",
       "https://nileflow.co.ke",
-      "http://localhost:5176",
       "https://new-nile-flow-backend.onrender.com",
       "https://nileflowvendordashboard.onrender.com",
       "https://nile-flow-adminpanel.onrender.com",
       "https://nile-flow-website.onrender.com",
       "https://admin.nileflowafrica.com",
-      "https://admin.nileflowafrica.com",
     ];
 
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log("✅ CORS: Allowing request with no origin");
+      return callback(null, true);
+    }
 
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (allowedOrigins.includes(origin)) {
+      console.log(`✅ CORS: Allowing origin ${origin}`);
       callback(null, true);
     } else {
-      // console.warn(`CORS blocked: ${origin}`);
+      console.warn(`❌ CORS BLOCKED: ${origin} not in allowed origins`);
+      console.warn("Allowed origins:", allowedOrigins);
       callback(new Error("Not allowed by CORS"));
     }
   },
@@ -151,14 +154,63 @@ const corsOptions = {
     "Accept",
     "X-CSRF-Token",
     "X-Transaction-ID",
+    "Cache-Control",
+    "Pragma",
   ],
   credentials: true,
   exposedHeaders: ["X-CSRF-Token"],
   optionsSuccessStatus: 200,
   maxAge: 86400, // 24 hours
+  preflightContinue: false, // Pass control to the next handler
 };
 
 app.use(cors(corsOptions));
+
+// Manual CORS debugging and OPTIONS handling
+app.use((req, res, next) => {
+  console.log(`🔧 ${req.method} ${req.url} from origin: ${req.headers.origin}`);
+
+  // Handle preflight OPTIONS requests manually if CORS didn't handle them
+  if (req.method === "OPTIONS") {
+    console.log("⚡ Handling OPTIONS preflight request");
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://localhost:5175",
+      "http://localhost:5176",
+      "http://localhost:3000",
+      "https://nile-mart-backend-2.onrender.com",
+      "https://nileflow-com.onrender.com",
+      "https://nileflowafrica.com",
+      "https://www.nileflowafrica.com",
+      "https://nileflow.co.ke",
+      "https://new-nile-flow-backend.onrender.com",
+      "https://nileflowvendordashboard.onrender.com",
+      "https://nile-flow-adminpanel.onrender.com",
+      "https://nile-flow-website.onrender.com",
+      "https://admin.nileflowafrica.com",
+    ];
+
+    if (!origin || allowedOrigins.includes(origin)) {
+      res.header("Access-Control-Allow-Origin", origin || "*");
+      res.header(
+        "Access-Control-Allow-Methods",
+        "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      );
+      res.header(
+        "Access-Control-Allow-Headers",
+        "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,X-Transaction-ID,Cache-Control,Pragma"
+      );
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Access-Control-Max-Age", "86400");
+      console.log("✅ Manual OPTIONS response sent");
+      return res.status(200).end();
+    }
+  }
+
+  next();
+});
 
 /* app.use(authLimiter); // Apply to auth routes */
 
@@ -230,6 +282,40 @@ app.use("/api/health", healthRoutes);
 // ========== DIRECT ROUTE DEFINITIONS ==========
 // Vendor Routes
 app.use("/api/vendor/auth", authLimiter, vendorauth);
+
+// Add explicit CORS headers for admin auth routes
+app.use("/api/admin/auth", (req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "http://localhost:3000",
+    "https://admin.nileflowafrica.com",
+    "https://nile-flow-adminpanel.onrender.com",
+    "https://nileflowafrica.com",
+  ];
+
+  if (!origin || allowedOrigins.includes(origin)) {
+    res.header(
+      "Access-Control-Allow-Origin",
+      origin || "https://admin.nileflowafrica.com"
+    );
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    );
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control"
+    );
+    console.log(`🔧 Admin auth CORS headers set for origin: ${origin}`);
+  }
+  next();
+});
+
 app.use("/api/admin/auth", authLimiter, authRoutes); // Changed from /api/admin/auth/signup/customer
 app.use("/api/admin/products", adminRouter);
 app.use("/api/orders", adminRouter);
