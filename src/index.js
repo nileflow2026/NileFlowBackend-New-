@@ -128,6 +128,7 @@ const corsOptions = {
       "https://new-nile-flow-backend.onrender.com",
       "https://nileflowvendordashboard.onrender.com",
       "https://nile-flow-website.onrender.com",
+      "https://admin.nileflowafrica.com",
     ];
 
     // Allow requests with no origin (like mobile apps or curl requests)

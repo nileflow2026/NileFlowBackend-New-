@@ -30,6 +30,85 @@ const log = {
 };
 
 /**
+ * Get appropriate cookie domain based on request origin for admin
+ */
+function getCookieDomain(req) {
+  const origin = req.get("origin") || req.get("referer");
+  const host = req.headers.host;
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+
+  console.log("[Admin Cookie Domain Debug]", {
+    origin,
+    host,
+    protocol,
+    isSecure: protocol === "https",
+  });
+
+  // Check if backend and frontend are on different domains (cross-origin)
+  const isCrossOrigin =
+    origin &&
+    host &&
+    !origin.includes(host) &&
+    !host.includes(origin.replace("https://", "").replace("http://", ""));
+
+  if (isCrossOrigin) {
+    console.log("[Admin Cookie] Cross-origin detected - no domain restriction");
+    return {
+      domain: undefined, // No domain restriction for cross-origin
+      secure: protocol === "https",
+      sameSite: "none", // Required for cross-origin cookies
+    };
+  }
+
+  // Development - no domain restriction
+  if (
+    !origin ||
+    origin.includes("localhost") ||
+    origin.includes("127.0.0.1") ||
+    (host && host.includes("localhost"))
+  ) {
+    console.log("[Admin Cookie] Using localhost - no domain restriction");
+    return { domain: undefined, secure: false, sameSite: "lax" };
+  }
+
+  // Same-origin admin production domains
+  if (
+    (origin && origin.includes("admin.nileflowafrica.com")) ||
+    (host && host.includes("admin.nileflowafrica.com"))
+  ) {
+    console.log(
+      "[Admin Cookie] Using admin.nileflowafrica.com domain (same-origin)"
+    );
+    return {
+      domain: ".admin.nileflowafrica.com",
+      secure: protocol === "https",
+      sameSite: "lax",
+    };
+  }
+
+  // Fallback for nileflowafrica.com
+  if (
+    (origin && origin.includes("nileflowafrica.com")) ||
+    (host && host.includes("nileflowafrica.com"))
+  ) {
+    console.log("[Admin Cookie] Using nileflowafrica.com domain (same-origin)");
+    return {
+      domain: ".nileflowafrica.com",
+      secure: protocol === "https",
+      sameSite: "lax",
+    };
+  }
+
+  // Default - no domain restriction
+  console.log("[Admin Cookie] Using default - no domain restriction");
+  return {
+    domain: undefined,
+    secure: protocol === "https",
+    sameSite: "lax",
+  };
+}
+
+/**
  * Persist refresh token (store hashed token only) into Appwrite refresh_tokens collection.
  * Returns created document metadata.
  */
@@ -279,22 +358,28 @@ const signup = async (req, res) => {
       );
     }
 
-    res.cookie("accessToken", accessToken, {
+    const cookieConfig = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "admin.nileflowafrica.com",
-      maxAge: 15 * 60 * 1000,
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
+    };
+
+    if (cookieConfig.domain) {
+      cookieOptions.domain = cookieConfig.domain;
+    }
+
+    console.log("[Admin Signup] Cookie options:", cookieOptions);
+
+    res.cookie("accessToken", accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "admin.nileflowafrica.com",
+      ...cookieOptions,
       maxAge: 30 * 24 * 60 * 60 * 1000,
-      path: "/",
     });
 
     return res.status(201).json({
@@ -368,22 +453,28 @@ const signin = async (req, res) => {
       log.error("Failed to persist refresh token:", persistErr?.message);
     }
 
-    res.cookie("accessToken", accessToken, {
+    const cookieConfig = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "admin.nileflowafrica.com",
-      maxAge: 15 * 60 * 1000,
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
+    };
+
+    if (cookieConfig.domain) {
+      cookieOptions.domain = cookieConfig.domain;
+    }
+
+    console.log("[Admin Signin] Cookie options:", cookieOptions);
+
+    res.cookie("accessToken", accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "admin.nileflowafrica.com",
+      ...cookieOptions,
       maxAge: 30 * 24 * 60 * 60 * 1000,
-      path: "/",
     });
 
     return res.status(200).json({
@@ -554,14 +645,21 @@ const handleRefreshToken = async (req, res) => {
         persistErr?.message || persistErr
       );
       // Return access token only without rotation
-      res.cookie("accessToken", newAccessToken, {
+      const cookieConfig = getCookieDomain(req);
+      const cookieOptions = {
         httpOnly: true,
-        secure: true,
-        sameSite: "strict",
-        domain: "admin.nileflowafrica.com",
+        secure: cookieConfig.secure,
+        sameSite: cookieConfig.sameSite,
         maxAge: 15 * 60 * 1000,
         path: "/",
-      });
+      };
+
+      if (cookieConfig.domain) {
+        cookieOptions.domain = cookieConfig.domain;
+      }
+
+      console.log("[Admin Refresh Fallback] Cookie options:", cookieOptions);
+      res.cookie("accessToken", newAccessToken, cookieOptions);
       return res.status(200).json({ message: "Token refreshed (partial)" });
     }
 
@@ -586,22 +684,28 @@ const handleRefreshToken = async (req, res) => {
       );
     }
 
-    res.cookie("accessToken", newAccessToken, {
+    const cookieConfig = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "admin.nileflowafrica.com",
-      maxAge: 15 * 60 * 1000,
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
+    };
+
+    if (cookieConfig.domain) {
+      cookieOptions.domain = cookieConfig.domain;
+    }
+
+    console.log("[Admin Refresh] Cookie options:", cookieOptions);
+
+    res.cookie("accessToken", newAccessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", newRefreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "admin.nileflowafrica.com",
+      ...cookieOptions,
       maxAge: 30 * 24 * 60 * 60 * 1000,
-      path: "/",
     });
 
     return res.status(200).json({ message: "Tokens refreshed" });
@@ -656,20 +760,21 @@ const logout = async (req, res) => {
       }
     }
 
-    res.clearCookie("accessToken", {
+    const cookieConfig = getCookieDomain(req);
+    const clearOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "admin.nileflowafrica.com",
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
-    });
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      domain: "admin.nileflowafrica.com",
-      path: "/",
-    });
+    };
+
+    if (cookieConfig.domain) {
+      clearOptions.domain = cookieConfig.domain;
+    }
+
+    console.log("[Admin Logout] Clear cookie options:", clearOptions);
+    res.clearCookie("accessToken", clearOptions);
+    res.clearCookie("refreshToken", clearOptions);
 
     return res.status(200).json({ message: "Logged out." });
   } catch (error) {
