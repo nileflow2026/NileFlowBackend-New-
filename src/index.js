@@ -130,6 +130,7 @@ const corsOptions = {
       "https://nile-flow-adminpanel.onrender.com",
       "https://nile-flow-website.onrender.com",
       "https://admin.nileflowafrica.com",
+      "https://admin.nileflowafrica.com",
     ];
 
     // Allow requests with no origin (like mobile apps or curl requests)
