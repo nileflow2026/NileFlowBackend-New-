@@ -279,6 +279,27 @@ setInterval(async () => {
 app.use("/health", healthRoutes);
 app.use("/api/health", healthRoutes);
 
+// ========== CORS TEST ENDPOINT ==========
+app.get("/api/cors-test", (req, res) => {
+  console.log("🧪 CORS Test endpoint hit");
+  console.log("Origin:", req.headers.origin);
+  console.log("Headers:", req.headers);
+
+  res.json({
+    message: "CORS test successful",
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString(),
+    headers: {
+      "access-control-allow-origin": res.getHeader(
+        "Access-Control-Allow-Origin"
+      ),
+      "access-control-allow-credentials": res.getHeader(
+        "Access-Control-Allow-Credentials"
+      ),
+    },
+  });
+});
+
 // ========== DIRECT ROUTE DEFINITIONS ==========
 // Vendor Routes
 app.use("/api/vendor/auth", authLimiter, vendorauth);
