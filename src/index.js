@@ -127,6 +127,7 @@ const corsOptions = {
       "http://localhost:5176",
       "https://new-nile-flow-backend.onrender.com",
       "https://nileflowvendordashboard.onrender.com",
+      "https://nile-flow-adminpanel.onrender.com",
       "https://nile-flow-website.onrender.com",
       "https://admin.nileflowafrica.com",
     ];
