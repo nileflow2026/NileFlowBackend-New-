@@ -166,9 +166,34 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+// Global CORS headers middleware - ALWAYS set these headers for admin requests
+app.use("/api/admin", (req, res, next) => {
+  const origin = req.headers.origin;
+  console.log(
+    `🌐 Global admin CORS middleware - ${req.method} ${req.url} from ${origin}`
+  );
+
+  // Always set CORS headers for admin routes
+  if (origin && origin.includes("admin.nileflowafrica.com")) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    );
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma"
+    );
+    console.log(`✅ Global CORS headers set for admin origin: ${origin}`);
+  }
+  next();
+});
+
 // Manual CORS debugging and OPTIONS handling
 app.use((req, res, next) => {
   console.log(`🔧 ${req.method} ${req.url} from origin: ${req.headers.origin}`);
+  console.log(`Request headers:`, JSON.stringify(req.headers, null, 2));
 
   // Handle preflight OPTIONS requests manually if CORS didn't handle them
   if (req.method === "OPTIONS") {
@@ -190,9 +215,11 @@ app.use((req, res, next) => {
       "https://nile-flow-adminpanel.onrender.com",
       "https://nile-flow-website.onrender.com",
       "https://admin.nileflowafrica.com",
+      "https://vendor.nileflowafrica.com",
     ];
 
     if (!origin || allowedOrigins.includes(origin)) {
+      console.log(`🎯 Setting OPTIONS headers for origin: ${origin}`);
       res.header("Access-Control-Allow-Origin", origin || "*");
       res.header(
         "Access-Control-Allow-Methods",
@@ -204,8 +231,18 @@ app.use((req, res, next) => {
       );
       res.header("Access-Control-Allow-Credentials", "true");
       res.header("Access-Control-Max-Age", "86400");
-      console.log("✅ Manual OPTIONS response sent");
+      console.log("✅ Manual OPTIONS response sent with headers:");
+      console.log(
+        "  Access-Control-Allow-Origin:",
+        res.getHeader("Access-Control-Allow-Origin")
+      );
+      console.log(
+        "  Access-Control-Allow-Credentials:",
+        res.getHeader("Access-Control-Allow-Credentials")
+      );
       return res.status(200).end();
+    } else {
+      console.log(`❌ OPTIONS request blocked for origin: ${origin}`);
     }
   }
 
@@ -410,6 +447,26 @@ app.use((req, res, next) => {
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
 
+  // Always set CORS headers for admin routes, even on errors
+  const origin = req.headers.origin;
+  if (
+    origin &&
+    (origin.includes("admin.nileflowafrica.com") ||
+      origin.includes("localhost"))
+  ) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    );
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma"
+    );
+    console.log(`🚨 Error handler: CORS headers set for ${origin}`);
+  }
+
   res.status(err.status || 500).json({
     error:
       process.env.NODE_ENV === "production"
@@ -421,6 +478,18 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
+  // Set CORS headers for admin routes even on 404
+  const origin = req.headers.origin;
+  if (
+    origin &&
+    (origin.includes("admin.nileflowafrica.com") ||
+      origin.includes("localhost"))
+  ) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    console.log(`📍 404 handler: CORS headers set for ${origin}`);
+  }
+
   res.status(404).json({
     error: "Route not found",
     code: "NOT_FOUND",
@@ -429,6 +498,26 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err.stack || err);
+
+  // Always set CORS headers, especially for admin routes
+  const origin = req.headers.origin;
+  if (
+    origin &&
+    (origin.includes("admin.nileflowafrica.com") ||
+      origin.includes("localhost"))
+  ) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    );
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma"
+    );
+    console.log(`🚨 Final error handler: CORS headers set for ${origin}`);
+  }
 
   // Handle file upload size limit errors
   if (err.code === "LIMIT_FILE_SIZE") {
