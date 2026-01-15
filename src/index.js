@@ -129,6 +129,7 @@ const corsOptions = {
       "https://nile-flow-adminpanel.onrender.com",
       "https://nile-flow-website.onrender.com",
       "https://admin.nileflowafrica.com",
+      "https://vendor.nileflowafrica.com",
     ];
 
     // Allow requests with no origin (like mobile apps or curl requests)
@@ -186,6 +187,30 @@ app.use("/api/admin", (req, res, next) => {
       "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma"
     );
     console.log(`✅ Global CORS headers set for admin origin: ${origin}`);
+  }
+  next();
+});
+
+// Global CORS headers middleware - ALWAYS set these headers for vendor requests
+app.use("/api/vendor", (req, res, next) => {
+  const origin = req.headers.origin;
+  console.log(
+    `🌐 Global vendor CORS middleware - ${req.method} ${req.url} from ${origin}`
+  );
+
+  // Always set CORS headers for vendor routes
+  if (origin && origin.includes("vendor.nileflowafrica.com")) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    );
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma"
+    );
+    console.log(`✅ Global CORS headers set for vendor origin: ${origin}`);
   }
   next();
 });
@@ -447,11 +472,13 @@ app.use((req, res, next) => {
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
 
-  // Always set CORS headers for admin routes, even on errors
+  // Always set CORS headers for all app routes, even on errors
   const origin = req.headers.origin;
   if (
     origin &&
     (origin.includes("admin.nileflowafrica.com") ||
+      origin.includes("vendor.nileflowafrica.com") ||
+      origin.includes("nileflowafrica.com") ||
       origin.includes("localhost"))
   ) {
     res.header("Access-Control-Allow-Origin", origin);
@@ -478,11 +505,13 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
-  // Set CORS headers for admin routes even on 404
+  // Set CORS headers for all app routes even on 404
   const origin = req.headers.origin;
   if (
     origin &&
     (origin.includes("admin.nileflowafrica.com") ||
+      origin.includes("vendor.nileflowafrica.com") ||
+      origin.includes("nileflowafrica.com") ||
       origin.includes("localhost"))
   ) {
     res.header("Access-Control-Allow-Origin", origin);
@@ -499,11 +528,13 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err.stack || err);
 
-  // Always set CORS headers, especially for admin routes
+  // Always set CORS headers for all app routes
   const origin = req.headers.origin;
   if (
     origin &&
     (origin.includes("admin.nileflowafrica.com") ||
+      origin.includes("vendor.nileflowafrica.com") ||
+      origin.includes("nileflowafrica.com") ||
       origin.includes("localhost"))
   ) {
     res.header("Access-Control-Allow-Origin", origin);

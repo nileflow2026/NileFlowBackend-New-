@@ -3,11 +3,13 @@ const { verifyAccessToken } = require("../utils/tokenManager");
 
 const authMiddleware = async (req, res, next) => {
   try {
-    // Set CORS headers first, especially for admin routes
+    // Set CORS headers first, especially for cross-origin routes
     const origin = req.headers.origin;
     if (
       origin &&
       (origin.includes("admin.nileflowafrica.com") ||
+        origin.includes("vendor.nileflowafrica.com") ||
+        origin.includes("nileflowafrica.com") ||
         origin.includes("localhost"))
     ) {
       res.header("Access-Control-Allow-Origin", origin);
@@ -56,6 +58,8 @@ const authMiddleware = async (req, res, next) => {
     if (
       origin &&
       (origin.includes("admin.nileflowafrica.com") ||
+        origin.includes("vendor.nileflowafrica.com") ||
+        origin.includes("nileflowafrica.com") ||
         origin.includes("localhost"))
     ) {
       res.header("Access-Control-Allow-Origin", origin);
