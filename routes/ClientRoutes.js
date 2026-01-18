@@ -25,6 +25,8 @@ const {
   getCategoryById,
   getProducts2,
   getPopularSearches,
+  getGlobalDealCountdown,
+  getDealAnalytics,
 } = require("../controllers/UserControllers/ClientController");
 const {
   handleCancelRequest,
@@ -63,6 +65,8 @@ router.get("/mobile-products", getProducts2);
 router.get("/products/category/:categoryId", getProductsByCategory);
 router.get("/featured-products", getFeaturedProducts);
 router.get("/deal-products", getDealProducts);
+router.get("/deal-analytics", getDealAnalytics);
+router.get("/deal-countdown", getGlobalDealCountdown);
 router.get("/hero-products", getHeroProducts);
 
 // Order cancellation request

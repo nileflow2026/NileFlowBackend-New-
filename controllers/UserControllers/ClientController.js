@@ -1012,7 +1012,24 @@ const getFeaturedProducts = async (req, res) => {
 
 const getDealProducts = async (req, res) => {
   try {
-    const queries = [Query.equal("isDeal", true)];
+    const { category, sortBy } = req.query;
+    let queries = [Query.equal("isDeal", true)];
+
+    // Add category filter if provided
+    if (category && category !== "All Deals") {
+      queries.push(Query.equal("category", category));
+    }
+
+    // Add sorting
+    if (sortBy === "discount_desc") {
+      queries.push(Query.orderDesc("discount"));
+    } else if (sortBy === "newest") {
+      queries.push(Query.orderDesc("$createdAt"));
+    } else if (sortBy === "price_asc") {
+      queries.push(Query.orderAsc("dealPrice"));
+    } else {
+      queries.push(Query.orderDesc("$updatedAt"));
+    }
 
     const response = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
@@ -1020,14 +1037,161 @@ const getDealProducts = async (req, res) => {
       queries,
     );
 
-    res.status(200).json(response.documents);
+    // Enrich products with calculated data
+    const enrichedProducts = response.documents.map((product) => {
+      const discount = product.discount || 0;
+      const timeLeft = calculateTimeLeft(
+        product.dealEndTime || new Date(Date.now() + 24 * 60 * 60 * 1000),
+      );
+
+      return {
+        ...product,
+        discount: discount,
+        timeLeft: timeLeft,
+        originalPrice: product.price,
+        price: product.dealPrice || product.price,
+        isExpiringSoon: timeLeft.totalHours <= 6,
+        isHighDiscount: discount >= 40,
+        isPremium: product.premiumDeal || false,
+      };
+    });
+
+    res.status(200).json(enrichedProducts);
   } catch (error) {
-    console.error("Error fetching featured products:", error);
+    console.error("Error fetching deal products:", error);
     res.status(500).json({ error: "Failed to fetch products" });
   }
 };
 
-// productsController.js
+const getDealAnalytics = async (req, res) => {
+  try {
+    // Get all active deals
+    const dealsResponse = await db.listDocuments(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_DEALS_COLLECTION_ID,
+      [Query.equal("isDeal", true)],
+    );
+
+    const deals = dealsResponse.documents;
+    const totalDeals = deals.length;
+
+    // Calculate analytics
+    const maxDiscount = Math.max(...deals.map((d) => d.discount || 0));
+    const averageDiscount =
+      deals.reduce((sum, d) => sum + (d.discount || 0), 0) / totalDeals || 0;
+
+    // Count deals ending soon (within 24 hours)
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const endingSoon = deals.filter((deal) => {
+      const endTime = new Date(deal.dealEndTime || tomorrow);
+      return endTime <= tomorrow;
+    }).length;
+
+    // Count premium deals
+    const premiumDeals = deals.filter((d) => d.premiumDeal).length;
+
+    // Count new arrivals (created in last 7 days)
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const newArrivals = deals.filter((deal) => {
+      const createdTime = new Date(deal.$createdAt);
+      return createdTime >= weekAgo;
+    }).length;
+
+    // Calculate time left for flash sale (find the deal with shortest time left)
+    let globalTimeLeft = { hours: 23, minutes: 59, seconds: 59 };
+    if (deals.length > 0) {
+      const shortestDeal = deals.reduce((shortest, current) => {
+        const currentEnd = new Date(current.dealEndTime || tomorrow);
+        const shortestEnd = new Date(shortest.dealEndTime || tomorrow);
+        return currentEnd < shortestEnd ? current : shortest;
+      });
+
+      globalTimeLeft = calculateTimeLeft(shortestDeal.dealEndTime || tomorrow);
+    }
+
+    res.status(200).json({
+      totalDeals,
+      maxDiscount: Math.floor(maxDiscount),
+      averageDiscount: Math.floor(averageDiscount),
+      endingSoon,
+      premiumDeals,
+      newArrivals,
+      globalTimeLeft,
+      isFlashSaleActive: totalDeals > 0,
+      categories: {
+        "All Deals": totalDeals,
+        "Most Popular": Math.floor(totalDeals * 0.3),
+        "Ending Soon": endingSoon,
+        "Best Value": deals.filter((d) => (d.discount || 0) >= 40).length,
+        "Premium Offers": premiumDeals,
+        "New Arrivals": newArrivals,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching deal analytics:", error);
+    res.status(500).json({ error: "Failed to fetch deal analytics" });
+  }
+};
+
+const getGlobalDealCountdown = async (req, res) => {
+  try {
+    const now = new Date();
+
+    // Get the deal that ends soonest
+    const dealsResponse = await db.listDocuments(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_DEALS_COLLECTION_ID,
+      [
+        Query.equal("isDeal", true),
+        Query.greaterThan("dealEndTime", now.toISOString()),
+        Query.orderAsc("dealEndTime"),
+        Query.limit(1),
+      ],
+    );
+
+    if (dealsResponse.documents.length === 0) {
+      // No active deals, return default countdown
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      return res.json(calculateTimeLeft(tomorrow.toISOString()));
+    }
+
+    const nextEndingDeal = dealsResponse.documents[0];
+    const timeLeft = calculateTimeLeft(nextEndingDeal.dealEndTime);
+
+    res.json({
+      ...timeLeft,
+      dealId: nextEndingDeal.$id,
+      dealName: nextEndingDeal.productName,
+      hasActiveDeals: true,
+    });
+  } catch (error) {
+    console.error("Error fetching global deal countdown:", error);
+    // Return default countdown on error
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    res.json({
+      ...calculateTimeLeft(tomorrow.toISOString()),
+      hasActiveDeals: false,
+    });
+  }
+};
+
+// Helper function to calculate time left
+const calculateTimeLeft = (endTime) => {
+  const now = new Date();
+  const end = new Date(endTime);
+  const timeDiff = end.getTime() - now.getTime();
+
+  if (timeDiff <= 0) {
+    return { hours: 0, minutes: 0, seconds: 0, totalHours: 0 };
+  }
+
+  const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+  const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+
+  return { hours, minutes, seconds, totalHours: hours + minutes / 60 };
+};
 
 const getHeroProducts = async (req, res) => {
   try {
@@ -1379,6 +1543,8 @@ module.exports = {
   getCategories,
   getProductsForMobile,
   getDealProducts,
+  getDealAnalytics,
+  getGlobalDealCountdown,
   getHeroProducts,
   getProductsByCategory,
   getCategoryBySlug,

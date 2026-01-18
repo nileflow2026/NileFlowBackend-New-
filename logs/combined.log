@@ -1846,3 +1846,6 @@
 [2026-01-18 09:00:01] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"production"}
 [2026-01-18 09:31:41] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"production"}
 [2026-01-18 09:32:41] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"production"}
+[2026-01-18 09:39:14] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"production"}
+[2026-01-18 09:52:12] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"production"}
+[2026-01-18 09:53:00] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"production"}

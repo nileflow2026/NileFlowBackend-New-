@@ -33,7 +33,7 @@ const getCancelledOrders = async (req, res) => {
     const response = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_CANCELLED_ORDERS_COLLECTION_ID,
-      [Query.orderDesc("$createdAt")]
+      [Query.orderDesc("$createdAt")],
     );
 
     res.status(200).json({ response: response.documents });
@@ -67,7 +67,7 @@ const getOrders = async (req, res) => {
     const response = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_ORDERS_COLLECTION,
-      [Query.orderDesc("$createdAt")]
+      [Query.orderDesc("$createdAt")],
     );
 
     res.status(200).json({ response: response.documents });
@@ -114,7 +114,7 @@ const getProducts = async (req, res) => {
       const batch = await db.listDocuments(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_PRODUCT_COLLECTION_ID,
-        queries
+        queries,
       );
 
       allProducts.push(...batch.documents);
@@ -150,7 +150,7 @@ const getPendingProducts = async (req, res) => {
         Query.equal("status", "pending"),
         Query.orderDesc("submittedAt"),
         Query.limit(100),
-      ]
+      ],
     );
 
     res.json({
@@ -174,7 +174,7 @@ const getApprovedProducts = async (req, res) => {
         Query.equal("status", "approved"),
         Query.orderDesc("approvedAt"),
         Query.limit(100),
-      ]
+      ],
     );
 
     res.json({
@@ -198,7 +198,7 @@ const getRejectedProducts = async (req, res) => {
         Query.equal("status", "rejected"),
         Query.orderDesc("rejectedAt"),
         Query.limit(100),
-      ]
+      ],
     );
 
     res.json({
@@ -218,7 +218,7 @@ const getSingleProductDetails = async (req, res) => {
     const product = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      req.params.productId
+      req.params.productId,
     );
 
     res.json({
@@ -276,7 +276,7 @@ const addProduct = async (req, res) => {
         images, // Make sure this is an array if defined as an array attribute
         specifications, // Also ensure correct structure (e.g., object or array)
         stock: parseInt(stock),
-      }
+      },
     );
 
     // 🟩 Audit log here
@@ -302,7 +302,7 @@ const addFeaturedProducts = async (req, res) => {
     const { total: existingFeatured } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_FEATURED_COLLECTION_ID,
-      [Query.equal("productId", productId)] // Use the new attribute name
+      [Query.equal("productId", productId)], // Use the new attribute name
     );
 
     if (existingFeatured > 0) {
@@ -313,7 +313,7 @@ const addFeaturedProducts = async (req, res) => {
     const product = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId
+      productId,
     );
 
     const imagesToSave = product.images || [];
@@ -331,7 +331,7 @@ const addFeaturedProducts = async (req, res) => {
         images: imagesToSave, // Pass the array directly to the URL array attribute
         tag: tag,
         isFeatured: true,
-      } // Save the product's $id here,
+      }, // Save the product's $id here,
     );
 
     res
@@ -345,13 +345,13 @@ const addFeaturedProducts = async (req, res) => {
 
 const addProductsDeal = async (req, res) => {
   try {
-    const { productId, discountPercentage, tag } = req.body;
+    const { productId, discountPercentage, tag, durationHours = 24 } = req.body;
 
     // Check if the product already exists in the deals collection
     const { total: existingDeal } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_DEALS_COLLECTION_ID, // Use your new deals collection ID
-      [Query.equal("productId", productId)] // Assumes your deals collection has a 'productDocId' attribute
+      [Query.equal("productId", productId)], // Assumes your deals collection has a 'productDocId' attribute
     );
 
     if (existingDeal > 0) {
@@ -364,13 +364,17 @@ const addProductsDeal = async (req, res) => {
     const product = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID, // Get the document from your main products collection
-      productId
+      productId,
     );
 
     const originalPrice = product.price;
     const discountedPrice = originalPrice * (1 - discountPercentage / 100);
 
     const imagesToSave = product.images || [];
+
+    // Calculate deal end time
+    const dealEndTime = new Date();
+    dealEndTime.setHours(dealEndTime.getHours() + durationHours);
 
     // Create a new document in the deals collection with the necessary info
     await db.createDocument(
@@ -387,10 +391,18 @@ const addProductsDeal = async (req, res) => {
         discount: discountPercentage,
         tag: tag,
         isDeal: true,
-      }
+        dealEndTime: dealEndTime.toISOString(),
+        durationHours: durationHours,
+        category: product.category || "general",
+        stockQuantity: product.stockQuantity || 100,
+      },
     );
 
-    res.status(200).json({ message: "Product added to deals successfully!" });
+    res.status(200).json({
+      message: "Product added to deals successfully!",
+      dealEndTime: dealEndTime.toISOString(),
+      durationHours: durationHours,
+    });
   } catch (error) {
     console.error("Failed to add product to deals:", error);
     res.status(500).json({ error: "Failed to add product to deals." });
@@ -406,7 +418,7 @@ const addFlashSale = async (req, res) => {
     const { total: existingSale } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_FLASH_SALE_COLLECTION_ID,
-      [Query.equal("productId", productId)]
+      [Query.equal("productId", productId)],
     );
 
     if (existingSale > 0) {
@@ -419,7 +431,7 @@ const addFlashSale = async (req, res) => {
     const product = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID, // Use your main products collection ID
-      productId
+      productId,
     );
     const originalPrice = product.price;
 
@@ -429,7 +441,7 @@ const addFlashSale = async (req, res) => {
     // ✅ 4. Calculate the sale end time based on the duration.
     const now = new Date();
     const saleEndTime = new Date(
-      now.getTime() + saleDurationHours * 60 * 60 * 1000
+      now.getTime() + saleDurationHours * 60 * 60 * 1000,
     );
 
     // ✅ 5. Create the new document in the flash sales collection.
@@ -448,7 +460,7 @@ const addFlashSale = async (req, res) => {
         discountPercentage: discountPercentage,
         isFlashSale: true, // Use a boolean flag for easy querying
         saleEndTime: saleEndTime.toISOString(), // Save as an ISO string
-      }
+      },
     );
 
     res
@@ -476,7 +488,7 @@ const updatePremiumDeal = async (req, res) => {
       const existingProduct = await db.getDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_PRODUCT_COLLECTION_ID,
-        productId
+        productId,
       );
 
       // Check if the product is already in the desired state
@@ -502,7 +514,7 @@ const updatePremiumDeal = async (req, res) => {
       productId,
       {
         premiumDeal: premiumDeal,
-      }
+      },
     );
 
     // Send appropriate success message
@@ -534,7 +546,7 @@ const getFlashSales = async (req, res) => {
         // Query for sales that are active and have not expired
         Query.equal("isFlashSale", true),
         Query.greaterThan("saleEndTime", now),
-      ]
+      ],
     );
 
     res.status(200).json(flashSales.documents);
@@ -552,7 +564,7 @@ const addReward = async (req, res) => {
     const { total } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REWARDS_COLLECTION_ID,
-      [Query.equal("rewardKey", rewardKey)]
+      [Query.equal("rewardKey", rewardKey)],
     );
 
     if (total > 0) {
@@ -572,7 +584,7 @@ const addReward = async (req, res) => {
         requiredMiles,
         rewardKey,
         category, // e.g. "Storytelling Journey", "Festive Rewards"
-      }
+      },
     );
 
     res.status(200).json({ message: "Reward added successfully!" });
@@ -592,7 +604,7 @@ const updateReward = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REWARDS_COLLECTION_ID,
       rewardId,
-      updates
+      updates,
     );
 
     res.status(200).json({ message: "Reward updated successfully!" });
@@ -610,7 +622,7 @@ const deleteReward = async (req, res) => {
     await db.deleteDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REWARDS_COLLECTION_ID,
-      rewardId
+      rewardId,
     );
 
     res.status(200).json({ message: "Reward deleted successfully!" });
@@ -625,7 +637,7 @@ const listRewards = async (req, res) => {
   try {
     const { documents } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_REWARDS_COLLECTION_ID
+      env.APPWRITE_REWARDS_COLLECTION_ID,
     );
 
     res.status(200).json({ rewards: documents });
@@ -647,7 +659,7 @@ const updateProduct = async (req, res) => {
     const currentProduct = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId
+      productId,
     );
 
     console.log("Current product categories:", currentProduct.categories);
@@ -695,25 +707,25 @@ const updateProduct = async (req, res) => {
       productId,
       {
         categories: updatedCategoryIds, // Just send IDs, Appwrite will handle the relationship
-      }
+      },
     );
 
     console.log(
       "Update successful. Product now has categories:",
-      updatedDoc.categories?.length || 0
+      updatedDoc.categories?.length || 0,
     );
 
     // Optionally, verify the two-way relationship
     const categoryDoc = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_CATEGORIES_COLLECTION_ID,
-      categoryId
+      categoryId,
     );
 
     console.log(
       "Category now has products:",
       categoryDoc.products?.length || 0,
-      "products"
+      "products",
     );
 
     res.status(200).json({
@@ -757,7 +769,7 @@ const getUsers = async (_req, res) => {
   try {
     const { documents } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_USER_COLLECTION_ID
+      env.APPWRITE_USER_COLLECTION_ID,
     );
     res.json(documents);
   } catch (e) {
@@ -778,7 +790,7 @@ const updateOrderStatus = async (req, res) => {
     console.log("userId:", userId);
     const exec = await functions.createExecution(
       "692d903e000d2d217887", // env.APPWRITE_UPDATE_ORDER_STATUS_FUNCTION_ID,
-      JSON.stringify({ orderId, orderStatus })
+      JSON.stringify({ orderId, orderStatus }),
     );
     await logAuditFromRequest(req, "Order status updated", "Order", orderId, {
       newStatus: orderStatus,
@@ -787,7 +799,7 @@ const updateOrderStatus = async (req, res) => {
     const order = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_ORDERS_COLLECTION,
-      orderId
+      orderId,
     );
 
     // 4. Call email function
@@ -812,7 +824,7 @@ const clientmesseags = async (req, res) => {
     const { documents: messages } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID, // Your contact database ID
       env.APPWRITE_USER_MESSAGES_COLLECTION_ID,
-      [Query.orderDesc("$createdAt")] // Your messages collection ID
+      [Query.orderDesc("$createdAt")], // Your messages collection ID
     );
 
     res.status(200).json(messages);
@@ -854,7 +866,7 @@ const createCategory = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_CATEGORIES_COLLECTION_ID,
       ID.unique, // auto-ID
-      { name, slug, image, description }
+      { name, slug, image, description },
     );
 
     res.status(201).json(doc);
@@ -876,7 +888,7 @@ const createSubcategory = async (req, res) => {
       category = await db.getDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_CATEGORIES_COLLECTION_ID,
-        id
+        id,
       );
     } catch {
       return res.status(404).json({ message: "Category not found" });
@@ -893,7 +905,7 @@ const createSubcategory = async (req, res) => {
         category: id, // wrap in array
 
         categoryId: id, // string field for queries
-      }
+      },
     );
 
     res.status(201).json({ message: "Subcategory created", subcategory });
@@ -912,7 +924,7 @@ const getSubcategoriesByCategoryId = async (req, res) => {
       category = await db.getDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_CATEGORIES_COLLECTION_ID,
-        id
+        id,
       );
     } catch {
       return res.status(404).json({ message: "Category not found" });
@@ -922,7 +934,7 @@ const getSubcategoriesByCategoryId = async (req, res) => {
     const subcategories = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_SUBCATEGORY_COLLECTION_ID,
-      [Query.equal("categoryId", [id])]
+      [Query.equal("categoryId", [id])],
     );
 
     res.status(200).json({ category, subcategories: subcategories.documents });
@@ -941,7 +953,7 @@ const getProductsBySubcategoryId = async (req, res) => {
     const products = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      [Query.equal("subcategoryId", id)] // <-- Fix this line
+      [Query.equal("subcategoryId", id)], // <-- Fix this line
     );
 
     if (!products.documents.length) {
@@ -978,11 +990,11 @@ const assignDeliveryToRider = async (req, res) => {
     });
     console.log(
       "Using database:",
-      env.RIDER_DATABASE_ID || env.APPWRITE_DATABASE_ID
+      env.RIDER_DATABASE_ID || env.APPWRITE_DATABASE_ID,
     );
     console.log(
       "Using collection:",
-      env.DELIVERIES_COLLECTION_ID || "UNDEFINED"
+      env.DELIVERIES_COLLECTION_ID || "UNDEFINED",
     );
 
     // First, check if this is an order ID and we need to find or create a delivery record
@@ -994,12 +1006,12 @@ const assignDeliveryToRider = async (req, res) => {
       delivery = await db.getDocument(
         env.RIDER_DATABASE_ID || env.APPWRITE_DATABASE_ID,
         env.DELIVERIES_COLLECTION_ID,
-        deliveryId
+        deliveryId,
       );
       console.log("Found existing delivery:", delivery.$id);
     } catch (deliveryError) {
       console.log(
-        "Delivery not found in deliveries collection, checking orders..."
+        "Delivery not found in deliveries collection, checking orders...",
       );
 
       try {
@@ -1007,7 +1019,7 @@ const assignDeliveryToRider = async (req, res) => {
         const order = await db.getDocument(
           env.APPWRITE_DATABASE_ID,
           env.APPWRITE_ORDERS_COLLECTION || env.APPWRITE_ORDERS_COLLECTION_ID,
-          deliveryId
+          deliveryId,
         );
 
         console.log("Found order:", order.$id);
@@ -1046,13 +1058,13 @@ const assignDeliveryToRider = async (req, res) => {
           console.log("🔍 Using database ID:", env.APPWRITE_DATABASE_ID);
           console.log(
             "🔍 Using users collection ID:",
-            env.APPWRITE_USER_COLLECTION_ID
+            env.APPWRITE_USER_COLLECTION_ID,
           );
 
           const customer = await db.getDocument(
             env.APPWRITE_DATABASE_ID,
             env.APPWRITE_USER_COLLECTION_ID,
-            customerId
+            customerId,
           );
 
           console.log("✅ Successfully fetched customer document");
@@ -1090,7 +1102,7 @@ const assignDeliveryToRider = async (req, res) => {
             const deliveryAddresses = await db.listDocuments(
               env.APPWRITE_DATABASE_ID,
               env.APPWRITE_ADDRESS_COLLECTION_ID,
-              [Query.equal("user", customerId), Query.equal("type", "pickup")]
+              [Query.equal("user", customerId), Query.equal("type", "pickup")],
             );
 
             if (deliveryAddresses.documents.length > 0) {
@@ -1107,17 +1119,17 @@ const assignDeliveryToRider = async (req, res) => {
               };
               console.log(
                 "Found customer delivery address:",
-                customerDeliveryAddress.fullAddress
+                customerDeliveryAddress.fullAddress,
               );
             } else {
               console.log(
-                "No delivery address found for customer, using order address"
+                "No delivery address found for customer, using order address",
               );
             }
           } catch (addressError) {
             console.log(
               "Error fetching customer delivery address:",
-              addressError.message
+              addressError.message,
             );
           }
 
@@ -1143,14 +1155,14 @@ const assignDeliveryToRider = async (req, res) => {
           console.log("Error message:", customerError.message);
           console.log(
             "🔍 Was looking for customer ID:",
-            order.userId || order.customerId
+            order.userId || order.customerId,
           );
           console.log("🔍 In database:", env.APPWRITE_DATABASE_ID);
           console.log("🔍 In collection:", env.APPWRITE_USER_COLLECTION_ID);
 
           // Try to use customer information from the order itself as fallback
           console.log(
-            "🔄 Attempting to use order customer info as fallback..."
+            "🔄 Attempting to use order customer info as fallback...",
           );
 
           // Try to get phone from customer's address records as additional fallback
@@ -1160,26 +1172,26 @@ const assignDeliveryToRider = async (req, res) => {
             const customerAddresses = await db.listDocuments(
               env.APPWRITE_DATABASE_ID,
               env.APPWRITE_ADDRESS_COLLECTION_ID,
-              [Query.equal("user", order.userId || order.customerId)]
+              [Query.equal("user", order.userId || order.customerId)],
             );
 
             if (customerAddresses.documents.length > 0) {
               // Get phone from any address that has it
               const addressWithPhone = customerAddresses.documents.find(
-                (addr) => addr.phone
+                (addr) => addr.phone,
               );
               if (addressWithPhone) {
                 fallbackPhone = addressWithPhone.phone;
                 console.log(
                   "✅ Found phone in address records:",
-                  fallbackPhone
+                  fallbackPhone,
                 );
               }
             }
           } catch (addressPhoneError) {
             console.log(
               "⚠️ Could not fetch phone from addresses:",
-              addressPhoneError.message
+              addressPhoneError.message,
             );
           }
 
@@ -1242,7 +1254,7 @@ const assignDeliveryToRider = async (req, res) => {
             orderNotes: order.notes || order.specialInstructions || "",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-          }
+          },
         );
 
         console.log("Created delivery record:", delivery.$id);
@@ -1268,7 +1280,7 @@ const assignDeliveryToRider = async (req, res) => {
     const rider = await db.getDocument(
       env.RIDER_DATABASE_ID,
       env.RIDER_COLLECTION_ID,
-      riderId
+      riderId,
     );
 
     if (!rider.isActive) {
@@ -1296,7 +1308,7 @@ const assignDeliveryToRider = async (req, res) => {
         assignedAt: new Date().toISOString(),
         assignedBy: req.admin ? req.admin.adminId : req.user.userId,
         updatedAt: new Date().toISOString(),
-      }
+      },
     );
 
     // Update rider status to busy if they were online
@@ -1308,7 +1320,7 @@ const assignDeliveryToRider = async (req, res) => {
         {
           status: "busy",
           updatedAt: new Date().toISOString(),
-        }
+        },
       );
     }
 
