@@ -25,7 +25,7 @@ const getCustomerProfile = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_USER_COLLECTION_ID,
       /* [Query.equal("accountid", userId)] */
-      [Query.equal("$id", userId)]
+      [Query.equal("$id", userId)],
     );
 
     // 4️⃣ If no document found, return empty profile (prevents frontend crashes)
@@ -38,7 +38,7 @@ const getCustomerProfile = async (req, res) => {
       const userDoc = await db.getDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_USER_COLLECTION_ID,
-        docs.documents[0].$id
+        docs.documents[0].$id,
       );
       avatarUrl = userDoc.avatarUrl || null;
       avatarFileId = userDoc.avatarFileId || null;
@@ -72,7 +72,7 @@ const getCustomerProfile = async (req, res) => {
 const updateCurrencyRates = async (req, res) => {
   try {
     const response = await fetch(
-      "https://api.exchangerate-api.com/v4/latest/USD"
+      "https://api.exchangerate-api.com/v4/latest/USD",
     );
     const data = await response.json();
 
@@ -85,7 +85,7 @@ const updateCurrencyRates = async (req, res) => {
       const existing = await db.listDocuments(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_CURRENCIES_COLLECTION,
-        [Query.equal("currency_code", currencyCode)]
+        [Query.equal("currency_code", currencyCode)],
       );
 
       if (existing.total > 0) {
@@ -97,7 +97,7 @@ const updateCurrencyRates = async (req, res) => {
           {
             rate: parseFloat(rate),
             last_updated: now,
-          }
+          },
         );
       } else {
         // Create new document
@@ -109,7 +109,7 @@ const updateCurrencyRates = async (req, res) => {
             currency_code: currencyCode,
             rate: parseFloat(rate),
             last_updated: now,
-          }
+          },
         );
       }
     }
@@ -129,7 +129,7 @@ const getCustomerOrders = async (req, res) => {
     const result = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_ORDER_COLLECTION_ID,
-      [Query.equal("userId", userId), Query.orderDesc("$createdAt")]
+      [Query.equal("userId", userId), Query.orderDesc("$createdAt")],
     );
 
     res.status(200).json({ orders: result.documents });
@@ -152,7 +152,7 @@ const saveRecentSearch = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_SEARCH_COLLECTION, // recentSearches
       ID.unique(),
-      { userId, query, timestamp }
+      { userId, query, timestamp },
     );
 
     return res
@@ -181,12 +181,54 @@ const getRecentSearches = async (req, res) => {
         Query.equal("userId", userId),
         Query.orderDesc("timestamp"),
         Query.limit(10),
-      ]
+      ],
     );
 
     return res.status(200).json({ searches: response.documents });
   } catch (error) {
     console.error("Error fetching recent searches:", error.message);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+const getPopularSearches = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    // Get all searches and aggregate by query to find most popular
+    const allSearches = await db.listDocuments(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_SEARCH_COLLECTION,
+      [
+        Query.orderDesc("timestamp"),
+        Query.limit(1000), // Get more searches to analyze
+      ],
+    );
+
+    // Count query occurrences
+    const queryCount = {};
+    allSearches.documents.forEach((search) => {
+      const query = search.query.toLowerCase().trim();
+      queryCount[query] = (queryCount[query] || 0) + 1;
+    });
+
+    // Sort by count and get top results
+    const popularQueries = Object.entries(queryCount)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, parseInt(limit))
+      .map(([query, count]) => ({
+        query: query,
+        count: count,
+        // Capitalize first letter for display
+        displayQuery: query.charAt(0).toUpperCase() + query.slice(1),
+      }));
+
+    return res.status(200).json({
+      searches: popularQueries,
+      total: popularQueries.length,
+    });
+  } catch (error) {
+    console.error("Error fetching popular searches:", error);
     return res.status(500).json({ message: "Internal server error." });
   }
 };
@@ -202,7 +244,7 @@ const clearRecentSearches = async (req, res) => {
     const response = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_SEARCH_COLLECTION,
-      [Query.equal("userId", userId)]
+      [Query.equal("userId", userId)],
     );
 
     const documents = response.documents;
@@ -211,8 +253,8 @@ const clearRecentSearches = async (req, res) => {
       db.deleteDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_SEARCH_COLLECTION,
-        doc.$id
-      )
+        doc.$id,
+      ),
     );
 
     await Promise.all(deletePromises);
@@ -254,13 +296,21 @@ const getProducts = async (req, res) => {
 
     // Search filter (search in multiple fields)
     if (search) {
+      // Normalize search term for better matching
+      const normalizedSearch = search.trim().toLowerCase();
+
       filters.push(
         Query.or([
+          Query.search("productName", normalizedSearch),
+          Query.search("description", normalizedSearch),
+          Query.search("brand", normalizedSearch),
+          Query.search("tags", normalizedSearch),
+          // Also search with original case for exact matches
           Query.search("productName", search),
           Query.search("description", search),
           Query.search("brand", search),
           Query.search("tags", search),
-        ])
+        ]),
       );
     }
 
@@ -320,7 +370,7 @@ const getProducts = async (req, res) => {
       const countQuery = await db.listDocuments(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_PRODUCT_COLLECTION_ID,
-        [...filters, Query.limit(1)]
+        [...filters, Query.limit(1)],
       );
       totalProducts = countQuery.total;
     } catch (countError) {
@@ -339,7 +389,7 @@ const getProducts = async (req, res) => {
       const batch = await db.listDocuments(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_PRODUCT_COLLECTION_ID,
-        queries
+        queries,
       );
 
       allProducts.push(...batch.documents);
@@ -428,7 +478,7 @@ const getProductsForMobile = async (req, res) => {
     const batch = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      queries
+      queries,
     );
 
     // ✅ ADD: Fetch review counts for all products in parallel
@@ -439,7 +489,7 @@ const getProductsForMobile = async (req, res) => {
           const reviews = await db.listDocuments(
             env.APPWRITE_DATABASE_ID,
             env.APPWRITE_REVIEW_COLLECTION_ID,
-            [Query.equal("productId", doc.$id), Query.select(["rating"])]
+            [Query.equal("productId", doc.$id), Query.select(["rating"])],
           );
 
           const reviewCount = reviews.total || 0;
@@ -469,7 +519,7 @@ const getProductsForMobile = async (req, res) => {
         } catch (error) {
           console.error(
             `Error fetching reviews for product ${doc.$id}:`,
-            error
+            error,
           );
           // Return product without review data on error
           return {
@@ -489,7 +539,7 @@ const getProductsForMobile = async (req, res) => {
             totalRatings: 0,
           };
         }
-      })
+      }),
     );
 
     res.json({
@@ -530,7 +580,7 @@ const submitReview = async (req, res) => {
     const userDoc = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_USER_COLLECTION_ID,
-      [Query.equal("$id", userId)]
+      [Query.equal("$id", userId)],
     );
 
     if (!userDoc.documents.length) {
@@ -585,7 +635,7 @@ const submitReview = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REVIEW_COLLECTION_ID,
       ID.unique(),
-      reviewPayload
+      reviewPayload,
     );
 
     // Optional: Increment product ratings count (if implemented separately)
@@ -603,7 +653,7 @@ const incrementProductRatingsCountInternal = async (productIdToIncrement) => {
   try {
     if (!productIdToIncrement) {
       console.warn(
-        "Internal incrementProductRatingsCount called without productId"
+        "Internal incrementProductRatingsCount called without productId",
       );
       return;
     }
@@ -612,12 +662,12 @@ const incrementProductRatingsCountInternal = async (productIdToIncrement) => {
     const productResponse = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      [Query.equal("$id", String(productIdToIncrement))]
+      [Query.equal("$id", String(productIdToIncrement))],
     );
 
     if (!productResponse.documents.length) {
       console.warn(
-        `Product with ID ${productIdToIncrement} not found for rating increment.`
+        `Product with ID ${productIdToIncrement} not found for rating increment.`,
       );
       return;
     }
@@ -631,11 +681,11 @@ const incrementProductRatingsCountInternal = async (productIdToIncrement) => {
       product.$id,
       {
         ratingsCount: updatedRatingsCount,
-      }
+      },
     );
 
     console.log(
-      `Ratings count incremented for product ${productIdToIncrement}`
+      `Ratings count incremented for product ${productIdToIncrement}`,
     );
     return {
       message: "Ratings count incremented",
@@ -644,7 +694,7 @@ const incrementProductRatingsCountInternal = async (productIdToIncrement) => {
   } catch (error) {
     console.error(
       "Error in internal incrementProductRatingsCount:",
-      error.message || error
+      error.message || error,
     );
     // Decide if you want to throw this error or just log it
   }
@@ -673,7 +723,7 @@ const incrementProductRatingsCount = async (req, res) => {
   } catch (error) {
     console.error(
       "Error handling incrementProductRatingsCount route:",
-      error.message || error
+      error.message || error,
     );
     return res
       .status(500)
@@ -700,7 +750,7 @@ const getProductReviews = async (req, res) => {
       [
         Query.equal("productId", String(productId)),
         Query.orderDesc("createdAt"),
-      ]
+      ],
     );
 
     // console.log(`\n📝 Found ${reviewResponse.documents.length} reviews`);
@@ -729,7 +779,7 @@ const getProductReviews = async (req, res) => {
           const userResponse = await db.listDocuments(
             env.APPWRITE_DATABASE_ID,
             env.APPWRITE_USER_COLLECTION_ID,
-            [Query.equal("$id", userId)]
+            [Query.equal("$id", userId)],
           );
 
           // console.log(`📊 User query results for ${userId}:`, userResponse.total, "documents found");
@@ -782,14 +832,14 @@ const getProductReviews = async (req, res) => {
               "https://fra.cloud.appwrite.io/v1/storage/buckets/692a3b700039c02fb4bc/files/692b97e30027bf293efe/view?project=6926c7df002fa7831d94&mode=admin",
           };
         }
-      })
+      }),
     );
 
     // console.log("\n📦 Final userDetails object:", JSON.stringify(userDetails, null, 2));
 
     console.log(
       "\n📦 Final userDetails object:",
-      JSON.stringify(userDetails, null, 2)
+      JSON.stringify(userDetails, null, 2),
     );
 
     // Enrich reviews with user data
@@ -877,7 +927,7 @@ const submitRating = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REVIEW_COLLECTION_ID,
       ID.unique(),
-      reviewData
+      reviewData,
     );
 
     console.log("Review submitted:", response);
@@ -905,7 +955,7 @@ const updateUserAvatar = async (req, res) => {
     const created = await storage.createFile(
       env.APPWRITE_STORAGE_ID,
       ID.unique(),
-      InputFile.fromBuffer(file.data, file.name)
+      InputFile.fromBuffer(file.data, file.name),
     );
 
     const avatarUrl = `${env.APPWRITE_ENDPOINT}/storage/buckets/${env.APPWRITE_STORAGE_ID}/files/${created.$id}/view?project=${env.APPWRITE_PROJECT_ID}`;
@@ -913,7 +963,7 @@ const updateUserAvatar = async (req, res) => {
     const docs = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_USER_COLLECTION_ID,
-      [Query.equal("$id", userId)]
+      [Query.equal("$id", userId)],
     );
 
     if (docs.total === 0)
@@ -925,7 +975,7 @@ const updateUserAvatar = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_USER_COLLECTION_ID,
       profileDocId,
-      { avatarUrl, avatarFileId: created.$id }
+      { avatarUrl, avatarFileId: created.$id },
     );
 
     res.json({ avatarUrl });
@@ -950,7 +1000,7 @@ const getFeaturedProducts = async (req, res) => {
     const response = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_FEATURED_COLLECTION_ID,
-      queries
+      queries,
     );
 
     res.status(200).json(response.documents);
@@ -967,7 +1017,7 @@ const getDealProducts = async (req, res) => {
     const response = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_DEALS_COLLECTION_ID,
-      queries
+      queries,
     );
 
     res.status(200).json(response.documents);
@@ -984,13 +1034,13 @@ const getHeroProducts = async (req, res) => {
     const { documents: featured } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_FEATURED_COLLECTION_ID,
-      [Query.limit(3), Query.orderDesc("$createdAt")] // Limit to a few slides
+      [Query.limit(3), Query.orderDesc("$createdAt")], // Limit to a few slides
     );
 
     const { documents: deals } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_DEALS_COLLECTION_ID,
-      [Query.limit(3), Query.orderDesc("$createdAt")] // Limit to a few slides
+      [Query.limit(3), Query.orderDesc("$createdAt")], // Limit to a few slides
     );
 
     // Combine the two lists and send to the frontend
@@ -1006,7 +1056,7 @@ const getCategories = async (req, res) => {
     const { documents } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_CATEGORIES_COLLECTION_ID,
-      [Query.limit(100), Query.orderAsc("name")]
+      [Query.limit(100), Query.orderAsc("name")],
     );
 
     const categories = documents.map((doc) => ({
@@ -1021,139 +1071,6 @@ const getCategories = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch categories." });
   }
 };
-
-// Example: Controller to get products for a specific category
-/* const getProductsBycategory = async (req, res) => {
-  try {
-    const categoryId = req.params.categoryId || req.params.category;
-
-    console.log("🔍 [DEBUG] categoryId:", req.params.categoryId);
-    console.log("🔍 [DEBUG] category:", req.params.category);
-    console.log("🔍 [DEBUG] Using categoryId:", categoryId);
-
-    if (!categoryId) {
-      console.error("❌ Error: No category ID found in params!");
-      console.log("❌ All params:", req.params);
-      return res.status(400).json({ error: "Category ID is required" });
-    }
-
-    const { documents } = await db.listDocuments(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      [
-        // This query finds all products where the 'categoryLink' attribute
-        // matches the specific categoryId you provided.
-        Query.equal("categoryLink", categoryId),
-        Query.orderDesc("$createdAt"),
-      ]
-    );
-    console.log(
-      `✅ Found ${documents.length} products for category ${categoryId}`
-    );
-    console.log(
-      "Products with subcategories:",
-      documents.filter((p) => p.subcategoryId).length
-    );
-    console.log(
-      "Products without subcategories:",
-      documents.filter((p) => !p.subcategoryId).length
-    );
-
-    res.status(200).json(documents);
-  } catch (error) {
-    console.error("❌ Failed to fetch products by category:", error);
-    res.status(500).json({ error: "Failed to fetch products" });
-  }
-}; */
-/* const getProductsByCategory = async (req, res) => {
-  try {
-    const { category } = req.params;
-
-    console.log("=== getProductsByCategory CONTROLLER CALLED ===");
-    console.log("Full request URL:", req.originalUrl);
-    console.log("Request path:", req.path);
-    console.log("All params:", req.params);
-    console.log("Query params:", req.query);
-
-    // Try multiple ways to get the categoryId
-    const categoryId =
-      req.params.categoryId || req.params.category || req.query.categoryId;
-
-    console.log(`🔍 Fetching products for category ID: "${categoryId}"`);
-    console.log(`Type of categoryId: ${typeof categoryId}`);
-
-    if (!categoryId || categoryId.trim() === "") {
-      console.log("❌ ERROR: categoryId is empty or undefined");
-      console.log("Available params keys:", Object.keys(req.params));
-      return res.status(400).json({
-        error: "Category ID is required",
-        receivedParams: req.params,
-        receivedQuery: req.query,
-      });
-    }
-
-    // Validate the ID format (Appwrite IDs are typically 20 chars)
-    if (categoryId.length < 10) {
-      console.log(
-        `❌ ERROR: categoryId too short (${categoryId.length} chars): ${categoryId}`
-      );
-      return res.status(400).json({
-        error: "Invalid category ID format",
-        details: `ID length: ${categoryId.length}, expected at least 10 characters`,
-      });
-    }
-
-    console.log(`✅ Category ID validated: ${categoryId}`);
-
-    console.log(`🔍 Fetching products for category ID: ${category}`);
-
-    // Validate category ID
-    if (!category || category.trim() === "") {
-      return res.status(400).json({ error: "Category ID is required" });
-    }
-
-    // 1. First, verify the category exists
-    try {
-      await db.getDocument(
-        env.APPWRITE_DATABASE_ID,
-        env.APPWRITE_CATEGORIES_COLLECTION_ID,
-        category
-      );
-    } catch (error) {
-      if (error.code === 404) {
-        return res.status(404).json({ error: "Category not found" });
-      }
-      throw error;
-    }
-
-    const { documents } = await db.listDocuments(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID, // ✅ Query the PRODUCT collection
-      [
-        Query.equal("categoryId", category), // Assuming products have categoryId field
-        Query.equal("status", "active"), // Only active products
-        Query.orderDesc("$createdAt"), // Newest first
-        Query.limit(50), // Limit results
-      ]
-    );
-
-    // If the category is not found, return an empty array
-    if (!documents || documents.length === 0) {
-      return res.status(404).json([]);
-    }
-
-    // ✅ Access the products using the automatically created virtual attribute
-    // The attribute name is the name of the 'products' collection
-    const productsInTheCategory = documents[0].products;
-
-    res.status(200).json(productsInTheCategory);
-  } catch (error) {
-    console.error("❌ Failed to fetch products by category:", error);
-    res
-      .status(500)
-      .json({ error: "Failed to fetch products for this category." });
-  }
-}; */
 
 const getProductsByCategory = async (req, res) => {
   try {
@@ -1173,7 +1090,7 @@ const getProductsByCategory = async (req, res) => {
       const categoryDoc = await db.getDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_CATEGORIES_COLLECTION_ID,
-        categoryId
+        categoryId,
       );
       console.log(`✅ Category found: ${categoryDoc.name}`);
     } catch (error) {
@@ -1194,7 +1111,7 @@ const getProductsByCategory = async (req, res) => {
         Query.equal("categoryId", categoryId),
         Query.orderDesc("$createdAt"),
         Query.limit(50),
-      ]
+      ],
     );
 
     console.log(`✅ Found ${products.total} products`);
@@ -1229,7 +1146,7 @@ const getCategoryBySlug = async (req, res) => {
     const { documents } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_CATEGORIES_COLLECTION_ID,
-      [Query.equal("slug", slug), Query.limit(1)]
+      [Query.equal("slug", slug), Query.limit(1)],
     );
 
     if (documents.length === 0) {
@@ -1248,7 +1165,7 @@ const getCategorie = async (req, res) => {
     const { documents } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_CATEGORIES_COLLECTION_ID, // Use the correct ID for your categories collection
-      [Query.limit(100), Query.orderAsc("name")] // Fetch up to 100 categories, ordered by name
+      [Query.limit(100), Query.orderAsc("name")], // Fetch up to 100 categories, ordered by name
     );
 
     // Assuming your category documents have 'name' and 'imgUrl' attributes
@@ -1274,7 +1191,7 @@ const getCategoryById = async (req, res) => {
     const category = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_CATEGORIES_COLLECTION_ID,
-      categoryId
+      categoryId,
     );
 
     // Map the document to the desired format
@@ -1295,7 +1212,7 @@ const getMobileCategories = async (req, res) => {
   try {
     const products = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID
+      env.APPWRITE_PRODUCT_COLLECTION_ID,
     );
 
     const categories = [
@@ -1303,7 +1220,7 @@ const getMobileCategories = async (req, res) => {
       ...new Set(
         products.documents
           .map((p) => p.category)
-          .filter((cat) => cat && cat.toLowerCase() !== "all")
+          .filter((cat) => cat && cat.toLowerCase() !== "all"),
       ),
     ];
 
@@ -1342,7 +1259,7 @@ const getMobileProducts = async (req, res) => {
     const products = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      queries
+      queries,
     );
 
     // ✅ ADD: Include review counts
@@ -1352,7 +1269,7 @@ const getMobileProducts = async (req, res) => {
           const reviews = await db.listDocuments(
             env.APPWRITE_DATABASE_ID,
             env.APPWRITE_REVIEW_COLLECTION_ID,
-            [Query.equal("productId", doc.$id), Query.select(["rating"])]
+            [Query.equal("productId", doc.$id), Query.select(["rating"])],
           );
 
           const reviewCount = reviews.total || 0;
@@ -1374,7 +1291,7 @@ const getMobileProducts = async (req, res) => {
             avgRating: 0,
           };
         }
-      })
+      }),
     );
 
     res.json({
@@ -1421,7 +1338,7 @@ const getProducts2 = async (req, res) => {
       const batch = await db.listDocuments(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_PRODUCT_COLLECTION_ID,
-        queries
+        queries,
       );
 
       allProducts.push(...batch.documents);
@@ -1470,4 +1387,5 @@ module.exports = {
   getCategorie,
   getCategoryById,
   getProducts2,
+  getPopularSearches,
 };

@@ -1834,3 +1834,15 @@
 [2026-01-12 10:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"production"}
 [2026-01-12 10:00:01] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"production"}
 [2026-01-12 10:00:01] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"production"}
+[2026-01-18 06:46:42] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"production"}
+[2026-01-18 07:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"production"}
+[2026-01-18 07:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"production"}
+[2026-01-18 07:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"production"}
+[2026-01-18 08:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"production"}
+[2026-01-18 08:00:00] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"production"}
+[2026-01-18 08:00:00] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"production"}
+[2026-01-18 09:00:00] INFO: Checking for overdue subscriptions... {"service":"nile-mart-api","env":"production"}
+[2026-01-18 09:00:01] INFO: Found 0 overdue subscriptions {"service":"nile-mart-api","env":"production"}
+[2026-01-18 09:00:01] INFO: Overdue subscription check completed {"service":"nile-mart-api","env":"production"}
+[2026-01-18 09:31:41] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"production"}
+[2026-01-18 09:32:41] INFO: Subscription cron jobs initialized successfully {"service":"nile-mart-api","env":"production"}
