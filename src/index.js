@@ -64,6 +64,7 @@ const passwordRouter = require("../routes/passwordRoute");
 const cartRoutes = require("../routes/Cartrouter");
 const africanFactsRoutes = require("../routes/africanFactsRoutes");
 const orderTrackingRoutes = require("../routes/orderTrackingRoutes");
+const forgotPasswordRoutes = require("../routes/forgotPasswordRoutes");
 
 // Vendor Routes
 const vendorauth = require("../routes/Vendorroutes/vendorauth");
@@ -106,7 +107,7 @@ app.use(
       includeSubDomains: true,
       preload: true,
     },
-  })
+  }),
 );
 
 // ========== CORS CONFIGURATION ==========
@@ -171,7 +172,7 @@ app.use(cors(corsOptions));
 app.use("/api/admin", (req, res, next) => {
   const origin = req.headers.origin;
   console.log(
-    `🌐 Global admin CORS middleware - ${req.method} ${req.url} from ${origin}`
+    `🌐 Global admin CORS middleware - ${req.method} ${req.url} from ${origin}`,
   );
 
   // Always set CORS headers for admin routes
@@ -180,11 +181,11 @@ app.use("/api/admin", (req, res, next) => {
     res.header("Access-Control-Allow-Credentials", "true");
     res.header(
       "Access-Control-Allow-Methods",
-      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS",
     );
     res.header(
       "Access-Control-Allow-Headers",
-      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma"
+      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma",
     );
     console.log(`✅ Global CORS headers set for admin origin: ${origin}`);
   }
@@ -195,7 +196,7 @@ app.use("/api/admin", (req, res, next) => {
 app.use("/api/vendor", (req, res, next) => {
   const origin = req.headers.origin;
   console.log(
-    `🌐 Global vendor CORS middleware - ${req.method} ${req.url} from ${origin}`
+    `🌐 Global vendor CORS middleware - ${req.method} ${req.url} from ${origin}`,
   );
 
   // Always set CORS headers for vendor routes
@@ -204,11 +205,11 @@ app.use("/api/vendor", (req, res, next) => {
     res.header("Access-Control-Allow-Credentials", "true");
     res.header(
       "Access-Control-Allow-Methods",
-      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS",
     );
     res.header(
       "Access-Control-Allow-Headers",
-      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma"
+      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma",
     );
     console.log(`✅ Global CORS headers set for vendor origin: ${origin}`);
   }
@@ -248,22 +249,22 @@ app.use((req, res, next) => {
       res.header("Access-Control-Allow-Origin", origin || "*");
       res.header(
         "Access-Control-Allow-Methods",
-        "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+        "GET,POST,PUT,PATCH,DELETE,OPTIONS",
       );
       res.header(
         "Access-Control-Allow-Headers",
-        "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,X-Transaction-ID,Cache-Control,Pragma"
+        "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,X-Transaction-ID,Cache-Control,Pragma",
       );
       res.header("Access-Control-Allow-Credentials", "true");
       res.header("Access-Control-Max-Age", "86400");
       console.log("✅ Manual OPTIONS response sent with headers:");
       console.log(
         "  Access-Control-Allow-Origin:",
-        res.getHeader("Access-Control-Allow-Origin")
+        res.getHeader("Access-Control-Allow-Origin"),
       );
       console.log(
         "  Access-Control-Allow-Credentials:",
-        res.getHeader("Access-Control-Allow-Credentials")
+        res.getHeader("Access-Control-Allow-Credentials"),
       );
       return res.status(200).end();
     } else {
@@ -285,13 +286,13 @@ app.use(
       // Store raw body buffer for routes that need it (Stripe webhooks)
       req.rawBody = buf;
     },
-  })
+  }),
 );
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser()); // Apply to all routes
 /* app.use(apiLimiter) */ // ========== LOGGING ==========
 app.use(
-  morgan(":method :url :status :response-time ms - :res[content-length]")
+  morgan(":method :url :status :response-time ms - :res[content-length]"),
 );
 
 // ========== FILE UPLOAD ==========
@@ -301,7 +302,7 @@ app.use(
     createParentPath: true,
     limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
     abortOnLimit: true,
-  })
+  }),
 );
 
 // ========== APPWRITE INITIALIZATION MIDDLEWARE ==========
@@ -329,13 +330,16 @@ app.use(async (req, res, next) => {
 });
 
 // Check for scheduled campaigns every 5 minutes
-setInterval(async () => {
-  try {
-    await processScheduledCampaigns();
-  } catch (error) {
-    console.error("Scheduler error:", error);
-  }
-}, 5 * 60 * 1000); // 5 minutes
+setInterval(
+  async () => {
+    try {
+      await processScheduledCampaigns();
+    } catch (error) {
+      console.error("Scheduler error:", error);
+    }
+  },
+  5 * 60 * 1000,
+); // 5 minutes
 
 // ========== HEALTH CHECKS ==========
 app.use("/health", healthRoutes);
@@ -353,10 +357,10 @@ app.get("/api/cors-test", (req, res) => {
     timestamp: new Date().toISOString(),
     headers: {
       "access-control-allow-origin": res.getHeader(
-        "Access-Control-Allow-Origin"
+        "Access-Control-Allow-Origin",
       ),
       "access-control-allow-credentials": res.getHeader(
-        "Access-Control-Allow-Credentials"
+        "Access-Control-Allow-Credentials",
       ),
     },
   });
@@ -383,16 +387,16 @@ app.use("/api/admin/auth", (req, res, next) => {
   if (!origin || allowedOrigins.includes(origin)) {
     res.header(
       "Access-Control-Allow-Origin",
-      origin || "https://admin.nileflowafrica.com"
+      origin || "https://admin.nileflowafrica.com",
     );
     res.header("Access-Control-Allow-Credentials", "true");
     res.header(
       "Access-Control-Allow-Methods",
-      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS",
     );
     res.header(
       "Access-Control-Allow-Headers",
-      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control"
+      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control",
     );
     console.log(`🔧 Admin auth CORS headers set for origin: ${origin}`);
   }
@@ -430,6 +434,7 @@ app.use("/api/nilemart", addressRoutes);
 app.use("/api/nilemart/questions", questions);
 app.use("/api/nilemart/promotions", Promotion);
 app.use("/api/nileflow/passwordchange", passwordRouter);
+app.use("/api/nileflowafrica/passwordchange", forgotPasswordRoutes);
 app.use("/cart", cartRoutes);
 app.use("/api/group-orders", groupOrderRoutes);
 app.use("/api/gamification", gamificationRoutes);
@@ -485,11 +490,11 @@ app.use((err, req, res, next) => {
     res.header("Access-Control-Allow-Credentials", "true");
     res.header(
       "Access-Control-Allow-Methods",
-      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS",
     );
     res.header(
       "Access-Control-Allow-Headers",
-      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma"
+      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma",
     );
     console.log(`🚨 Error handler: CORS headers set for ${origin}`);
   }
@@ -541,11 +546,11 @@ app.use((err, req, res, next) => {
     res.header("Access-Control-Allow-Credentials", "true");
     res.header(
       "Access-Control-Allow-Methods",
-      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS",
     );
     res.header(
       "Access-Control-Allow-Headers",
-      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma"
+      "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma",
     );
     console.log(`🚨 Final error handler: CORS headers set for ${origin}`);
   }
@@ -602,13 +607,16 @@ async function startServer() {
     } = require("../controllers/AdminControllers/newsletterController");
 
     // Process scheduled campaigns every 2 minutes
-    const schedulerInterval = setInterval(async () => {
-      try {
-        await processScheduledCampaigns();
-      } catch (error) {
-        console.error("📧 Newsletter scheduler error:", error);
-      }
-    }, 2 * 60 * 1000); // Check every 2 minutes
+    const schedulerInterval = setInterval(
+      async () => {
+        try {
+          await processScheduledCampaigns();
+        } catch (error) {
+          console.error("📧 Newsletter scheduler error:", error);
+        }
+      },
+      2 * 60 * 1000,
+    ); // Check every 2 minutes
 
     // Run once immediately to check for any pending campaigns
     setTimeout(async () => {
