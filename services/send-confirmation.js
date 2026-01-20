@@ -15,7 +15,7 @@ const getUserByEmail = async (email) => {
     const response = await db.listDocuments(
       env.APPWRITE_DATABASE_ID, // Your database ID
       env.APPWRITE_USER_COLLECTION_ID, // Your users collection ID
-      [Query.equal("email", email), Query.limit(1)]
+      [Query.equal("email", email), Query.limit(1)],
     );
 
     if (response.documents.length === 0) {
@@ -421,14 +421,14 @@ const sendOrderConfirmationEmail = async ({
                                                 <img src="${
                                                   item.productImage
                                                 }" alt="${
-                                        item.productName
-                                      }" class="product-image">
+                                                  item.productName
+                                                }" class="product-image">
                                                 <div>
                                                     <div class="product-name">${
                                                       item.productName
                                                     }</div>
                                                     <div class="product-price">Ksh ${item.price.toFixed(
-                                                      2
+                                                      2,
                                                     )} each</div>
                                                 </div>
                                             </div>
@@ -442,7 +442,7 @@ const sendOrderConfirmationEmail = async ({
                                           item.price * item.quantity
                                         ).toFixed(2)}</td>
                                     </tr>
-                                `
+                                `,
                                     )
                                     .join("")
                                 : ""
@@ -454,7 +454,7 @@ const sendOrderConfirmationEmail = async ({
                     <div class="total-section">
                         <div class="total-label">Total Amount</div>
                         <div class="total-amount">Ksh ${orderTotal.toFixed(
-                          2
+                          2,
                         )}</div>
                     </div>
                     
@@ -520,7 +520,7 @@ const storeRefreshToken = async (
   userId,
   refreshToken,
   deviceId,
-  req = null
+  req = null,
 ) => {
   try {
     // Hash the refresh token for security
@@ -528,7 +528,7 @@ const storeRefreshToken = async (
 
     // Calculate expiration date (7 days from now)
     const expiresAt = new Date(
-      Date.now() + 7 * 24 * 60 * 60 * 1000
+      Date.now() + 7 * 24 * 60 * 60 * 1000,
     ).toISOString();
 
     // Extract IP and User Agent from request (if available)
@@ -556,7 +556,7 @@ const storeRefreshToken = async (
         userAgent,
         deviceId: deviceId || "unknown",
         rotatedFrom: null, // No previous token on initial creation
-      }
+      },
     );
 
     console.log(`✅ Refresh token stored for user: ${userId}`);
@@ -566,7 +566,6 @@ const storeRefreshToken = async (
     throw error;
   }
 };
-
 
 const sendOrderStatusUpdateEmail = async ({
   customerEmail,
@@ -677,7 +676,386 @@ const sendVerificationEmail = async ({
   }
 };
 
+// --- New function to send welcome email with premium styling
+const sendWelcomeEmail = async ({ customerEmail, customerName }) => {
+  console.log("Preparing to send welcome email to:", customerEmail);
 
+  try {
+    await resend.emails.send({
+      from: "Nile Flow Africa <welcome@nileflowafrica.com>",
+      to: customerEmail,
+      subject: `🎉 Welcome to Nile Flow Africa, ${customerName}! | Your African Marketplace Journey Begins`,
+      html: `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Welcome to Nile Flow Africa | Premium African Marketplace</title>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+                
+                body {
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+                    margin: 0;
+                    padding: 40px 20px;
+                    color: #e2e8f0;
+                    line-height: 1.6;
+                }
+                
+                .container {
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background: rgba(15, 23, 42, 0.8);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(245, 158, 11, 0.2);
+                    border-radius: 24px;
+                    overflow: hidden;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                }
+                
+                .header {
+                    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+                    padding: 40px 30px;
+                    text-align: center;
+                    position: relative;
+                    overflow: hidden;
+                }
+                
+                .header::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+                }
+                
+                .logo {
+                    font-size: 32px;
+                    font-weight: 800;
+                    margin: 0;
+                    background: linear-gradient(135deg, #ffffff 0%, #fef3c7 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    position: relative;
+                    z-index: 1;
+                }
+                
+                .logo-sub {
+                    font-size: 14px;
+                    color: rgba(255, 255, 255, 0.8);
+                    letter-spacing: 2px;
+                    margin-top: 8px;
+                    position: relative;
+                    z-index: 1;
+                }
+                
+                .content {
+                    padding: 40px 30px;
+                }
+                
+                .greeting {
+                    font-size: 28px;
+                    font-weight: 700;
+                    margin: 0 0 20px 0;
+                    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                }
+                
+                .welcome-banner {
+                    background: rgba(245, 158, 11, 0.1);
+                    border: 1px solid rgba(245, 158, 11, 0.3);
+                    border-radius: 12px;
+                    padding: 25px;
+                    margin: 25px 0;
+                    text-align: center;
+                }
+                
+                .welcome-banner h3 {
+                    font-size: 24px;
+                    font-weight: 700;
+                    color: #fbbf24;
+                    margin: 0 0 15px 0;
+                }
+                
+                .welcome-text {
+                    font-size: 18px;
+                    color: #cbd5e1;
+                    margin-bottom: 30px;
+                }
+                
+                .features-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 20px;
+                    margin: 30px 0;
+                }
+                
+                .feature-card {
+                    background: rgba(30, 41, 59, 0.5);
+                    border: 1px solid rgba(148, 163, 184, 0.1);
+                    border-radius: 16px;
+                    padding: 20px;
+                    text-align: center;
+                }
+                
+                .feature-icon {
+                    font-size: 32px;
+                    margin-bottom: 10px;
+                    display: block;
+                }
+                
+                .feature-title {
+                    font-size: 16px;
+                    font-weight: 600;
+                    color: #fbbf24;
+                    margin-bottom: 8px;
+                }
+                
+                .feature-desc {
+                    font-size: 14px;
+                    color: #94a3b8;
+                    margin: 0;
+                }
+                
+                .cta-button {
+                    display: inline-block;
+                    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                    color: white;
+                    text-decoration: none;
+                    padding: 16px 32px;
+                    border-radius: 12px;
+                    font-weight: 700;
+                    font-size: 16px;
+                    text-align: center;
+                    margin: 30px auto;
+                    border: none;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+                }
+                
+                .cta-button:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 25px rgba(245, 158, 11, 0.4);
+                }
+                
+                .info-box {
+                    background: rgba(30, 41, 59, 0.5);
+                    border: 1px solid rgba(148, 163, 184, 0.1);
+                    border-radius: 16px;
+                    padding: 20px;
+                    margin: 30px 0;
+                }
+                
+                .info-title {
+                    color: #60a5fa;
+                    font-weight: 600;
+                    margin-bottom: 10px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+                
+                .info-text {
+                    color: #cbd5e1;
+                    margin: 0;
+                }
+                
+                .signature {
+                    text-align: center;
+                    margin-top: 40px;
+                    padding-top: 30px;
+                    border-top: 1px solid rgba(148, 163, 184, 0.1);
+                }
+                
+                .team-name {
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #fbbf24;
+                    margin: 10px 0 5px 0;
+                }
+                
+                .team-title {
+                    color: #94a3b8;
+                    font-size: 14px;
+                }
+                
+                .footer {
+                    background: rgba(15, 23, 42, 0.9);
+                    padding: 30px;
+                    text-align: center;
+                    border-top: 1px solid rgba(245, 158, 11, 0.2);
+                }
+                
+                .footer-links {
+                    display: flex;
+                    justify-content: center;
+                    gap: 20px;
+                    margin: 20px 0;
+                }
+                
+                .footer-link {
+                    color: #94a3b8;
+                    text-decoration: none;
+                    font-size: 14px;
+                    transition: color 0.3s ease;
+                }
+                
+                .footer-link:hover {
+                    color: #fbbf24;
+                }
+                
+                .copyright {
+                    font-size: 12px;
+                    color: #64748b;
+                    margin-top: 20px;
+                }
+                
+                @media (max-width: 600px) {
+                    body {
+                        padding: 20px 10px;
+                    }
+                    
+                    .content {
+                        padding: 25px 20px;
+                    }
+                    
+                    .header {
+                        padding: 30px 20px;
+                    }
+                    
+                    .logo {
+                        font-size: 26px;
+                    }
+                    
+                    .greeting {
+                        font-size: 24px;
+                    }
+                    
+                    .features-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    
+                    .footer-links {
+                        flex-direction: column;
+                        gap: 10px;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <!-- Header -->
+                <div class="header">
+                    <h1 class="logo">NILE FLOW AFRICA</h1>
+                    <div class="logo-sub">PREMIUM AFRICAN MARKETPLACE</div>
+                </div>
+                
+                <!-- Content -->
+                <div class="content">
+                    <h2 class="greeting">Welcome, ${customerName}! 🎉</h2>
+                    
+                    <div class="welcome-banner">
+                        <h3>Your Journey to Authentic African Excellence Begins!</h3>
+                        <p style="color: #cbd5e1; margin: 0;">Thank you for joining our community of discerning customers who appreciate premium African craftsmanship and culture.</p>
+                    </div>
+                    
+                    <p class="welcome-text">
+                        We're thrilled to have you as part of the Nile Flow Africa family! Your account has been successfully verified, and you now have access to our curated collection of premium African products.
+                    </p>
+                    
+                    <!-- Features Grid -->
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <span class="feature-icon">🏆</span>
+                            <div class="feature-title">Premium Quality</div>
+                            <p class="feature-desc">Handpicked authentic African products with guaranteed quality</p>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <span class="feature-icon">🚚</span>
+                            <div class="feature-title">Fast Delivery</div>
+                            <p class="feature-desc">Quick and secure delivery across Kenya and beyond</p>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <span class="feature-icon">🎁</span>
+                            <div class="feature-title">Exclusive Deals</div>
+                            <p class="feature-desc">Member-only discounts and early access to new arrivals</p>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <span class="feature-icon">🌍</span>
+                            <div class="feature-title">Cultural Heritage</div>
+                            <p class="feature-desc">Celebrate and support African artisans and culture</p>
+                        </div>
+                    </div>
+                    
+                    <!-- CTA Button -->
+                    <div style="text-align: center;">
+                        <a href="https://nileflowafrica.com/shop" class="cta-button">
+                            🛍️ Start Shopping Now
+                        </a>
+                    </div>
+                    
+                    <!-- Getting Started Info -->
+                    <div class="info-box">
+                        <div class="info-title">🚀 Getting Started</div>
+                        <p class="info-text">
+                            Ready to explore? Browse our categories, add items to your cart, and experience the best of African craftsmanship. 
+                            Don't forget to check out our featured collections and seasonal specials!
+                        </p>
+                    </div>
+                    
+                    <!-- Support Info -->
+                    <div class="info-box">
+                        <div class="info-title">💬 Need Assistance?</div>
+                        <p class="info-text">
+                            Our friendly support team is here to help! Reach out to us at 
+                            <a href="mailto:support@nileflowafrica.com" style="color: #60a5fa; text-decoration: none;">support@nileflowafrica.com</a> 
+                            or visit our help center for quick answers to common questions.
+                        </p>
+                    </div>
+                    
+                    <!-- Signature -->
+                    <div class="signature">
+                        <div class="team-name">The Nile Flow Team</div>
+                        <div class="team-title">Celebrating African Excellence Together</div>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="footer">
+                    <div class="footer-links">
+                        <a href="https://nileflowafrica.com" class="footer-link">Visit Our Store</a>
+                        <a href="https://nileflowafrica.com/home" class="footer-link">Browse Categories</a>
+                        <a href="https://nileflowafrica.com/about-us" class="footer-link">Our Story</a>
+                        <a href="https://nileflowafrica.com/contact" class="footer-link">Contact Us</a>
+                    </div>
+                    
+                    <div class="copyright">
+                        © ${new Date().getFullYear()} Nile Flow Africa. All rights reserved.<br>
+                        Nairobi, Kenya | Premium African Marketplace
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+      `,
+    });
+    console.log(`Welcome email sent successfully to ${customerEmail}`);
+  } catch (err) {
+    console.error("Welcome email sending failed:", err);
+    throw err;
+  }
+};
 
 const verifyCustomer = async (req, res) => {
   const { email, verificationCode, deviceId } = req.body;
@@ -751,6 +1129,21 @@ const verifyCustomer = async (req, res) => {
       path: "/",
     });
 
+    // 🎉 Send welcome email after successful verification
+    try {
+      await sendWelcomeEmail({
+        customerEmail: user.email,
+        customerName: user.username || user.email.split("@")[0],
+      });
+      console.log("Welcome email sent successfully after verification");
+    } catch (emailError) {
+      console.error(
+        "Failed to send welcome email, but verification was successful:",
+        emailError,
+      );
+      // Don't fail the verification if welcome email fails
+    }
+
     // Return success with user data
     return res.status(200).json({
       message: "Email verified and logged in successfully.",
@@ -818,7 +1211,7 @@ const verifyCustomerMobile = async (req, res) => {
     const profileList = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_USER_COLLECTION_ID,
-      [Query.equal("email", email)]
+      [Query.equal("email", email)],
     );
     const profile = profileList.documents[0] || null;
 
@@ -854,7 +1247,7 @@ const storeVerificationCode = async (email, code) => {
     const existingDocs = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_VERIFICATION_COLLECTION_ID,
-      [Query.equal("email", email)]
+      [Query.equal("email", email)],
     );
 
     if (existingDocs.documents.length > 0) {
@@ -864,7 +1257,7 @@ const storeVerificationCode = async (email, code) => {
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_VERIFICATION_COLLECTION_ID,
         documentId,
-        { code, createdAt: new Date().toISOString() }
+        { code, createdAt: new Date().toISOString() },
       );
       console.log("Updated existing verification code for:", email);
     } else {
@@ -877,7 +1270,7 @@ const storeVerificationCode = async (email, code) => {
           email,
           code,
           createdAt: new Date().toISOString(),
-        }
+        },
       );
       console.log("Stored new verification code for:", email);
     }
@@ -893,7 +1286,7 @@ const getStoredVerificationCode = async (email) => {
     const response = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_VERIFICATION_COLLECTION_ID,
-      [Query.equal("email", email)]
+      [Query.equal("email", email)],
     );
 
     if (response.documents.length === 0) {
@@ -924,7 +1317,7 @@ const deleteVerificationCode = async (email) => {
     const response = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_VERIFICATION_COLLECTION_ID,
-      [Query.equal("email", email)]
+      [Query.equal("email", email)],
     );
 
     if (response.documents.length > 0) {
@@ -932,7 +1325,7 @@ const deleteVerificationCode = async (email) => {
       await db.deleteDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_VERIFICATION_COLLECTION_ID,
-        documentId
+        documentId,
       );
       console.log("Deleted used verification code for:", email);
     }
@@ -960,7 +1353,7 @@ const markUserAsVerified = async (email) => {
     const profileList = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_USER_COLLECTION_ID,
-      [Query.equal("email", email)]
+      [Query.equal("email", email)],
     );
 
     if (profileList.documents.length > 0) {
@@ -969,7 +1362,7 @@ const markUserAsVerified = async (email) => {
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_USER_COLLECTION_ID,
         profileId,
-        { isVerified: true }
+        { isVerified: true },
       );
       console.log(`User profile for ${email} updated as verified.`);
     }
@@ -1127,14 +1520,14 @@ const sendOrderCancellationEmail = async ({
                                   item.price * item.quantity
                                 ).toFixed(2)}</p>
                             </div>
-                        `
+                        `,
                           )
                           .join("")}
 
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 0 0; margin-top: 15px; border-top: 2px solid rgba(245, 158, 11, 0.3);">
                             <p style="margin: 0; color: #fbbf24; font-weight: 700; font-size: 18px;">TOTAL (Cancelled)</p>
                             <p style="margin: 0; color: #fbbf24; font-weight: 700; font-size: 22px;">Ksh ${parseFloat(
-                              orderTotal
+                              orderTotal,
                             ).toFixed(2)}</p>
                         </div>
                     </div>
@@ -1185,7 +1578,7 @@ const sendCancellationRequestEmail = async ({
 }) => {
   console.log(
     "Preparing to send cancellation request email to:",
-    customerEmail
+    customerEmail,
   );
 
   try {
@@ -1341,7 +1734,7 @@ const sendCancellationRequestEmail = async ({
 
     console.log(
       "✅ Cancellation request email sent successfully to:",
-      customerEmail
+      customerEmail,
     );
   } catch (error) {
     console.error("❌ Failed to send cancellation request email:", error);
@@ -1353,6 +1746,7 @@ module.exports = {
   sendOrderConfirmationEmail,
   sendOrderStatusUpdateEmail,
   sendVerificationEmail,
+  sendWelcomeEmail,
   verifyCustomer,
   storeVerificationCode,
   markUserAsVerified,
