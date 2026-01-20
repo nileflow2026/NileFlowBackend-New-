@@ -43,26 +43,33 @@ console.error = (...args) => {
 };
 // Import and configure Express app
 let app;
+let express, cookieParser, cors, morgan, helmet, fileUpload, rateLimit;
+let appwriteService, securityHeaders, authLimiter, apiLimiter;
+let validateSignup, validateLogin, healthRoutes;
+
 try {
   console.log("🏗️  Setting up Express application...");
-  const express = require("express");
-  const cookieParser = require("cookie-parser");
-  const cors = require("cors");
-  const morgan = require("morgan");
-  const helmet = require("helmet");
-  const fileUpload = require("express-fileupload");
-  const rateLimit = require("express-rate-limit");
+  express = require("express");
+  cookieParser = require("cookie-parser");
+  cors = require("cors");
+  morgan = require("morgan");
+  helmet = require("helmet");
+  fileUpload = require("express-fileupload");
+  rateLimit = require("express-rate-limit");
 
   console.log("📦 Core dependencies loaded successfully");
 
-  const appwriteService = require("../services/AppwriteSessionService"); // Add this
-  const securityHeaders = require("../middleware/security");
-  const { authLimiter, apiLimiter } = require("../middleware/rate-limiter");
-  const {
-    validateSignup,
-    validateLogin,
-  } = require("../middleware/validate.middleware");
-  const healthRoutes = require("../routes/health.routes");
+  appwriteService = require("../services/AppwriteSessionService");
+  securityHeaders = require("../middleware/security");
+  const rateLimiterModule = require("../middleware/rate-limiter");
+  authLimiter = rateLimiterModule.authLimiter;
+  apiLimiter = rateLimiterModule.apiLimiter;
+
+  const validateMiddleware = require("../middleware/validate.middleware");
+  validateSignup = validateMiddleware.validateSignup;
+  validateLogin = validateMiddleware.validateLogin;
+
+  healthRoutes = require("../routes/health.routes");
 
   console.log("🔒 Security and middleware loaded successfully");
 
@@ -191,89 +198,107 @@ console.log("⚙️  Configuring Express middleware...");
 
 try {
   // Security headers
-  securityHeaders(app);
-  console.log("✅ Security headers configured");
+  if (securityHeaders) {
+    securityHeaders(app);
+    console.log("✅ Security headers configured");
+  }
 } catch (securityError) {
   console.error("⚠️  Security headers failed:", securityError.message);
 }
 
 // ========== SECURITY MIDDLEWARE ==========
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", "https://fra.cloud.appwrite.io"],
-      },
-    },
-    hsts: {
-      maxAge: 31536000,
-      includeSubDomains: true,
-      preload: true,
-    },
-  }),
-);
+try {
+  if (helmet) {
+    app.use(
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'", "https://fra.cloud.appwrite.io"],
+          },
+        },
+        hsts: {
+          maxAge: 31536000,
+          includeSubDomains: true,
+          preload: true,
+        },
+      }),
+    );
+    console.log("✅ Helmet security middleware configured");
+  }
+} catch (helmetError) {
+  console.error("⚠️  Helmet middleware failed:", helmetError.message);
+  console.log("Server will continue without Helmet security headers");
+}
 
 // ========== CORS CONFIGURATION ==========
-const corsOptions = {
-  origin: (origin, callback) => {
-    console.log("🌍 CORS Origin Check: ", origin);
-    const allowedOrigins = [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-      "http://localhost:5176",
-      "http://localhost:3000",
-      "https://nile-mart-backend-2.onrender.com",
-      "https://nileflow-com.onrender.com",
-      "https://nileflowafrica.com",
-      "https://www.nileflowafrica.com",
-      "https://nileflow.co.ke",
-      "https://new-nile-flow-backend.onrender.com",
-      "https://nileflowvendordashboard.onrender.com",
-      "https://nile-flow-adminpanel.onrender.com",
-      "https://nile-flow-website.onrender.com",
-      "https://admin.nileflowafrica.com",
-      "https://vendor.nileflowafrica.com",
-    ];
+try {
+  if (cors) {
+    const corsOptions = {
+      origin: (origin, callback) => {
+        console.log("🌍 CORS Origin Check: ", origin);
+        const allowedOrigins = [
+          "http://localhost:5173",
+          "http://localhost:5174",
+          "http://localhost:5175",
+          "http://localhost:5176",
+          "http://localhost:3000",
+          "https://nile-mart-backend-2.onrender.com",
+          "https://nileflow-com.onrender.com",
+          "https://nileflowafrica.com",
+          "https://www.nileflowafrica.com",
+          "https://nileflow.co.ke",
+          "https://new-nile-flow-backend.onrender.com",
+          "https://nileflowvendordashboard.onrender.com",
+          "https://nile-flow-adminpanel.onrender.com",
+          "https://nile-flow-website.onrender.com",
+          "https://admin.nileflowafrica.com",
+          "https://vendor.nileflowafrica.com",
+        ];
 
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      console.log("✅ CORS: Allowing request with no origin");
-      return callback(null, true);
-    }
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) {
+          console.log("✅ CORS: Allowing request with no origin");
+          return callback(null, true);
+        }
 
-    if (allowedOrigins.includes(origin)) {
-      console.log(`✅ CORS: Allowing origin ${origin}`);
-      callback(null, true);
-    } else {
-      console.warn(`❌ CORS BLOCKED: ${origin} not in allowed origins`);
-      console.warn("Allowed origins:", allowedOrigins);
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "Accept",
-    "X-CSRF-Token",
-    "X-Transaction-ID",
-    "Cache-Control",
-    "Pragma",
-  ],
-  credentials: true,
-  exposedHeaders: ["X-CSRF-Token"],
-  optionsSuccessStatus: 200,
-  maxAge: 86400, // 24 hours
-  preflightContinue: false, // Pass control to the next handler
-};
+        if (allowedOrigins.includes(origin)) {
+          console.log(`✅ CORS: Allowing origin ${origin}`);
+          callback(null, true);
+        } else {
+          console.warn(`❌ CORS BLOCKED: ${origin} not in allowed origins`);
+          console.warn("Allowed origins:", allowedOrigins);
+          callback(new Error("Not allowed by CORS"));
+        }
+      },
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Accept",
+        "X-CSRF-Token",
+        "X-Transaction-ID",
+        "Cache-Control",
+        "Pragma",
+      ],
+      credentials: true,
+      exposedHeaders: ["X-CSRF-Token"],
+      optionsSuccessStatus: 200,
+      maxAge: 86400, // 24 hours
+      preflightContinue: false, // Pass control to the next handler
+    };
 
-app.use(cors(corsOptions));
+    app.use(cors(corsOptions));
+    console.log("✅ CORS middleware configured");
+  }
+} catch (corsError) {
+  console.error("⚠️  CORS middleware failed:", corsError.message);
+  console.log("Server will continue without CORS middleware");
+}
 
 // Global CORS headers middleware - ALWAYS set these headers for admin requests
 app.use("/api/admin", (req, res, next) => {
@@ -382,35 +407,59 @@ app.use((req, res, next) => {
   next();
 });
 
-/* app.use(authLimiter); // Apply to auth routes */
-
 // ========== REQUEST PARSING ==========
-// Preserve raw body for Stripe webhook signature verification
-app.use(
-  express.json({
-    limit: "50mb",
-    verify: (req, res, buf) => {
-      // Store raw body buffer for routes that need it (Stripe webhooks)
-      req.rawBody = buf;
-    },
-  }),
-);
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-app.use(cookieParser()); // Apply to all routes
-/* app.use(apiLimiter) */ // ========== LOGGING ==========
-app.use(
-  morgan(":method :url :status :response-time ms - :res[content-length]"),
-);
+try {
+  console.log("🔧 Configuring request parsing middleware...");
+
+  // Preserve raw body for Stripe webhook signature verification
+  if (express) {
+    app.use(
+      express.json({
+        limit: "50mb",
+        verify: (req, res, buf) => {
+          // Store raw body buffer for routes that need it (Stripe webhooks)
+          req.rawBody = buf;
+        },
+      }),
+    );
+    app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+  }
+
+  if (cookieParser) {
+    app.use(cookieParser()); // Apply to all routes
+  }
+
+  console.log("✅ Request parsing middleware configured");
+} catch (parsingError) {
+  console.error("⚠️  Request parsing middleware failed:", parsingError.message);
+} // ========== LOGGING ==========
+try {
+  if (morgan) {
+    app.use(
+      morgan(":method :url :status :response-time ms - :res[content-length]"),
+    );
+    console.log("✅ Morgan logging middleware configured");
+  }
+} catch (loggingError) {
+  console.error("⚠️  Logging middleware failed:", loggingError.message);
+}
 
 // ========== FILE UPLOAD ==========
-app.use(
-  fileUpload({
-    useTempFiles: false,
-    createParentPath: true,
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
-    abortOnLimit: true,
-  }),
-);
+try {
+  if (fileUpload) {
+    app.use(
+      fileUpload({
+        useTempFiles: false,
+        createParentPath: true,
+        limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+        abortOnLimit: true,
+      }),
+    );
+    console.log("✅ File upload middleware configured");
+  }
+} catch (uploadError) {
+  console.error("⚠️  File upload middleware failed:", uploadError.message);
+}
 
 // ========== APPWRITE INITIALIZATION MIDDLEWARE ==========
 app.use(async (req, res, next) => {
@@ -451,17 +500,7 @@ app.use(async (req, res, next) => {
   }
 });
 
-// Check for scheduled campaigns every 5 minutes
-setInterval(
-  async () => {
-    try {
-      await processScheduledCampaigns();
-    } catch (error) {
-      console.error("Scheduler error:", error);
-    }
-  },
-  5 * 60 * 1000,
-); // 5 minutes
+// Old scheduler removed - now handled in startServer function
 
 // ========== HEALTH CHECKS ==========
 // Simple health check that always works

@@ -2,7 +2,7 @@ const express = require("express");
 const {
   sendForgotPasswordEmail,
   resetPassword,
-} = require("../controllers/UserControllers/ForgotPasswordController");
+} = require("../controllers/UserControllers/forgotPasswordController");
 const router = express.Router();
 
 router.post("/forgot-password", sendForgotPasswordEmail);
