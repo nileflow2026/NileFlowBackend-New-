@@ -505,13 +505,24 @@ app.use(async (req, res, next) => {
 // ========== HEALTH CHECKS ==========
 // Simple health check that always works
 app.get("/", (req, res) => {
-  res.json({
-    status: "online",
-    service: "Nile Flow Backend",
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    version: require("../../package.json").version || "unknown",
-  });
+  try {
+    res.json({
+      status: "online",
+      service: "Nile Flow Backend",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      version: require("../package.json").version || "unknown",
+    });
+  } catch (error) {
+    // Fallback if package.json can't be read
+    res.json({
+      status: "online",
+      service: "Nile Flow Backend",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      version: "unknown",
+    });
+  }
 });
 
 app.use("/health", healthRoutes);
