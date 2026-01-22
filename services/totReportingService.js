@@ -291,8 +291,8 @@ class TOTReportingService {
         Query.greaterThanEqual("$createdAt", startDate.toISOString()),
         Query.lessThan("$createdAt", endDate.toISOString()),
 
-        // Must have commission data
-        Query.isNotNull("commission_earned"),
+        // Must have valid commission data (greater than or equal to 0)
+        Query.greaterThanEqual("commission_earned", 0),
 
         // Order by creation date for consistent processing
         Query.orderAsc("$createdAt"),

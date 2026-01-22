@@ -438,10 +438,7 @@ class CommissionService {
     const { startDate, endDate, vendorId } = params;
 
     try {
-      const queries = [
-        Query.notEqual("commission_earned", null),
-        Query.greaterThan("commission_earned", 0),
-      ];
+      const queries = [Query.greaterThan("commission_earned", 0)];
 
       if (startDate) {
         queries.push(Query.greaterThanEqual("$createdAt", startDate));
