@@ -272,6 +272,69 @@ class CommissionController {
   }
 
   /**
+   * GET /api/admin/commission/gmv
+   * Get GMV data with daily breakdown for charts
+   */
+  static async getGMVData(req, res) {
+    try {
+      // Verify admin authentication
+      if (!req.user || req.user.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          error: "Admin access required",
+        });
+      }
+
+      const { timeframe = "30d", vendorId } = req.query;
+
+      // Calculate date range based on timeframe
+      const now = new Date();
+      const daysBack =
+        {
+          "7d": 7,
+          "30d": 30,
+          "90d": 90,
+          "1y": 365,
+          last7: 7,
+          last30: 30,
+          last90: 90,
+          lastyear: 365,
+        }[timeframe] || 30;
+
+      const startDate = new Date(
+        now.getTime() - daysBack * 24 * 60 * 60 * 1000,
+      ).toISOString();
+      const endDate = now.toISOString();
+
+      // Get GMV data with daily breakdown
+      const gmvData = await CommissionController.getGMVWithDailyBreakdown(
+        startDate,
+        endDate,
+        vendorId,
+      );
+
+      res.json({
+        success: true,
+        data: gmvData,
+        generatedAt: new Date().toISOString(),
+        period: {
+          startDate,
+          endDate,
+          days: daysBack,
+          timeframe,
+        },
+      });
+    } catch (error) {
+      console.error("Error getting GMV data:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to retrieve GMV data",
+        details: error.message,
+      });
+    }
+  }
+
+  /**
    * POST /api/admin/commission/calculate-batch
    * Batch calculate commission for multiple orders (backfill/correction)
    */
@@ -488,7 +551,107 @@ class CommissionController {
         totalGMV: 0,
         orderCount: 0,
         averageOrderValue: 0,
-        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Helper: Get GMV analytics with daily breakdown for charts
+   */
+  static async getGMVWithDailyBreakdown(startDate, endDate, vendorId = null) {
+    try {
+      const queries = [
+        Query.equal("gmv_eligible", true),
+        Query.greaterThan("transaction_amount", 0),
+      ];
+
+      if (startDate) {
+        queries.push(Query.greaterThanEqual("$createdAt", startDate));
+      }
+
+      if (endDate) {
+        queries.push(Query.lessThanEqual("$createdAt", endDate));
+      }
+
+      if (vendorId) {
+        queries.push(Query.equal("vendor_id", vendorId));
+      }
+
+      const orders = await db.listDocuments(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_ORDERS_COLLECTION,
+        queries,
+      );
+
+      // Calculate totals
+      const totalGMV = orders.documents.reduce(
+        (sum, order) => sum + (parseFloat(order.transaction_amount) || 0),
+        0,
+      );
+
+      const orderCount = orders.documents.length;
+      const averageOrderValue = orderCount > 0 ? totalGMV / orderCount : 0;
+
+      // Group orders by day for daily breakdown
+      const dailyGMV = {};
+
+      orders.documents.forEach((order) => {
+        const date = new Date(order.$createdAt);
+        const dayKey = date.toISOString().split("T")[0]; // YYYY-MM-DD format
+        const amount = parseFloat(order.transaction_amount) || 0;
+
+        if (!dailyGMV[dayKey]) {
+          dailyGMV[dayKey] = {
+            date: dayKey,
+            gmv: 0,
+            orders: 0,
+            day: date.toLocaleDateString("en-US", { weekday: "short" }),
+            fullDate: date.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }),
+          };
+        }
+
+        dailyGMV[dayKey].gmv += amount;
+        dailyGMV[dayKey].orders += 1;
+      });
+
+      // Convert to array and sort by date
+      const dailyGMVArray = Object.values(dailyGMV).sort(
+        (a, b) => new Date(a.date) - new Date(b.date),
+      );
+
+      // Round GMV values
+      dailyGMVArray.forEach((day) => {
+        day.gmv = Math.round(day.gmv * 100) / 100;
+      });
+
+      return {
+        totalGMV: Math.round(totalGMV * 100) / 100,
+        orderCount,
+        averageOrderValue: Math.round(averageOrderValue * 100) / 100,
+        daily_gmv: dailyGMVArray,
+        period: {
+          startDate,
+          endDate,
+          days: Math.ceil(
+            (new Date(endDate) - new Date(startDate)) / (24 * 60 * 60 * 1000),
+          ),
+        },
+      };
+    } catch (error) {
+      console.error(
+        "Error calculating GMV analytics with daily breakdown:",
+        error,
+      );
+      return {
+        totalGMV: 0,
+        orderCount: 0,
+        averageOrderValue: 0,
+        daily_gmv: [],
+        period: { startDate, endDate, days: 0 },
       };
     }
   }

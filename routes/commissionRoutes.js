@@ -36,6 +36,13 @@ router.get(
   CommissionController.getCommissionAnalytics,
 );
 
+// GET /api/admin/commission/gmv - Get GMV data with daily breakdown
+router.get(
+  "/gmv",
+  authenticateToken,
+  CommissionController.getGMVData,
+);
+
 // POST /api/admin/commission/calculate-batch - Batch calculate commissions
 router.post(
   "/calculate-batch",
