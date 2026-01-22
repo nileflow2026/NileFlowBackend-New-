@@ -18,6 +18,9 @@ const schema = Joi.object({
   APPWRITE_CART_COLLECTION_ID: Joi.string().required(),
   APPWRITE_CANCELLED_ORDERS_COLLECTION_ID: Joi.string().optional(),
   APPWRITE_CANCELLATION_REQUESTS_COLLECTION_ID: Joi.string().optional(),
+  // Platform Settings & Commission System
+  APPWRITE_PLATFORM_SETTINGS_COLLECTION_ID: Joi.string().optional(),
+  APPWRITE_AUDIT_LOGS_COLLECTION_ID: Joi.string().optional(),
   // Subscriptions Collection
   APPWRITE_SUBSCRIPTIONS_COLLECTION_ID: Joi.string().optional(),
   // Products Collection

@@ -105,6 +105,7 @@ try {
   settingRoutes = require("../routes/settingsRouter");
   ClientRoute = require("../routes/ClientauthRouter");
   ClientRouter = require("../routes/ClientRoutes");
+  commissionRoutes = require("../routes/commissionRoutes");
   console.log("✅ Core routes loaded successfully");
 } catch (routeError) {
   console.error("❌ Failed to load core routes:", routeError.message);
@@ -622,6 +623,7 @@ safeMount("/api/products", adminRouter, "Products (Admin)");
 safeMount("/api/deliveries", adminRouter, "Deliveries");
 safeMount("/api/admin/orderStatus", adminRouter, "Admin Order Status");
 safeMount("/api/admin/addproducts", adminRouter, "Admin Add Products");
+safeMount("/api/admin/commission", commissionRoutes, "Admin Commission");
 safeMount(
   "/api/admin/customer-messages",
   adminRouter,

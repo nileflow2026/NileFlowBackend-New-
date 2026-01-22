@@ -24,6 +24,7 @@ const {
   awardMilesToUser,
   updateOrderWithPremiumData,
 } = require("../../services/premiumOrderTrackingService");
+const { commissionService } = require("../../services/commissionService");
 
 // Global cache for processed callbacks (in production, use Redis)
 const processedCallbacks = new Map();
@@ -50,6 +51,7 @@ async function processSuccessfulMpesaPayment(order, orderId, paymentDetails) {
   const { mpesaReceiptNumber, amount, phoneNumber } = paymentDetails;
 
   try {
+    console.log(`💰 Processing successful M-Pesa payment for order ${orderId}`);
     // 1. Parse cart for stock reduction
     const cart = JSON.parse(order.items || "[]");
     let stockUpdateResult = { success: true, updatedProducts: [] };
@@ -82,6 +84,28 @@ async function processSuccessfulMpesaPayment(order, orderId, paymentDetails) {
         updatedAt: new Date().toISOString(),
       },
     );
+
+    // 3.1 CALCULATE COMMISSION FOR COMPLETED ORDER
+    console.log("💰 Calculating commission for completed order...");
+    try {
+      const commissionResult = await commissionService.calculateOrderCommission(
+        orderId,
+        order,
+      );
+
+      if (commissionResult.success) {
+        console.log(
+          `✅ Commission calculated: ${commissionResult.commission_earned} at ${commissionResult.commission_percent}%`,
+        );
+      } else {
+        console.warn(
+          `⚠️ Commission calculation skipped: ${commissionResult.message}`,
+        );
+      }
+    } catch (commissionError) {
+      console.error("❌ Commission calculation failed:", commissionError);
+      // Don't fail the payment for commission calculation errors
+    }
 
     // 4. Process premium benefits (non-blocking)
     try {
