@@ -43,6 +43,10 @@ const schema = Joi.object({
   BUSINESS_METRICS_COLLECTION_ID: Joi.string().optional(),
   // Refresh tokens collection used by auth controllers
   APPWRITE_REFRESH_TOKEN_COLLECTION_ID: Joi.string().required(),
+  // Vendor Payout System Collections
+  APPWRITE_VENDOR_PAYOUT_BATCHES_COLLECTION_ID: Joi.string().required(),
+  APPWRITE_VENDOR_PAYOUTS_COLLECTION_ID: Joi.string().required(),
+  APPWRITE_PAYOUT_AUDIT_LOGS_COLLECTION_ID: Joi.string().required(),
   // Frontend URL used for OAuth final redirect
   FRONTEND_URL: Joi.string().uri().default("http://localhost:5173"),
   // Google OAuth

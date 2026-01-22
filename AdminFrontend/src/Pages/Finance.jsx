@@ -28,6 +28,7 @@ import {
   getPreviousMonth,
   isValidMonth,
 } from "../services/financeService";
+import VendorPayoutManagement from "../components/VendorPayoutManagement";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
@@ -39,6 +40,7 @@ const Finance = () => {
   const [systemHealth, setSystemHealth] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("tot-reports"); // Add tab state
   const [filters, setFilters] = useState({
     year: new Date().getFullYear(),
     month: "",
@@ -164,7 +166,7 @@ const Finance = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Finance Dashboard</h1>
               <p className="text-gray-600 mt-2">
-                KRA-Compliant Turnover Tax (TOT) Reporting System
+                KRA-Compliant TOT Reporting & Vendor Payout Management
               </p>
             </div>
             {systemHealth && (
@@ -183,6 +185,34 @@ const Finance = () => {
                 </span>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8 px-6">
+              <button
+                onClick={() => setActiveTab("tot-reports")}
+                className={`py-3 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "tot-reports"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                TOT Reports
+              </button>
+              <button
+                onClick={() => setActiveTab("vendor-payouts")}
+                className={`py-3 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "vendor-payouts"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Vendor Payouts
+              </button>
+            </nav>
           </div>
         </div>
 
@@ -271,8 +301,12 @@ const Finance = () => {
           </div>
         )}
 
-        {/* Report Generation Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Tab Content */}
+        <div className="space-y-6">
+          {activeTab === "tot-reports" && (
+            <>
+              {/* Report Generation Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Generate Report */}
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Generate TOT Report</h2>
@@ -523,6 +557,13 @@ const Finance = () => {
               </tbody>
             </table>
           </div>
+        </div>
+            </>
+          )}
+
+          {activeTab === "vendor-payouts" && (
+            <VendorPayoutManagement />
+          )}
         </div>
       </div>
     </div>
