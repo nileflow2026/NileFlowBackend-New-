@@ -231,10 +231,17 @@ class CommissionController {
       });
 
       // Get GMV data
-      const gmvData = await this.getGMVAnalytics(start, end, vendorId);
+      const gmvData = await CommissionController.getGMVAnalytics(
+        start,
+        end,
+        vendorId,
+      );
 
       // Get commission rate history for the period
-      const rateHistory = await this.getCommissionRateHistory(start, end);
+      const rateHistory = await CommissionController.getCommissionRateHistory(
+        start,
+        end,
+      );
 
       res.json({
         success: true,
