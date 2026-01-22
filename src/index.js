@@ -625,6 +625,11 @@ safeMount("/api/admin/orderStatus", adminRouter, "Admin Order Status");
 safeMount("/api/admin/addproducts", adminRouter, "Admin Add Products");
 safeMount("/api/admin/commission", commissionRoutes, "Admin Commission");
 safeMount(
+  "/api/finance",
+  require("../routes/financeRoutes"),
+  "Finance & Tax Reporting",
+);
+safeMount(
   "/api/admin/customer-messages",
   adminRouter,
   "Admin Customer Messages",

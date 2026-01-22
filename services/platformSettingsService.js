@@ -23,6 +23,23 @@ class PlatformSettingsService {
     this.databaseId = env.APPWRITE_DATABASE_ID;
     this.collectionId = env.APPWRITE_PLATFORM_SETTINGS_COLLECTION_ID;
 
+    // Validate critical configuration on startup
+    if (!this.databaseId) {
+      throw new Error(
+        "APPWRITE_DATABASE_ID is required but not configured in environment",
+      );
+    }
+
+    if (!this.collectionId) {
+      throw new Error(
+        "APPWRITE_PLATFORM_SETTINGS_COLLECTION_ID is required but not configured in environment",
+      );
+    }
+
+    console.log(
+      `🔧 Platform Settings Service initialized with collection: ${this.collectionId}`,
+    );
+
     // Cache for frequently accessed settings (TTL: 5 minutes)
     this.settingsCache = new Map();
     this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
@@ -256,10 +273,22 @@ class PlatformSettingsService {
    */
   async getSetting(settingKey) {
     if (!this.collectionId) {
-      throw new Error("Platform settings collection not configured");
+      throw new Error(
+        `Platform settings collection not configured. Expected APPWRITE_PLATFORM_SETTINGS_COLLECTION_ID environment variable but got: ${this.collectionId}`,
+      );
+    }
+
+    if (!this.databaseId) {
+      throw new Error(
+        `Database not configured. Expected APPWRITE_DATABASE_ID environment variable but got: ${this.databaseId}`,
+      );
     }
 
     try {
+      console.log(
+        `🔍 Getting setting '${settingKey}' from collection ${this.collectionId}`,
+      );
+
       const settings = await db.listDocuments(
         this.databaseId,
         this.collectionId,
@@ -271,12 +300,23 @@ class PlatformSettingsService {
       );
 
       if (settings.documents.length === 0) {
+        console.warn(
+          `⚠️  Setting '${settingKey}' not found in platform settings`,
+        );
         throw new Error(`Setting '${settingKey}' not found`);
       }
 
+      console.log(
+        `✅ Retrieved setting '${settingKey}': ${settings.documents[0].settingValue}`,
+      );
       return settings.documents[0];
     } catch (error) {
-      console.error(`Error getting setting '${settingKey}':`, error);
+      console.error(`❌ Error getting setting '${settingKey}':`, {
+        error: error.message,
+        databaseId: this.databaseId,
+        collectionId: this.collectionId,
+        settingKey: settingKey,
+      });
       throw error;
     }
   }

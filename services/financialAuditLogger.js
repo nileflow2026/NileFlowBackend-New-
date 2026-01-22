@@ -175,6 +175,192 @@ class FinancialAuditLogger {
   }
 
   /**
+   * Log TOT report generation for KRA compliance
+   *
+   * @param {Object} reportData - TOT report generation data
+   */
+  async logTOTReportGeneration(reportData) {
+    try {
+      const auditEvent = {
+        eventType: "tot_report_generation",
+        severity: this.severityLevels.HIGH,
+        userId: reportData.generatedBy,
+        userRole: "admin",
+        entityType: "FinancialReport",
+        entityId: reportData.reportId,
+        action: "GENERATE_TOT_REPORT",
+        timestamp: new Date().toISOString(),
+
+        // TOT report specific data
+        totReportData: {
+          reportingPeriod: reportData.reportingPeriod,
+          totalOrders: reportData.totalOrders,
+          totalCommission: reportData.totalCommission,
+          totRate: 0.03, // 3% TOT rate
+          totAmount: reportData.totAmount,
+          currency: "KES",
+          auditChecksum: reportData.auditChecksum,
+        },
+
+        // KRA compliance data
+        complianceData: {
+          reportType: "Turnover Tax (TOT)",
+          kraCompliance: true,
+          calculationMethod: "SUM(commission_earned) * 0.03",
+          dataSource: "orders collection",
+          immutableRecord: true,
+          auditTrailRequired: true,
+        },
+
+        // Context
+        context: {
+          ipAddress: reportData.ipAddress,
+          userAgent: reportData.userAgent,
+          generationTrigger: "admin_request",
+          systemTimestamp: new Date().toISOString(),
+        },
+
+        // Metadata for audit trail
+        metadata: {
+          precision: "2_decimal_places",
+          roundingMethod: "Math.round",
+          reportFormat: "database_document",
+          exportReady: true,
+        },
+      };
+
+      await this.writeAuditLog(auditEvent);
+      console.log(`✅ TOT report generation logged for period ${reportData.reportingPeriod}`);
+    } catch (error) {
+      console.error(
+        "❌ Financial audit logging failed for TOT report generation:",
+        error,
+      );
+    }
+  }
+
+  /**
+   * Log financial export operations (CSV, PDF for KRA)
+   *
+   * @param {Object} exportData - Export operation data
+   */
+  async logFinancialExport(exportData) {
+    try {
+      const auditEvent = {
+        eventType: "financial_export",
+        severity: exportData.severity || this.severityLevels.HIGH,
+        userId: exportData.exportedBy,
+        userRole: "admin",
+        entityType: "FinancialReport",
+        entityId: exportData.reportingPeriod,
+        action: "EXPORT_FINANCIAL_DATA",
+        timestamp: new Date().toISOString(),
+
+        // Export specific data
+        exportData: {
+          exportType: exportData.exportType,
+          reportingPeriod: exportData.reportingPeriod,
+          format: exportData.format,
+          fileSize: exportData.fileSize || null,
+          downloadInitiated: true,
+        },
+
+        // Security and compliance
+        securityData: {
+          sensitiveDataExport: true,
+          kraComplianceExport: exportData.exportType === "TOT_REPORT",
+          accessLevel: "finance_admin",
+          auditRequired: true,
+          retentionRequired: true,
+        },
+
+        // Context
+        context: {
+          ipAddress: exportData.ipAddress,
+          userAgent: exportData.userAgent,
+          exportTrigger: "manual_download",
+          browserDownload: exportData.format === "csv",
+        },
+
+        // Metadata
+        metadata: {
+          exportMethod: "direct_download",
+          governmentFiling: exportData.exportType === "TOT_REPORT",
+          complianceLevel: "kra_ready",
+        },
+      };
+
+      await this.writeAuditLog(auditEvent);
+      console.log(`✅ Financial export logged: ${exportData.exportType} for ${exportData.reportingPeriod}`);
+    } catch (error) {
+      console.error(
+        "❌ Financial audit logging failed for export operation:",
+        error,
+      );
+    }
+  }
+
+  /**
+   * Log unauthorized financial access attempts
+   *
+   * @param {Object} accessData - Access attempt data
+   */
+  async logUnauthorizedFinancialAccess(accessData) {
+    try {
+      const auditEvent = {
+        eventType: "unauthorized_financial_access",
+        severity: this.severityLevels.CRITICAL,
+        userId: accessData.userId || "unknown",
+        userRole: accessData.userRole || "unknown",
+        entityType: "FinancialSystem",
+        entityId: "access_control",
+        action: "UNAUTHORIZED_ACCESS_ATTEMPT",
+        timestamp: new Date().toISOString(),
+
+        // Security incident data
+        securityIncident: {
+          attemptedEndpoint: accessData.attemptedEndpoint,
+          requiredRole: "admin_or_finance",
+          actualRole: accessData.userRole,
+          accessDenied: true,
+          threatLevel: "medium",
+        },
+
+        // Context
+        context: {
+          ipAddress: accessData.ipAddress,
+          userAgent: accessData.userAgent,
+          sessionId: accessData.sessionId || null,
+          referrer: accessData.referrer || null,
+        },
+
+        // Response taken
+        responseData: {
+          httpStatus: 403,
+          messageShown: "Access denied. Finance role required.",
+          loggedToSecurity: true,
+          userNotified: false,
+        },
+
+        // Metadata
+        metadata: {
+          securityEvent: true,
+          requiresReview: true,
+          alertGenerated: false, // Could trigger alerts in production
+        },
+      };
+
+      await this.writeAuditLog(auditEvent);
+      console.log(`🚨 Unauthorized financial access attempt logged from ${accessData.ipAddress}`);
+    } catch (error) {
+      console.error(
+        "❌ Failed to log unauthorized financial access attempt:",
+        error,
+      );
+    }
+  }
+
+  /**
    * Log batch commission calculation operation
    *
    * @param {Object} batchData - Batch operation data
