@@ -33,18 +33,20 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        console.log('🔄 Initializing auth state...');
+        console.log("🔄 Initializing auth state...");
         const result = await getCurrentUser();
         if (result.success) {
-          console.log('✅ User authenticated:', result.data.user?.email);
+          console.log("✅ User authenticated:", result.data.user?.email);
           setUser(result.data.user);
           setIsAuthenticated(true);
         } else {
-          console.log('ℹ️ No active session found, user needs to login');
+          console.log("ℹ️ No active session found, user needs to login");
           setIsAuthenticated(false);
         }
       } catch (error) {
-        console.log('ℹ️ Auth initialization: No active session, redirecting to login');
+        console.log(
+          "ℹ️ Auth initialization: No active session, redirecting to login",
+        );
         setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
@@ -73,7 +75,7 @@ export const AuthProvider = ({ children }) => {
       email,
       password,
       username,
-      deviceId
+      deviceId,
     );
 
     if (result.success) {

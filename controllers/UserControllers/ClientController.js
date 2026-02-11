@@ -284,10 +284,10 @@ const getProducts = async (req, res) => {
 
     let filters = [];
 
-    // ✅ CRITICAL: Only show APPROVED and ACTIVE products
+    /* // ✅ CRITICAL: Only show APPROVED and ACTIVE products
     filters.push(Query.equal("isApproved", true));
     filters.push(Query.equal("isActive", true));
-
+ */
     // Category filter
     if (category && category !== "all") {
       // Handle both category and categoryId arrays
