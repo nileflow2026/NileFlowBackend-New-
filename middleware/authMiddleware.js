@@ -3,6 +3,10 @@ const { verifyAccessToken } = require("../utils/tokenManager");
 
 const authMiddleware = async (req, res, next) => {
   try {
+    console.log(`🔐 Auth middleware called for: ${req.method} ${req.path}`);
+    console.log(`🌐 Origin: ${req.headers.origin}`);
+    console.log(`🍪 Cookies received:`, Object.keys(req.cookies || {}));
+
     // Set CORS headers first, especially for cross-origin routes
     const origin = req.headers.origin;
     if (
@@ -16,11 +20,11 @@ const authMiddleware = async (req, res, next) => {
       res.header("Access-Control-Allow-Credentials", "true");
       res.header(
         "Access-Control-Allow-Methods",
-        "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+        "GET,POST,PUT,PATCH,DELETE,OPTIONS",
       );
       res.header(
         "Access-Control-Allow-Headers",
-        "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma"
+        "Content-Type,Authorization,X-Requested-With,Accept,X-CSRF-Token,Cache-Control,Pragma",
       );
       console.log(`🔐 Auth middleware: CORS headers set for ${origin}`);
     }
@@ -28,10 +32,22 @@ const authMiddleware = async (req, res, next) => {
     // Get token from cookie
     const accessToken = req.cookies?.accessToken;
 
+    console.log(`🔍 Access token present: ${accessToken ? "YES" : "NO"}`);
+    if (accessToken) {
+      console.log(`🔍 Token length: ${accessToken.length}`);
+      console.log(`🔍 Token starts with: ${accessToken.substring(0, 20)}...`);
+    }
+
     if (!accessToken) {
       console.log("❌ Auth middleware: No access token provided");
+      console.log("❌ Available cookies:", req.cookies);
       return res.status(401).json({
         error: "No access token provided",
+        debug: {
+          cookiesReceived: Object.keys(req.cookies || {}),
+          origin: req.headers.origin,
+          path: req.path,
+        },
       });
     }
 

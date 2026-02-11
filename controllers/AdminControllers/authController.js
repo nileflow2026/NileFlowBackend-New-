@@ -18,7 +18,7 @@ if (
   !env.APPWRITE_ADMIN_COLLECTION_ID
 ) {
   throw new Error(
-    "Missing Appwrite collection env variables. Please set APPWRITE_DATABASE_ID, APPWRITE_REFRESH_TOKEN_COLLECTION_ID, APPWRITE_ADMIN_COLLECTION_ID."
+    "Missing Appwrite collection env variables. Please set APPWRITE_DATABASE_ID, APPWRITE_REFRESH_TOKEN_COLLECTION_ID, APPWRITE_ADMIN_COLLECTION_ID.",
   );
 }
 
@@ -42,6 +42,11 @@ function getCookieDomain(req) {
     host,
     protocol,
     isSecure: protocol === "https",
+    requestHeaders: {
+      origin: req.headers.origin,
+      host: req.headers.host,
+      referer: req.headers.referer,
+    },
   });
 
   // Check if backend and frontend are on different domains (cross-origin)
@@ -51,11 +56,19 @@ function getCookieDomain(req) {
     !origin.includes(host) &&
     !host.includes(origin.replace("https://", "").replace("http://", ""));
 
+  console.log("[Admin Cookie] Cross-origin check:", {
+    origin,
+    host,
+    isCrossOrigin,
+  });
+
   if (isCrossOrigin) {
-    console.log("[Admin Cookie] Cross-origin detected - no domain restriction");
+    console.log(
+      "[Admin Cookie] Cross-origin detected - using secure cross-origin settings",
+    );
     return {
       domain: undefined, // No domain restriction for cross-origin
-      secure: protocol === "https",
+      secure: true, // Always secure for cross-origin
       sameSite: "none", // Required for cross-origin cookies
     };
   }
@@ -77,7 +90,7 @@ function getCookieDomain(req) {
     (host && host.includes("admin.nileflowafrica.com"))
   ) {
     console.log(
-      "[Admin Cookie] Using admin.nileflowafrica.com domain (same-origin)"
+      "[Admin Cookie] Using admin.nileflowafrica.com domain (same-origin)",
     );
     return {
       domain: ".admin.nileflowafrica.com",
@@ -99,12 +112,12 @@ function getCookieDomain(req) {
     };
   }
 
-  // Default - no domain restriction
-  console.log("[Admin Cookie] Using default - no domain restriction");
+  // Default - secure cross-origin settings for production
+  console.log("[Admin Cookie] Using default secure cross-origin settings");
   return {
     domain: undefined,
-    secure: protocol === "https",
-    sameSite: "lax",
+    secure: true,
+    sameSite: "none",
   };
 }
 
@@ -122,7 +135,7 @@ async function persistRefreshToken({
 }) {
   const hashedRefreshToken = hashToken(refreshToken);
   const expiresAt = new Date(
-    Date.now() + timeframeToMs(env.JWT_REFRESH_EXPIRES_IN || "30d")
+    Date.now() + timeframeToMs(env.JWT_REFRESH_EXPIRES_IN || "30d"),
   ).toISOString();
   const docId = ID.unique();
 
@@ -140,7 +153,7 @@ async function persistRefreshToken({
       userAgent,
       deviceId,
       rotatedFrom, // optional reference to previous token doc id
-    }
+    },
   );
 }
 
@@ -156,7 +169,7 @@ async function findRefreshTokenRecord({ userId, refreshToken }) {
     [
       Query.equal("userId", userId),
       Query.equal("refreshToken", hashedRefreshToken),
-    ]
+    ],
   );
 
   if (!result || !result.documents || result.documents.length === 0)
@@ -169,7 +182,7 @@ async function findRefreshTokenRecordByHash(refreshToken) {
   const result = await db.listDocuments(
     env.APPWRITE_DATABASE_ID,
     env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
-    [Query.equal("refreshToken", tokenHash)]
+    [Query.equal("refreshToken", tokenHash)],
   );
 
   if (!result || !result.documents || result.documents.length === 0)
@@ -188,7 +201,7 @@ async function findTokensByUserAndDevice(userId, deviceId, userAgent) {
     const res = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
-      [Query.equal("userId", userId), Query.equal("deviceId", deviceId)]
+      [Query.equal("userId", userId), Query.equal("deviceId", deviceId)],
     );
     return res?.documents || [];
   }
@@ -197,7 +210,7 @@ async function findTokensByUserAndDevice(userId, deviceId, userAgent) {
     const res = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
-      [Query.equal("userId", userId), Query.equal("userAgent", userAgent)]
+      [Query.equal("userId", userId), Query.equal("userAgent", userAgent)],
     );
     return res?.documents || [];
   }
@@ -205,7 +218,7 @@ async function findTokensByUserAndDevice(userId, deviceId, userAgent) {
   const res = await db.listDocuments(
     env.APPWRITE_DATABASE_ID,
     env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
-    [Query.equal("userId", userId)]
+    [Query.equal("userId", userId)],
   );
   return res?.documents || [];
 }
@@ -218,7 +231,7 @@ async function revokeRefreshTokenById(docId) {
     env.APPWRITE_DATABASE_ID,
     env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
     docId,
-    { revoked: true, revokedAt: new Date().toISOString() }
+    { revoked: true, revokedAt: new Date().toISOString() },
   );
 }
 
@@ -229,7 +242,7 @@ async function revokeAllUserRefreshTokens(userId) {
   const res = await db.listDocuments(
     env.APPWRITE_DATABASE_ID,
     env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
-    [Query.equal("userId", userId)]
+    [Query.equal("userId", userId)],
   );
 
   if (!res || !res.documents) return 0;
@@ -244,7 +257,7 @@ async function revokeAllUserRefreshTokens(userId) {
         {
           revoked: true,
           revokedAt: new Date().toISOString(),
-        }
+        },
       );
       count++;
     }
@@ -299,7 +312,7 @@ const signup = async (req, res) => {
       email,
       null,
       password,
-      username
+      username,
     );
 
     // 2) Create profile document in admin/user collection
@@ -314,7 +327,7 @@ const signup = async (req, res) => {
         createdAt: new Date().toISOString(),
         avatarUrl: null,
         deviceName: deviceName || null,
-      }
+      },
     );
 
     // 3) Safe attempt to update user prefs (non-fatal)
@@ -328,7 +341,7 @@ const signup = async (req, res) => {
     } catch (prefErr) {
       log.warn(
         "Non-fatal: failed to update user prefs:",
-        prefErr?.message || prefErr
+        prefErr?.message || prefErr,
       );
     }
 
@@ -354,7 +367,7 @@ const signup = async (req, res) => {
       // Persistence failure is important; log and proceed (optionally fail).
       log.error(
         "Failed to persist refresh token:",
-        persistErr?.message || persistErr
+        persistErr?.message || persistErr,
       );
     }
 
@@ -403,7 +416,7 @@ const signup = async (req, res) => {
       try {
         await users.delete(createdUser.$id);
         log.info(
-          "Rolled back Appwrite user after failed signup profile creation."
+          "Rolled back Appwrite user after failed signup profile creation.",
         );
       } catch (delErr) {
         log.error("Rollback failed (delete user):", delErr?.message || delErr);
@@ -513,7 +526,7 @@ const handleRefreshToken = async (req, res) => {
     } catch (verifyErr) {
       log.warn(
         "Refresh token verification failed:",
-        verifyErr?.message || verifyErr
+        verifyErr?.message || verifyErr,
       );
       return res.status(401).json({ error: "Invalid refresh token." });
     }
@@ -528,7 +541,7 @@ const handleRefreshToken = async (req, res) => {
     if (!record) {
       log.warn("Refresh token record not found for user:", userId);
       await revokeAllUserRefreshTokens(userId).catch((e) =>
-        log.error("Error revoking all tokens:", e)
+        log.error("Error revoking all tokens:", e),
       );
       return res.status(401).json({ error: "Invalid refresh token." });
     }
@@ -539,16 +552,16 @@ const handleRefreshToken = async (req, res) => {
         "Revoked refresh token used (possible theft) for user:",
         userId,
         "doc:",
-        record.$id
+        record.$id,
       );
       await revokeAllUserRefreshTokens(userId).catch((e) =>
-        log.error("Error revoking all tokens:", e)
+        log.error("Error revoking all tokens:", e),
       );
       return res.status(401).json({ error: "Refresh token revoked." });
     }
     if (new Date(record.expiresAt) < new Date()) {
       await revokeRefreshTokenById(record.$id).catch((e) =>
-        log.error("Error revoking expired token:", e)
+        log.error("Error revoking expired token:", e),
       );
       return res.status(401).json({ error: "Refresh token expired." });
     }
@@ -561,7 +574,7 @@ const handleRefreshToken = async (req, res) => {
     const deviceTokens = await findTokensByUserAndDevice(
       userId,
       requestDeviceId,
-      requestUserAgent
+      requestUserAgent,
     );
 
     if (!deviceTokens || deviceTokens.length === 0) {
@@ -569,10 +582,10 @@ const handleRefreshToken = async (req, res) => {
         "No device-scoped tokens found for user:",
         userId,
         "deviceId:",
-        requestDeviceId
+        requestDeviceId,
       );
       await revokeAllUserRefreshTokens(userId).catch((e) =>
-        log.error("Error revoking all tokens:", e)
+        log.error("Error revoking all tokens:", e),
       );
       return res.status(401).json({ error: "Invalid refresh token." });
     }
@@ -602,10 +615,10 @@ const handleRefreshToken = async (req, res) => {
         "Refresh token reuse detected for user:",
         userId,
         "presentedDoc:",
-        record.$id
+        record.$id,
       );
       await revokeAllUserRefreshTokens(userId).catch((e) =>
-        log.error("Error revoking all tokens:", e)
+        log.error("Error revoking all tokens:", e),
       );
       return res
         .status(401)
@@ -642,7 +655,7 @@ const handleRefreshToken = async (req, res) => {
     } catch (persistErr) {
       log.error(
         "Failed to persist rotated refresh token:",
-        persistErr?.message || persistErr
+        persistErr?.message || persistErr,
       );
       // Return access token only without rotation
       const cookieConfig = getCookieDomain(req);
@@ -674,13 +687,13 @@ const handleRefreshToken = async (req, res) => {
           {
             rotatedTo: newDoc.$id,
             rotatedAt: new Date().toISOString(),
-          }
+          },
         )
         .catch(() => {}); // Non-fatal
     } catch (revErr) {
       log.error(
         "Failed to revoke old refresh token after rotation:",
-        revErr?.message || revErr
+        revErr?.message || revErr,
       );
     }
 
@@ -745,7 +758,7 @@ const logout = async (req, res) => {
     const result = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
-      queries
+      queries,
     );
 
     if (!result || !result.documents || result.documents.length === 0) {
@@ -755,7 +768,7 @@ const logout = async (req, res) => {
     for (const doc of result.documents) {
       if (!doc.revoked) {
         await revokeRefreshTokenById(doc.$id).catch((e) =>
-          log.error("Failed to revoke token in logout:", e)
+          log.error("Failed to revoke token in logout:", e),
         );
       }
     }

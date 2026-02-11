@@ -550,6 +550,22 @@ app.get("/api/cors-test", (req, res) => {
   });
 });
 
+// ========== COOKIE DEBUG ENDPOINT ==========
+app.get("/api/debug/cookies", (req, res) => {
+  console.log("🍪 Cookie Debug endpoint hit");
+  console.log("Origin:", req.headers.origin);
+  console.log("Cookies:", req.cookies);
+  console.log("Raw Cookie Header:", req.headers.cookie);
+
+  res.json({
+    message: "Cookie debug info",
+    origin: req.headers.origin,
+    cookiesReceived: req.cookies || {},
+    rawCookieHeader: req.headers.cookie || "none",
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Helper function to safely mount routes
 function safeMount(path, router, description) {
   try {

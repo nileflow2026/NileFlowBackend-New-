@@ -268,7 +268,8 @@ const addProduct = async (req, res) => {
         // ✅ The key change is here. Use the relationship attribute name.
         category: category,
         // New (Correct for Many-to-One)
-
+        isApproved: true, // Auto-approve for now; adjust as needed
+        isActive: true, // New field to track if product is active or soft-deleted
         // ✅ New line to populate the 'categoryId' array of string IDs
         categoryId: [category],
         subcategoryId, // 👈 Store the subcategory ID as a string here

@@ -55,14 +55,18 @@ export const signupAdmin = async (email, password, username, deviceId) => {
  */
 export const signinAdmin = async (email, password, deviceId) => {
   try {
+    console.log('🔑 Attempting admin signin for:', email);
     const response = await axiosClient.post("/api/admin/auth/signin/admin", {
       email,
       password,
       deviceId,
     });
 
+    console.log('✅ Signin successful:', response.data);
+    console.log('🍪 Cookies after login:', document.cookie || 'none');
     return { success: true, data: response.data };
   } catch (error) {
+    console.error('❌ Signin failed:', error.response?.data || error.message);
     return {
       success: false,
       error: error.response?.data?.error || "Signin failed. Please try again.",
@@ -92,7 +96,7 @@ export const refreshTokens = async () => {
  */
 export const signoutAdmin = async () => {
   try {
-    await axiosClient.post("/auth/logout", {});
+    await axiosClient.post("/api/admin/auth/logout/admin", {});
     return { success: true };
   } catch (error) {
     return {
@@ -108,9 +112,14 @@ export const signoutAdmin = async () => {
  */
 export const getCurrentUser = async () => {
   try {
+    console.log('🔍 Attempting to get current user...');
+    console.log('🍪 Document cookies:', document.cookie || 'none');
+    
     const response = await axiosClient.get("/api/admin/auth/getcurrentuser");
+    console.log('✅ getCurrentUser success:', response.data);
     return { success: true, data: response.data };
   } catch (error) {
+    console.log('❌ getCurrentUser failed:', error.response?.data || error.message);
     return {
       success: false,
       error: error.response?.data?.error || "Failed to get user data.",
