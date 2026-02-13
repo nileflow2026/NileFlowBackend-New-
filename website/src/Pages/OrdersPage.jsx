@@ -22,7 +22,7 @@ import {
   Gift,
 } from "lucide-react";
 import { useCustomerAuth } from "../../Context/CustomerAuthContext";
-import { useCurrency } from "../../Context/CurrencyProvider";
+import { formatPrice } from "../../utils/priceFormatter";
 import Footer from "../../components/Footer";
 
 const OrdersPage = () => {
@@ -31,7 +31,6 @@ const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState("all");
-  const { currency } = useCurrency();
 
   const fetchOrders = useCallback(async () => {
     if (!user || !user.id) {
@@ -400,8 +399,7 @@ const OrdersPage = () => {
                                   Amount
                                 </p>
                                 <p className="text-lg font-bold text-amber-300">
-                                  {currency}{" "}
-                                  {order.amount?.toFixed(2) || "0.00"}
+                                  {formatPrice(order.amount || 0)}
                                 </p>
                               </div>
                             </div>

@@ -14,6 +14,8 @@ import {
   signUpCustomer,
   signInWithGoogle,
   signInWithFacebook,
+  sendForgotPasswordEmail,
+  resetPasswordWithToken,
 } from "../authServices";
 
 const CustomerAuthContext = createContext(null);
@@ -41,6 +43,7 @@ export const CustomerAuthProvider = ({ children }) => {
         if (result.success) {
           setUser(result.data.user);
           setIsAuthenticated(true);
+          // Removed pickup address check - will only be checked at checkout
         }
       } catch (error) {
         console.error("Customer auth initialization failed:", error);
@@ -71,7 +74,7 @@ export const CustomerAuthProvider = ({ children }) => {
       ];
       const currentPath = window.location.pathname;
       const isProtectedRoute = protectedRoutes.some((route) =>
-        currentPath.startsWith(route)
+        currentPath.startsWith(route),
       );
 
       if (isProtectedRoute) {
@@ -90,7 +93,7 @@ export const CustomerAuthProvider = ({ children }) => {
       password,
       username,
       phone,
-      deviceId
+      deviceId,
     );
 
     if (result.success && result.data?.user) {
@@ -112,16 +115,7 @@ export const CustomerAuthProvider = ({ children }) => {
       // Clear guest status
       localStorage.removeItem("isGuest");
 
-      // Check if user needs to provide pickup address
-      // For now, we'll assume new users need to provide pickup address
-      // In a real app, this would come from the API response
-      const needsPickupAddress =
-        !result.data.user.pickupAddress && !result.data.user.hasPickupAddress;
-      if (needsPickupAddress) {
-        // Set flag to show modal but don't show it immediately
-        // The sign-in page will handle showing it
-        result.needsPickupAddress = true;
-      }
+      // Removed pickup address check - will only be checked at checkout
     }
 
     return result;
@@ -202,6 +196,26 @@ export const CustomerAuthProvider = ({ children }) => {
     }
   }, []);
 
+  const forgotPassword = useCallback(async (email) => {
+    try {
+      const result = await sendForgotPasswordEmail(email);
+      return result;
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      throw error;
+    }
+  }, []);
+
+  const resetPassword = useCallback(async (email, token, newPassword) => {
+    try {
+      const result = await resetPasswordWithToken(email, token, newPassword);
+      return result;
+    } catch (error) {
+      console.error("Reset password error:", error);
+      throw error;
+    }
+  }, []);
+
   const value = {
     user,
     isAuthenticated,
@@ -214,6 +228,8 @@ export const CustomerAuthProvider = ({ children }) => {
     setPickupModalVisible,
     loginWithGoogle,
     loginWithFacebook,
+    forgotPassword,
+    resetPassword,
   };
 
   return (

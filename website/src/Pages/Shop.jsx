@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
@@ -78,11 +79,11 @@ const Shop = () => {
         if (selectedCategory === "all") {
           data = await fetchProduct(
             { category: selectedCategory, search: "" },
-            setLoading
+            setLoading,
           );
         } else {
           const res = await axiosClient.get(
-            `/api/customerprofile/products/category/${selectedCategory}`
+            `/api/customerprofile/products/category/${selectedCategory}`,
           );
           // Ensure we always get an array
           data = Array.isArray(res.data) ? res.data : res.data?.products || [];
@@ -210,48 +211,120 @@ const Shop = () => {
           </p>
 
           {/* Search Bar */}
-          <div className="max-w-2xl mx-auto mb-12">
+          <div className="w-full max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto mb-8 sm:mb-10 md:mb-12 px-4 sm:px-0">
             <div className="relative">
-              <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 to-emerald-500 rounded-2xl blur opacity-30"></div>
-              <div className="relative flex bg-gradient-to-b from-gray-900/90 to-black/90 backdrop-blur-sm border border-amber-800/30 rounded-2xl overflow-hidden">
-                <div className="pl-5 pr-3 flex items-center">
-                  <Search className="w-5 h-5 text-amber-400" />
+              <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 to-emerald-500 rounded-xl sm:rounded-2xl blur opacity-30"></div>
+              <div className="relative flex bg-gradient-to-b from-gray-900/90 to-black/90 backdrop-blur-sm border border-amber-800/30 rounded-xl sm:rounded-2xl overflow-hidden">
+                <div className="pl-3 sm:pl-4 md:pl-5 pr-2 sm:pr-3 flex items-center">
+                  <Search className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
                 </div>
                 <input
                   type="text"
-                  placeholder="Search premium African products..."
+                  placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 px-4 py-4 bg-transparent text-amber-100 placeholder-amber-100/50 focus:outline-none text-lg"
+                  className="flex-1 px-2 sm:px-3 md:px-4 py-3 sm:py-4 bg-transparent text-amber-100 placeholder-amber-100/50 focus:outline-none text-sm sm:text-base md:text-lg"
                 />
-                <button className="px-6 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-semibold hover:from-amber-700 hover:to-amber-800 transition-all duration-300">
-                  Search
+                <button className="px-3 sm:px-4 md:px-6 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-semibold hover:from-amber-700 hover:to-amber-800 transition-all duration-300 text-sm sm:text-base">
+                  <span className="hidden xs:hidden sm:inline">Search</span>
+                  <Search className="w-4 h-4 sm:hidden" />
                 </button>
               </div>
+            </div>
+
+            {/* Search suggestions for better UX on mobile */}
+            <div className="mt-3 sm:mt-4 text-center">
+              <p className="text-xs sm:text-sm text-amber-100/60">
+                <span className="hidden sm:inline">Try searching for: </span>
+                <span className="text-amber-300 font-medium">
+                  Art, Jewelry, Textiles, Spices
+                </span>
+              </p>
             </div>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-            <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-amber-300">
-                {products.length}
+          <div className="w-full max-w-6xl mx-auto px-4 sm:px-0">
+            {/* Mobile: Horizontal scroll */}
+            <div className="md:hidden">
+              <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory">
+                <div className="flex-shrink-0 bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-xl p-4 min-w-[140px] snap-start">
+                  <div className="text-xl sm:text-2xl font-bold text-amber-300">
+                    {products.length}
+                  </div>
+                  <div className="text-amber-100/80 text-xs sm:text-sm whitespace-nowrap">
+                    Premium Products
+                  </div>
+                </div>
+                <div className="flex-shrink-0 bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-xl p-4 min-w-[140px] snap-start">
+                  <div className="text-xl sm:text-2xl font-bold text-emerald-300">
+                    {categories.length}
+                  </div>
+                  <div className="text-emerald-100/80 text-xs sm:text-sm whitespace-nowrap">
+                    Categories
+                  </div>
+                </div>
+                <div className="flex-shrink-0 bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-xl p-4 min-w-[140px] snap-start">
+                  <div className="text-xl sm:text-2xl font-bold text-blue-300">
+                    5
+                  </div>
+                  <div className="text-blue-100/80 text-xs sm:text-sm whitespace-nowrap">
+                    African Regions
+                  </div>
+                </div>
+                <div className="flex-shrink-0 bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-xl p-4 min-w-[140px] snap-start">
+                  <div className="text-xl sm:text-2xl font-bold text-red-300">
+                    24/7
+                  </div>
+                  <div className="text-red-100/80 text-xs sm:text-sm whitespace-nowrap">
+                    Support
+                  </div>
+                </div>
               </div>
-              <div className="text-amber-100/80 text-sm">Premium Products</div>
-            </div>
-            <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-emerald-300">
-                {categories.length}
+
+              {/* Scroll indicator dots */}
+              <div className="flex justify-center space-x-2 mt-2">
+                <div className="w-2 h-2 rounded-full bg-amber-400/60"></div>
+                <div className="w-2 h-2 rounded-full bg-amber-400/30"></div>
+                <div className="w-2 h-2 rounded-full bg-amber-400/30"></div>
+                <div className="w-2 h-2 rounded-full bg-amber-400/30"></div>
               </div>
-              <div className="text-emerald-100/80 text-sm">Categories</div>
             </div>
-            <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-blue-300">5</div>
-              <div className="text-blue-100/80 text-sm">African Regions</div>
-            </div>
-            <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-red-300">24/7</div>
-              <div className="text-red-100/80 text-sm">Support</div>
+
+            {/* Tablet and Desktop: Grid layout */}
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+              <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-xl lg:rounded-2xl p-4 lg:p-6 text-center">
+                <div className="text-2xl lg:text-3xl font-bold text-amber-300">
+                  {products.length}
+                </div>
+                <div className="text-amber-100/80 text-sm lg:text-base">
+                  Premium Products
+                </div>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-xl lg:rounded-2xl p-4 lg:p-6 text-center">
+                <div className="text-2xl lg:text-3xl font-bold text-emerald-300">
+                  {categories.length}
+                </div>
+                <div className="text-emerald-100/80 text-sm lg:text-base">
+                  Categories
+                </div>
+              </div>
+              <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-xl lg:rounded-2xl p-4 lg:p-6 text-center">
+                <div className="text-2xl lg:text-3xl font-bold text-blue-300">
+                  5
+                </div>
+                <div className="text-blue-100/80 text-sm lg:text-base">
+                  African Regions
+                </div>
+              </div>
+              <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-xl lg:rounded-2xl p-4 lg:p-6 text-center">
+                <div className="text-2xl lg:text-3xl font-bold text-red-300">
+                  24/7
+                </div>
+                <div className="text-red-100/80 text-sm lg:text-base">
+                  Support
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -261,15 +334,55 @@ const Shop = () => {
       <main className="pb-20 px-4 sm:px-6 lg:px-8">
         <div className="relative max-w-8xl mx-auto">
           {/* Filter Bar */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+          <div className="flex flex-col gap-4 sm:gap-6 mb-6 sm:mb-8">
             {/* Categories */}
-            <div className="flex-1">
-              <div className="flex flex-wrap gap-2">
+            <div className="w-full">
+              {/* Mobile: Horizontal scroll */}
+              <div className="md:hidden">
+                <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory">
+                  {categories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`group relative flex-shrink-0 px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl border backdrop-blur-sm transition-all duration-300 flex items-center space-x-2 snap-start ${
+                        selectedCategory === category.id
+                          ? "bg-gradient-to-r from-amber-600 to-amber-700 text-white border-amber-500 shadow-lg shadow-amber-900/30"
+                          : "bg-gradient-to-r from-gray-900/50 to-black/50 border-amber-800/30 text-gray-300 hover:border-amber-500/50"
+                      }`}
+                    >
+                      {selectedCategory === category.id && (
+                        <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 to-emerald-500 rounded-lg sm:rounded-xl blur opacity-30"></div>
+                      )}
+                      {category.icon && (
+                        <span className="relative text-sm">
+                          {category.icon}
+                        </span>
+                      )}
+                      <span className="relative font-medium text-sm sm:text-base whitespace-nowrap">
+                        {category.name}
+                      </span>
+                      {selectedCategory === category.id && (
+                        <Zap className="relative w-3 h-3 sm:w-4 sm:h-4" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Scroll hint for mobile */}
+                <div className="flex justify-center mt-2">
+                  <div className="text-xs text-amber-100/50">
+                    Swipe to see more categories
+                  </div>
+                </div>
+              </div>
+
+              {/* Tablet and Desktop: Wrap layout */}
+              <div className="hidden md:flex md:flex-wrap gap-2 lg:gap-3">
                 {categories.map((category) => (
                   <button
                     key={category.id}
                     onClick={() => setSelectedCategory(category.id)}
-                    className={`group relative px-5 py-3 rounded-xl border backdrop-blur-sm transition-all duration-300 flex items-center space-x-2 ${
+                    className={`group relative px-4 lg:px-5 py-2 lg:py-3 rounded-xl border backdrop-blur-sm transition-all duration-300 flex items-center space-x-2 ${
                       selectedCategory === category.id
                         ? "bg-gradient-to-r from-amber-600 to-amber-700 text-white border-amber-500 shadow-lg shadow-amber-900/30"
                         : "bg-gradient-to-r from-gray-900/50 to-black/50 border-amber-800/30 text-gray-300 hover:border-amber-500/50"
@@ -292,38 +405,48 @@ const Shop = () => {
               </div>
             </div>
 
-            {/* Sort & Filter */}
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="appearance-none bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 text-amber-200 rounded-xl pl-4 pr-10 py-3 focus:outline-none focus:border-amber-500/50"
+            {/* Sort & Filter Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+              {/* Sort Dropdown */}
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="relative min-w-0 flex-1 sm:flex-none">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="appearance-none w-full sm:w-auto bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 text-amber-200 rounded-lg sm:rounded-xl pl-3 sm:pl-4 pr-8 sm:pr-10 py-2 sm:py-3 focus:outline-none focus:border-amber-500/50 text-sm sm:text-base"
+                  >
+                    <option value="featured">Featured</option>
+                    <option value="price-low">Price: Low to High</option>
+                    <option value="price-high">Price: High to Low</option>
+                    <option value="rating">Highest Rated</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-amber-400 pointer-events-none" />
+                </div>
+
+                {/* Filter Button */}
+                <button
+                  onClick={() => setFilterOpen(!filterOpen)}
+                  className="flex items-center space-x-2 px-3 sm:px-4 lg:px-5 py-2 sm:py-3 bg-gradient-to-r from-amber-900/30 to-emerald-900/30 backdrop-blur-sm border border-amber-700/40 rounded-lg sm:rounded-xl hover:border-amber-500/60 transition-all duration-300 text-sm sm:text-base"
                 >
-                  <option value="featured">Featured</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="rating">Highest Rated</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400 pointer-events-none" />
+                  <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                  <span className="text-amber-200 font-medium">
+                    <span className="hidden xs:inline">Filters</span>
+                    <span className="xs:hidden">Filter</span>
+                  </span>
+                </button>
               </div>
 
-              <button
-                onClick={() => setFilterOpen(!filterOpen)}
-                className="flex items-center space-x-2 px-5 py-3 bg-gradient-to-r from-amber-900/30 to-emerald-900/30 backdrop-blur-sm border border-amber-700/40 rounded-xl hover:border-amber-500/60 transition-all duration-300"
-              >
-                <Filter className="w-5 h-5 text-amber-400" />
-                <span className="text-amber-200 font-medium">Filters</span>
-              </button>
-
+              {/* Clear Filters Button */}
               {(selectedCategory !== "all" || searchQuery) && (
-                // || selectedRegions.length > 0
                 <button
                   onClick={clearFilters}
-                  className="flex items-center space-x-2 px-5 py-3 bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-xl hover:border-amber-500/50 transition-all duration-300"
+                  className="flex items-center justify-center space-x-2 px-3 sm:px-4 lg:px-5 py-2 sm:py-3 bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-lg sm:rounded-xl hover:border-amber-500/50 transition-all duration-300 text-sm sm:text-base"
                 >
-                  <X className="w-5 h-5 text-amber-400" />
-                  <span className="text-amber-200 font-medium">Clear</span>
+                  <X className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                  <span className="text-amber-200 font-medium">
+                    <span className="hidden sm:inline">Clear Filters</span>
+                    <span className="sm:hidden">Clear</span>
+                  </span>
                 </button>
               )}
             </div>
@@ -526,16 +649,16 @@ const Shop = () => {
                     {sortBy === "featured"
                       ? "Featured"
                       : sortBy === "price-low"
-                      ? "Price: Low to High"
-                      : sortBy === "price-high"
-                      ? "Price: High to Low"
-                      : "Highest Rated"}
+                        ? "Price: Low to High"
+                        : sortBy === "price-high"
+                          ? "Price: High to Low"
+                          : "Highest Rated"}
                   </span>
                 </div>
               </div>
 
               {/* Products */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filteredProducts.map((product) => (
                   <div
                     key={product.$id}
@@ -582,26 +705,76 @@ const Shop = () => {
           )}
 
           {/* Trust Badges */}
-          <div className="mt-16 grid grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-6 text-center">
-              <div className="text-2xl font-bold text-amber-300 mb-2">100%</div>
-              <div className="text-amber-100/80">Authentic Products</div>
-            </div>
-            <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-6 text-center">
-              <div className="text-2xl font-bold text-emerald-300 mb-2">
-                Free
+          <div className="mt-12 sm:mt-16 w-full">
+            {/* Mobile: Horizontal scroll */}
+            <div className="lg:hidden">
+              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory px-4 sm:px-0">
+                <div className="flex-shrink-0 bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center min-w-[160px] snap-start">
+                  <div className="text-xl sm:text-2xl font-bold text-amber-300 mb-1 sm:mb-2">
+                    100%
+                  </div>
+                  <div className="text-amber-100/80 text-xs sm:text-sm lg:text-base whitespace-nowrap">
+                    Authentic Products
+                  </div>
+                </div>
+                <div className="flex-shrink-0 bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center min-w-[160px] snap-start">
+                  <div className="text-xl sm:text-2xl font-bold text-emerald-300 mb-1 sm:mb-2">
+                    Free
+                  </div>
+                  <div className="text-emerald-100/80 text-xs sm:text-sm lg:text-base whitespace-nowrap">
+                    Shipping Over 100
+                  </div>
+                </div>
+                <div className="flex-shrink-0 bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center min-w-[160px] snap-start">
+                  <div className="text-xl sm:text-2xl font-bold text-blue-300 mb-1 sm:mb-2">
+                    30 Days
+                  </div>
+                  <div className="text-blue-100/80 text-xs sm:text-sm lg:text-base whitespace-nowrap">
+                    Returns Policy
+                  </div>
+                </div>
+                <div className="flex-shrink-0 bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center min-w-[160px] snap-start">
+                  <div className="text-xl sm:text-2xl font-bold text-red-300 mb-1 sm:mb-2">
+                    24/7
+                  </div>
+                  <div className="text-red-100/80 text-xs sm:text-sm lg:text-base whitespace-nowrap">
+                    Customer Support
+                  </div>
+                </div>
               </div>
-              <div className="text-emerald-100/80">Shipping Over 100</div>
-            </div>
-            <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-6 text-center">
-              <div className="text-2xl font-bold text-blue-300 mb-2">
-                30 Days
+
+              {/* Scroll hint for mobile */}
+              <div className="flex justify-center mt-3">
+                <div className="text-xs text-amber-100/50">
+                  Swipe to see all features
+                </div>
               </div>
-              <div className="text-blue-100/80">Returns Policy</div>
             </div>
-            <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-6 text-center">
-              <div className="text-2xl font-bold text-red-300 mb-2">24/7</div>
-              <div className="text-red-100/80">Customer Support</div>
+
+            {/* Desktop: Grid layout */}
+            <div className="hidden lg:grid lg:grid-cols-4 gap-6">
+              <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-6 text-center">
+                <div className="text-2xl font-bold text-amber-300 mb-2">
+                  100%
+                </div>
+                <div className="text-amber-100/80">Authentic Products</div>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-6 text-center">
+                <div className="text-2xl font-bold text-emerald-300 mb-2">
+                  Free
+                </div>
+                <div className="text-emerald-100/80">Shipping Over 100</div>
+              </div>
+              <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-6 text-center">
+                <div className="text-2xl font-bold text-blue-300 mb-2">
+                  30 Days
+                </div>
+                <div className="text-blue-100/80">Returns Policy</div>
+              </div>
+              <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-6 text-center">
+                <div className="text-2xl font-bold text-red-300 mb-2">24/7</div>
+                <div className="text-red-100/80">Customer Support</div>
+              </div>
             </div>
           </div>
         </div>

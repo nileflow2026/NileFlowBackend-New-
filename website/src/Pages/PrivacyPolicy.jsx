@@ -60,11 +60,11 @@ const PrivacyPolicy = () => {
                 </h2>
               </div>
               <p className="text-amber-100/80 leading-relaxed">
-                At Nile Flow, we take your privacy seriously. This Privacy
-                Policy explains how we collect, use, disclose, and safeguard
-                your information when you use our platform. Please read this
-                policy carefully to understand our practices regarding your
-                personal data.
+                At Nile Flow Africa, we take your privacy seriously. This
+                Privacy Policy explains how we collect, use, disclose, and
+                safeguard your information when you use our platform. Please
+                read this policy carefully to understand our practices regarding
+                your personal data.
               </p>
             </section>
 
@@ -334,7 +334,7 @@ const PrivacyPolicy = () => {
                 </p>
                 <div className="bg-gradient-to-r from-emerald-900/20 to-amber-900/20 backdrop-blur-sm border border-emerald-800/30 rounded-xl p-4 mt-4">
                   <p>Email: privacy@nileflowafrica.com</p>
-                  <p>Phone: +254 XXX XXX XXX</p>
+                  <p>Phone: +254 703 115 359</p>
                   <p>Address: Kilimani, Nairobi, Kenya</p>
                   <p className="mt-2 text-sm text-amber-100/60">
                     Data Protection Officer: dpo@nileflowafrica.com
@@ -346,8 +346,8 @@ const PrivacyPolicy = () => {
             {/* Your Consent */}
             <section className="bg-gradient-to-r from-emerald-900/20 to-green-900/20 backdrop-blur-sm border border-emerald-800/30 rounded-xl p-6">
               <p className="text-amber-100/90 leading-relaxed">
-                By using Nile Flow, you consent to the collection, use, and
-                disclosure of your information as described in this Privacy
+                By using Nile Flow Africa, you consent to the collection, use,
+                and disclosure of your information as described in this Privacy
                 Policy. If you do not agree with this policy, please do not use
                 our services.
               </p>

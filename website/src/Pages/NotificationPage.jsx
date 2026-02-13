@@ -67,13 +67,13 @@ const NotificationsPage = () => {
   const handleMarkAsRead = async (notificationId) => {
     setNotifications((prev) =>
       prev.map((note) =>
-        note.$id === notificationId ? { ...note, read: true } : note
-      )
+        note.$id === notificationId ? { ...note, read: true } : note,
+      ),
     );
 
     try {
       await axiosClient.post(
-        `/api/customernotifications/${notificationId}/read`
+        `/api/customernotifications/${notificationId}/read`,
       );
     } catch (error) {
       console.error("Failed to mark as read:", error);
@@ -94,7 +94,7 @@ const NotificationsPage = () => {
 
   const handleDeleteNotification = async (notificationId) => {
     setNotifications((prev) =>
-      prev.filter((note) => note.$id !== notificationId)
+      prev.filter((note) => note.$id !== notificationId),
     );
 
     try {
@@ -353,7 +353,7 @@ const NotificationsPage = () => {
                       key={notification.$id}
                       className={`group relative bg-gradient-to-br ${getNotificationColor(
                         notification.type,
-                        notification.priority
+                        notification.priority,
                       )} backdrop-blur-sm border rounded-3xl overflow-hidden transition-all duration-500 hover:scale-[1.02] ${
                         notification.read
                           ? "border-amber-800/30"
@@ -373,7 +373,7 @@ const NotificationsPage = () => {
                           >
                             {getNotificationIcon(
                               notification.type,
-                              notification.priority
+                              notification.priority,
                             )}
                           </div>
 
@@ -402,7 +402,7 @@ const NotificationsPage = () => {
                                   <span>
                                     {new Date(
                                       notification.timestamp ||
-                                        notification.$createdAt
+                                        notification.$createdAt,
                                     ).toLocaleDateString("en-US", {
                                       month: "short",
                                       day: "numeric",
@@ -497,52 +497,55 @@ const NotificationsPage = () => {
               </div>
 
               {/* Trust Badges */}
-              <div className="mt-16 grid grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-6 text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 mb-4">
-                    <Shield className="w-6 h-6 text-white" />
+              <div className="mt-16">
+                {/* Mobile: Horizontal Scroll, Desktop: Grid */}
+                <div className="flex overflow-x-auto gap-6 pb-4 lg:grid lg:grid-cols-4 lg:overflow-visible scrollbar-thin scrollbar-thumb-amber-600 scrollbar-track-amber-900/20">
+                  <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-6 text-center flex-shrink-0 min-w-[280px] lg:min-w-0">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 mb-4">
+                      <Shield className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-xl font-bold text-amber-300 mb-2">
+                      Secure Alerts
+                    </div>
+                    <div className="text-amber-100/80 text-sm">
+                      Encrypted notifications
+                    </div>
                   </div>
-                  <div className="text-xl font-bold text-amber-300 mb-2">
-                    Secure Alerts
-                  </div>
-                  <div className="text-amber-100/80 text-sm">
-                    Encrypted notifications
-                  </div>
-                </div>
 
-                <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-6 text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 mb-4">
-                    <Globe className="w-6 h-6 text-white" />
+                  <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-6 text-center flex-shrink-0 min-w-[280px] lg:min-w-0">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 mb-4">
+                      <Globe className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-xl font-bold text-emerald-300 mb-2">
+                      Real-time Updates
+                    </div>
+                    <div className="text-emerald-100/80 text-sm">
+                      Instant African market news
+                    </div>
                   </div>
-                  <div className="text-xl font-bold text-emerald-300 mb-2">
-                    Real-time Updates
-                  </div>
-                  <div className="text-emerald-100/80 text-sm">
-                    Instant African market news
-                  </div>
-                </div>
 
-                <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-6 text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 mb-4">
-                    <Star className="w-6 h-6 text-white" />
+                  <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-6 text-center flex-shrink-0 min-w-[280px] lg:min-w-0">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 mb-4">
+                      <Star className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-xl font-bold text-blue-300 mb-2">
+                      Priority Support
+                    </div>
+                    <div className="text-blue-100/80 text-sm">
+                      24/7 customer service
+                    </div>
                   </div>
-                  <div className="text-xl font-bold text-blue-300 mb-2">
-                    Priority Support
-                  </div>
-                  <div className="text-blue-100/80 text-sm">
-                    24/7 customer service
-                  </div>
-                </div>
 
-                <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-6 text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 mb-4">
-                    <Zap className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="text-xl font-bold text-red-300 mb-2">
-                    Instant Delivery
-                  </div>
-                  <div className="text-red-100/80 text-sm">
-                    Order updates in seconds
+                  <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-6 text-center flex-shrink-0 min-w-[280px] lg:min-w-0">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 mb-4">
+                      <Zap className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-xl font-bold text-red-300 mb-2">
+                      Instant Delivery
+                    </div>
+                    <div className="text-red-100/80 text-sm">
+                      Order updates in seconds
+                    </div>
                   </div>
                 </div>
               </div>

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React from "react";
 import Header from "../../components/Header";
 import {
@@ -21,32 +22,37 @@ import {
   Eye,
 } from "lucide-react";
 import Footer from "../../components/Footer";
+import useStructuredData from "../hooks/useStructuredData";
+import { FOUNDER_PERSON_SCHEMA } from "../constants/structuredData";
 
 const AboutPage = () => {
+  // Add Person structured data for founder to About page
+  useStructuredData(FOUNDER_PERSON_SCHEMA, "founder-person-schema");
+
   const teamMembers = [
     {
-      name: "Margaret Nasieku",
+      name: "Anthony Wai",
       role: "Founder & CEO",
       avatar: "👑",
+      region: "Central Africa",
+    },
+    {
+      name: "Japhet Mupe",
+      role: "Head of Operations",
+      avatar: "🛡️",
       region: "East Africa",
     },
     {
-      name: "David Omondi",
-      role: "Head of Operations",
-      avatar: "🛡️",
-      region: "West Africa",
-    },
-    {
-      name: "Amina Hassan",
+      name: "Damaris Mwende",
       role: "Product Curator",
       avatar: "💎",
-      region: "North Africa",
+      region: "East Africa",
     },
     {
-      name: "Thabo Ndlovu",
+      name: "Maria Adut",
       role: "Customer Experience",
       avatar: "🌟",
-      region: "Southern Africa",
+      region: "Central Africa",
     },
   ];
 
@@ -142,24 +148,28 @@ const AboutPage = () => {
           </p>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-            <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-amber-300">500+</div>
-              <div className="text-amber-100/80 text-sm">African Artisans</div>
-            </div>
-            <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-emerald-300">54</div>
-              <div className="text-emerald-100/80 text-sm">
-                African Countries
+          <div className="w-full max-w-3xl mx-auto overflow-hidden">
+            <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 md:grid md:grid-cols-4 md:overflow-visible md:pb-0">
+              <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-4 flex-shrink-0 w-40 md:w-auto">
+                <div className="text-2xl font-bold text-amber-300">500+</div>
+                <div className="text-amber-100/80 text-sm">
+                  African Artisans
+                </div>
               </div>
-            </div>
-            <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-blue-300">5000+</div>
-              <div className="text-blue-100/80 text-sm">Premium Products</div>
-            </div>
-            <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-red-300">99%</div>
-              <div className="text-red-100/80 text-sm">Satisfaction Rate</div>
+              <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-4 flex-shrink-0 w-40 md:w-auto">
+                <div className="text-2xl font-bold text-emerald-300">54</div>
+                <div className="text-emerald-100/80 text-sm">
+                  African Countries
+                </div>
+              </div>
+              <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-4 flex-shrink-0 w-40 md:w-auto">
+                <div className="text-2xl font-bold text-blue-300">5000+</div>
+                <div className="text-blue-100/80 text-sm">Premium Products</div>
+              </div>
+              <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-4 flex-shrink-0 w-40 md:w-auto">
+                <div className="text-2xl font-bold text-red-300">99%</div>
+                <div className="text-red-100/80 text-sm">Satisfaction Rate</div>
+              </div>
             </div>
           </div>
         </div>
@@ -169,22 +179,22 @@ const AboutPage = () => {
       <main className="pb-20 px-4 sm:px-6 lg:px-8">
         <div className="relative max-w-8xl mx-auto">
           {/* Mission & Vision */}
-          <div className="grid lg:grid-cols-2 gap-8 mb-16">
-            <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-3xl p-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-16">
+            <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-3xl p-6 md:p-8">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center">
                   <Target className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-amber-200">
+                  <h2 className="text-xl md:text-2xl font-bold text-amber-200">
                     Our Mission
                   </h2>
-                  <p className="text-amber-100/70">
+                  <p className="text-amber-100/70 text-sm md:text-base">
                     Defining African excellence
                   </p>
                 </div>
               </div>
-              <p className="text-gray-300 text-lg leading-relaxed">
+              <p className="text-gray-300 text-base md:text-lg leading-relaxed">
                 To create the world's premier marketplace for authentic African
                 products, connecting talented artisans with discerning global
                 customers while preserving and celebrating Africa's rich
@@ -192,21 +202,21 @@ const AboutPage = () => {
               </p>
             </div>
 
-            <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-3xl p-8">
+            <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-3xl p-6 md:p-8">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 flex items-center justify-center">
                   <Eye className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-emerald-200">
+                  <h2 className="text-xl md:text-2xl font-bold text-emerald-200">
                     Our Vision
                   </h2>
-                  <p className="text-emerald-100/70">
+                  <p className="text-emerald-100/70 text-sm md:text-base">
                     The future of African commerce
                   </p>
                 </div>
               </div>
-              <p className="text-gray-300 text-lg leading-relaxed">
+              <p className="text-gray-300 text-base md:text-lg leading-relaxed">
                 To become the global standard for African eCommerce, where every
                 purchase tells a story of craftsmanship, heritage, and quality.
                 We envision a world where African products are celebrated as
@@ -284,20 +294,10 @@ const AboutPage = () => {
 
           {/* Timeline */}
           <div className="mb-16">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold text-white mb-4">
-                Our Journey
-              </h2>
-              <p className="text-gray-300 max-w-2xl mx-auto">
-                Milestones in our quest to redefine African eCommerce
-              </p>
-            </div>
-
             <div className="relative">
-              {/* Timeline line */}
               <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-0.5 bg-gradient-to-b from-amber-500 via-emerald-500 to-transparent"></div>
 
-              <div className="space-y-12">
+              {/*  <div className="space-y-12">
                 {milestones.map((milestone, index) => (
                   <div
                     key={index}
@@ -324,11 +324,11 @@ const AboutPage = () => {
                       </div>
                     </div>
 
-                    {/* Timeline dot */}
+                   
                     <div className="absolute left-1/2 transform -translate-x-1/2 w-6 h-6 rounded-full bg-gradient-to-r from-amber-500 to-emerald-500 border-4 border-gray-900"></div>
                   </div>
                 ))}
-              </div>
+              </div> */}
             </div>
           </div>
 
@@ -435,8 +435,8 @@ const AboutPage = () => {
                   <button
                     onClick={() =>
                       window.open(
-                        "https://nileflow.com/privacy-policy",
-                        "_blank"
+                        "https://nileflowafrica.com/privacy",
+                        "_blank",
                       )
                     }
                     className="text-emerald-300 hover:text-emerald-200 transition-colors"

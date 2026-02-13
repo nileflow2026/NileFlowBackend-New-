@@ -67,7 +67,7 @@ axiosClient.interceptors.response.use(
         {
           withCredentials: true,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
 
       console.log("[Axios Interceptor] Token refreshed successfully");
@@ -87,7 +87,7 @@ axiosClient.interceptors.response.use(
 
       console.error(
         "[Axios Interceptor] Refresh token failed:",
-        refreshError.response?.data || refreshError.message
+        refreshError.response?.data || refreshError.message,
       );
 
       // Trigger logout event (only once)
@@ -103,7 +103,7 @@ axiosClient.interceptors.response.use(
 
       return Promise.reject(refreshError);
     }
-  }
+  },
 );
 
 export default axiosClient;

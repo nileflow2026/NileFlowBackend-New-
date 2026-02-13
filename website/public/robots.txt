@@ -5,6 +5,11 @@ Disallow: /cart
 Disallow: /checkout
 Disallow: /profile
 Disallow: /orders
+Disallow: /admin
+Allow: /
+
+# Allow external resources for SEO
+User-agent: Googlebot
 Allow: /
 
 # Sitemap

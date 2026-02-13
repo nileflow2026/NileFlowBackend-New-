@@ -19,6 +19,7 @@ import {
 import i18n from "../i18n";
 import { useState } from "react";
 import axiosClient from "../api";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
@@ -27,6 +28,10 @@ const Footer = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [focused, setFocused] = useState(false);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
@@ -38,7 +43,7 @@ const Footer = () => {
         "/api/admin/newsletter/user-check",
         {
           email,
-        }
+        },
       );
       if (response.data.userExists) {
         setName(response.data.username);
@@ -86,9 +91,10 @@ const Footer = () => {
 
       {/* Trust Badges */}
       <div className="relative max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-amber-900/40 to-transparent backdrop-blur-sm rounded-2xl p-4 border border-amber-700/30 flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-yellow-800 flex items-center justify-center">
+        {/* Mobile: Horizontal Scroll, Desktop: Grid */}
+        <div className="flex overflow-x-auto gap-4 pb-2 sm:pb-0 md:grid md:grid-cols-2 lg:grid-cols-4 md:overflow-visible scrollbar-thin scrollbar-thumb-amber-600 scrollbar-track-amber-900/20">
+          <div className="bg-gradient-to-br from-amber-900/40 to-transparent backdrop-blur-sm rounded-2xl p-4 border border-amber-700/30 flex items-center space-x-3 flex-shrink-0 min-w-[280px] md:min-w-0">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-yellow-800 flex items-center justify-center flex-shrink-0">
               <FontAwesomeIcon
                 icon={faTruckFast}
                 className="text-white text-lg"
@@ -100,8 +106,8 @@ const Footer = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-emerald-900/40 to-transparent backdrop-blur-sm rounded-2xl p-4 border border-emerald-700/30 flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-green-800 flex items-center justify-center">
+          <div className="bg-gradient-to-br from-emerald-900/40 to-transparent backdrop-blur-sm rounded-2xl p-4 border border-emerald-700/30 flex items-center space-x-3 flex-shrink-0 min-w-[280px] md:min-w-0">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-green-800 flex items-center justify-center flex-shrink-0">
               <FontAwesomeIcon
                 icon={faShieldAlt}
                 className="text-white text-lg"
@@ -115,8 +121,8 @@ const Footer = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-red-900/40 to-transparent backdrop-blur-sm rounded-2xl p-4 border border-red-700/30 flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-800 flex items-center justify-center">
+          <div className="bg-gradient-to-br from-red-900/40 to-transparent backdrop-blur-sm rounded-2xl p-4 border border-red-700/30 flex items-center space-x-3 flex-shrink-0 min-w-[280px] md:min-w-0">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-800 flex items-center justify-center flex-shrink-0">
               <FontAwesomeIcon
                 icon={faHeadset}
                 className="text-white text-lg"
@@ -128,8 +134,8 @@ const Footer = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-900/40 to-transparent backdrop-blur-sm rounded-2xl p-4 border border-blue-700/30 flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-800 flex items-center justify-center">
+          <div className="bg-gradient-to-br from-blue-900/40 to-transparent backdrop-blur-sm rounded-2xl p-4 border border-blue-700/30 flex items-center space-x-3 flex-shrink-0 min-w-[280px] md:min-w-0">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-800 flex items-center justify-center flex-shrink-0">
               <FontAwesomeIcon icon={faGift} className="text-white text-lg" />
             </div>
             <div>
@@ -142,45 +148,45 @@ const Footer = () => {
 
       {/* Main Footer Content */}
       <div className="relative max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-5 gap-10 pb-12 border-b border-amber-800/40">
+        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6 md:gap-8 lg:gap-10 pb-8 sm:pb-12 border-b border-amber-800/40">
           {/* Brand & Newsletter */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-amber-500 to-emerald-600 flex items-center justify-center">
+          <div className="md:col-span-2 lg:col-span-2">
+            <div className="flex flex-col sm:flex-row items-center sm:items-center space-y-4 sm:space-y-0 sm:space-x-3 mb-6 text-center sm:text-left">
+              <div className="w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-2xl bg-gradient-to-br from-amber-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
                 <img
                   src="/images/logo.png"
                   alt="Nile Flow"
-                  className="w-12 h-12 md:w-16 md:h-16 object-contain"
+                  className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-18 lg:h-18 object-contain"
                 />
               </div>
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-amber-300 to-emerald-200 bg-clip-text text-transparent font-serif">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-amber-300 to-emerald-200 bg-clip-text text-transparent font-serif">
                   NILE FLOW
                 </h2>
-                <p className="text-amber-100/80 text-sm tracking-wide">
+                <p className="text-amber-100/80 text-xs sm:text-sm md:text-base tracking-wide">
                   Premium African Marketplace
                 </p>
               </div>
             </div>
 
-            <p className="text-amber-100/90 mb-8 text-lg leading-relaxed">
+            <p className="text-amber-100/90 mb-6 md:mb-8 text-base md:text-lg leading-relaxed text-center sm:text-left">
               Your gateway to authentic African products. Experience premium
               quality, fair prices, and seamless delivery across the continent.
             </p>
 
             {/* Newsletter Subscription */}
-            <div className="bg-gradient-to-br from-gray-900/50 to-black/40 backdrop-blur-sm rounded-2xl p-6 border border-amber-800/30">
-              <div className="flex items-center space-x-2 mb-4">
+            <div className="bg-gradient-to-br from-gray-900/50 to-black/40 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-amber-800/30">
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-4 text-center sm:text-left">
                 <FontAwesomeIcon
                   icon={faEnvelope}
-                  className="text-amber-400 text-xl"
+                  className="text-amber-400 text-lg sm:text-xl"
                 />
-                <h3 className="text-xl font-bold text-amber-100">
+                <h3 className="text-lg sm:text-xl font-bold text-amber-100">
                   Join Our Community
                 </h3>
               </div>
 
-              <p className="text-amber-100/80 mb-6">
+              <p className="text-amber-100/80 mb-4 sm:mb-6 text-sm sm:text-base text-center sm:text-left">
                 Get exclusive African product drops, cultural insights, and
                 members-only deals.
               </p>
@@ -189,12 +195,12 @@ const Footer = () => {
                 <div className="bg-gradient-to-r from-emerald-900/40 to-green-900/20 border border-emerald-700/50 rounded-xl p-4 text-center animate-fadeIn">
                   <FontAwesomeIcon
                     icon={faCheckCircle}
-                    className="text-emerald-400 text-3xl mb-2"
+                    className="text-emerald-400 text-2xl sm:text-3xl mb-2"
                   />
-                  <p className="font-bold text-emerald-100 text-lg">
+                  <p className="font-bold text-emerald-100 text-base sm:text-lg">
                     Welcome to the Tribe!
                   </p>
-                  <p className="text-emerald-100/80 text-sm mt-1">
+                  <p className="text-emerald-100/80 text-xs sm:text-sm mt-1">
                     Check your email for your welcome gift 🎁
                   </p>
                 </div>
@@ -206,7 +212,7 @@ const Footer = () => {
                 >
                   {error && (
                     <div className="bg-red-900/30 border border-red-700/50 rounded-lg p-3 mb-4">
-                      <p className="text-red-200 text-sm">{error}</p>
+                      <p className="text-red-200 text-xs sm:text-sm">{error}</p>
                     </div>
                   )}
 
@@ -217,7 +223,7 @@ const Footer = () => {
                           focused ? "opacity-75" : "opacity-25"
                         } transition-opacity duration-300`}
                       ></div>
-                      <div className="relative flex bg-gray-900 rounded-xl overflow-hidden">
+                      <div className="relative flex flex-col sm:flex-row bg-gray-900 rounded-xl overflow-hidden">
                         <input
                           type="email"
                           placeholder="Enter your email"
@@ -225,13 +231,13 @@ const Footer = () => {
                           onChange={(e) => setEmail(e.target.value)}
                           onFocus={() => setFocused(true)}
                           onBlur={() => setFocused(false)}
-                          className="flex-1 px-5 py-4 bg-transparent text-amber-100 placeholder-amber-100/50 focus:outline-none"
+                          className="flex-1 px-4 sm:px-5 py-3 sm:py-4 bg-transparent text-amber-100 placeholder-amber-100/50 focus:outline-none text-sm sm:text-base"
                           required
                         />
                         <button
                           type="submit"
                           disabled={loading}
-                          className="px-6 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-semibold hover:from-amber-700 hover:to-amber-800 transition-all duration-300 flex items-center space-x-2"
+                          className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-semibold hover:from-amber-700 hover:to-amber-800 transition-all duration-300 flex items-center justify-center space-x-2 text-sm sm:text-base"
                         >
                           <span>{loading ? "Checking..." : "Subscribe"}</span>
                           <FontAwesomeIcon icon={faArrowRight} />
@@ -241,13 +247,13 @@ const Footer = () => {
                   ) : (
                     <div className="space-y-4">
                       <div className="text-center p-3 bg-amber-900/30 rounded-lg">
-                        <p className="text-amber-100">
+                        <p className="text-amber-100 text-sm sm:text-base">
                           Welcome{" "}
-                          <span className="font-bold text-amber-300">
+                          <span className="font-bold text-amber-300 break-all">
                             {email}
                           </span>
                         </p>
-                        <p className="text-amber-100/80 text-sm mt-1">
+                        <p className="text-amber-100/80 text-xs sm:text-sm mt-1">
                           Complete your subscription
                         </p>
                       </div>
@@ -257,14 +263,14 @@ const Footer = () => {
                         value={username}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Your full name"
-                        className="w-full px-5 py-4 bg-gray-900/50 border border-amber-800/50 rounded-xl text-amber-100 placeholder-amber-100/50 focus:outline-none focus:border-amber-500 transition-colors"
+                        className="w-full px-4 sm:px-5 py-3 sm:py-4 bg-gray-900/50 border border-amber-800/50 rounded-xl text-amber-100 placeholder-amber-100/50 focus:outline-none focus:border-amber-500 transition-colors text-sm sm:text-base"
                         required
                       />
 
                       <button
                         type="submit"
                         disabled={loading}
-                        className="w-full px-6 py-4 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-semibold rounded-xl hover:from-emerald-700 hover:to-emerald-800 transition-all duration-300 transform hover:scale-[1.02]"
+                        className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-semibold rounded-xl hover:from-emerald-700 hover:to-emerald-800 transition-all duration-300 transform hover:scale-[1.02] text-sm sm:text-base"
                       >
                         {loading ? "Subscribing..." : "Complete Subscription"}
                       </button>
@@ -275,85 +281,83 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Links Sections */}
-          <div>
-            <h3 className="text-xl font-bold text-amber-100 mb-6 pb-2 border-b border-amber-800/50 inline-block">
-              Shop
-            </h3>
-            <ul className="space-y-4">
-              {["Deals", "Categories", "Cart", "Checkout"].map((item) => (
-                <li key={item}>
-                  <a
-                    href={`/${item.toLowerCase().replace(" ", "-")}`}
-                    className="flex items-center group text-amber-100/80 hover:text-amber-300 transition-all duration-300"
-                  >
-                    <span className="w-0 group-hover:w-2 h-0.5 bg-amber-400 mr-0 group-hover:mr-2 transition-all duration-300"></span>
-                    {item === "Cart" ? i18n.t("Cart") : item}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* Links Sections - Mobile: 2-column grid, Desktop: individual columns */}
+          <div className="md:col-span-2 lg:col-span-3 grid grid-cols-2 md:grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10">
+            <div className="space-y-3 md:space-y-4">
+              <h3 className="text-base sm:text-lg md:text-xl font-bold text-amber-100 mb-3 md:mb-4 lg:mb-6 pb-2 border-b border-amber-800/50 inline-block">
+                Shop
+              </h3>
+              <ul className="space-y-2 md:space-y-3 lg:space-y-4">
+                {["Deals", "Cart", "Checkout"].map((item) => (
+                  <li key={item}>
+                    <Link
+                      to={`/${item.toLowerCase().replace(" ", "-")}`}
+                      onClick={scrollToTop}
+                      className="flex items-center group text-amber-100/80 hover:text-amber-300 transition-all duration-300 text-sm md:text-base"
+                    >
+                      <span className="w-0 group-hover:w-2 h-0.5 bg-amber-400 mr-0 group-hover:mr-2 transition-all duration-300"></span>
+                      {item === "Cart" ? i18n.t("Cart") : item}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          <div>
-            <h3 className="text-xl font-bold text-amber-100 mb-6 pb-2 border-b border-amber-800/50 inline-block">
-              Support
-            </h3>
-            <ul className="space-y-4">
-              {[
-                { label: "Help Center", key: "Help Center" },
-                { label: "Track Order", key: "Track Order" },
-                { label: "Return Policy", key: "Return Policy" },
-                { label: "Report Issue", key: "Report Issue" },
-              ].map((item) => (
-                <li key={item.key}>
-                  <a
-                    href={`/${item.key.toLowerCase().replace(" ", "-")}`}
-                    className="flex items-center group text-amber-100/80 hover:text-amber-300 transition-all duration-300"
-                  >
-                    <span className="w-0 group-hover:w-2 h-0.5 bg-amber-400 mr-0 group-hover:mr-2 transition-all duration-300"></span>
-                    {item.key === "Help Center"
-                      ? i18n.t("Help Center")
-                      : item.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+            <div className="space-y-3 md:space-y-4">
+              <h3 className="text-base sm:text-lg md:text-xl font-bold text-amber-100 mb-3 md:mb-4 lg:mb-6 pb-2 border-b border-amber-800/50 inline-block">
+                Support
+              </h3>
+              <ul className="space-y-2 md:space-y-3 lg:space-y-4">
+                {[
+                  { label: "Help Center", key: "Help Center" },
+                  { label: "Track Order", key: "Track Order" },
+                  { label: "Return Policy", key: "Return Policy" },
+                  { label: "Report Issue", key: "Report Issue" },
+                ].map((item) => (
+                  <li key={item.key}>
+                    <Link
+                      to={`/${item.key.toLowerCase().replace(" ", "-")}`}
+                      onClick={scrollToTop}
+                      className="flex items-center group text-amber-100/80 hover:text-amber-300 transition-all duration-300 text-sm md:text-base"
+                    >
+                      <span className="w-0 group-hover:w-2 h-0.5 bg-amber-400 mr-0 group-hover:mr-2 transition-all duration-300"></span>
+                      {item.key === "Help Center"
+                        ? i18n.t("Help Center")
+                        : item.key === "Track Order"
+                          ? "Track Order"
+                          : item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          <div>
-            <h3 className="text-xl font-bold text-amber-100 mb-6 pb-2 border-b border-amber-800/50 inline-block">
-              Company
-            </h3>
-            <ul className="space-y-4">
-              {["About Us", "Contact", "Careers", "Settings"].map((item) => (
-                <li key={item}>
-                  <a
-                    href={`/${item.toLowerCase().replace(" ", "-")}`}
-                    className="flex items-center group text-amber-100/80 hover:text-amber-300 transition-all duration-300"
-                  >
-                    <span className="w-0 group-hover:w-2 h-0.5 bg-amber-400 mr-0 group-hover:mr-2 transition-all duration-300"></span>
-                    {item}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            <div className="col-span-2 md:col-span-1 space-y-3 md:space-y-4">
+              <h3 className="text-base sm:text-lg md:text-xl font-bold text-amber-100 mb-3 md:mb-4 lg:mb-6 pb-2 border-b border-amber-800/50 inline-block">
+                Company
+              </h3>
+              <ul className="space-y-2 md:space-y-3 lg:space-y-4 grid grid-cols-2 md:grid-cols-1 gap-x-4 md:gap-x-0">
+                {["About Us", "Contact", "Careers", "Settings"].map((item) => (
+                  <li key={item}>
+                    <Link
+                      to={`/${item.toLowerCase().replace(" ", "-")}`}
+                      onClick={scrollToTop}
+                      className="flex items-center group text-amber-100/80 hover:text-amber-300 transition-all duration-300 text-sm md:text-base"
+                    >
+                      <span className="w-0 group-hover:w-2 h-0.5 bg-amber-400 mr-0 group-hover:mr-2 transition-all duration-300"></span>
+                      {item}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
 
         {/* Bottom Section */}
-        <div className="pt-8 flex flex-col md:flex-row justify-between items-center">
-          <div className="mb-6 md:mb-0">
-            <p className="text-amber-100/60 text-sm">
-              &copy; {new Date().getFullYear()} Nile Flow. All rights reserved.
-            </p>
-            <p className="text-amber-100/40 text-xs mt-1">
-              Proudly serving Africa with premium e-commerce solutions.
-            </p>
-          </div>
-
+        <div className="pt-8 flex flex-col md:flex-row-reverse justify-between items-center">
           {/* Social Links */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 mb-6 md:mb-0">
             <p className="text-amber-100/70 text-sm mr-4 hidden md:block">
               Join Our Community:
             </p>
@@ -415,28 +419,14 @@ const Footer = () => {
               </a>
             </div>
           </div>
-        </div>
 
-        {/* Payment Methods */}
-        <div className="mt-8 pt-6 border-t border-amber-800/30">
-          <div className="flex flex-col md:flex-row md:items-center justify-between">
-            <p className="text-amber-100/50 text-sm mb-4 md:mb-0">
-              We accept all major payment methods:
+          <div className="text-center md:text-left">
+            <p className="text-amber-100/60 text-sm">
+              &copy; {new Date().getFullYear()} Nile Flow. All rights reserved.
             </p>
-            <div className="flex items-center space-x-4">
-              {["Visa", "Mastercard", "M-Pesa", "Payment On Delivery"].map(
-                (method) => (
-                  <div
-                    key={method}
-                    className="px-3 py-1.5 bg-gradient-to-br from-gray-900/50 to-black/30 backdrop-blur-sm rounded-lg border border-amber-800/20"
-                  >
-                    <span className="text-amber-100/70 text-xs font-medium">
-                      {method}
-                    </span>
-                  </div>
-                )
-              )}
-            </div>
+            <p className="text-amber-100/40 text-xs mt-1">
+              Proudly serving Africa with premium e-commerce solutions.
+            </p>
           </div>
         </div>
       </div>

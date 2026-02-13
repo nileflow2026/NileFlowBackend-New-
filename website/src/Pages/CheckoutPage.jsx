@@ -9,7 +9,7 @@ import PickupAddressModal from "../../components/PickupAddressModal";
 import axiosClient from "../../api";
 import { loadStripe } from "@stripe/stripe-js";
 import { createNotification } from "../../CustomerServices";
-import { useCurrency } from "../../Context/CurrencyProvider";
+import { formatPrice } from "../../utils/priceFormatter";
 import { usePremiumContext } from "../../Context/PremiumContext";
 import premiumService from "../../utils/premiumService";
 import {
@@ -37,15 +37,17 @@ import {
   RefreshCcw,
 } from "lucide-react";
 import { useCustomerAuth } from "../../Context/CustomerAuthContext";
+import { useCurrency } from "../../Context/CurrencyProvider";
 
 const stripePromise = loadStripe(
-  "pk_test_51SYB9CJABwlNBb9PMEfcXqFA1OlYwpdVmKl3R1pcaRCvziYrTXsVjrjae3IZvDs7wMJzLZcTJqUURvoBZTt8Izbc00J9QDoAwq"
+  "pk_test_51SYB9CJABwlNBb9PMEfcXqFA1OlYwpdVmKl3R1pcaRCvziYrTXsVjrjae3IZvDs7wMJzLZcTJqUURvoBZTt8Izbc00J9QDoAwq",
 ); // ⬅️ Replace with your key
 
 const CheckoutPage = () => {
   const { cart, clearCart } = useCart();
   const { user, isAuthenticated, isLoading: authLoading } = useCustomerAuth();
   const { isPremium } = usePremiumContext();
+  const { currency } = useCurrency();
   const [selectedPayment, setSelectedPayment] = useState("");
   const [showPaymentForm, setShowPaymentForm] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -68,11 +70,10 @@ const CheckoutPage = () => {
   const [showPickupModal, setShowPickupModal] = useState(false);
   const [hasRecentPickupAddress, setHasRecentPickupAddress] = useState(false);
   const navigate = useNavigate();
-  const { convertPrice, currency } = useCurrency();
 
   const subtotal = cart.reduce(
     (total, item) => total + item.price * item.quantity,
-    0
+    0,
   );
   // Use same shipping logic as Cart page: 15 KES with free shipping over 100 KES
   const shipping = isPremium ? 0 : subtotal > 100 ? 0 : 15;
@@ -87,33 +88,71 @@ const CheckoutPage = () => {
 
     const checkPickupAddress = async () => {
       try {
-        // Check if user has recent pickup address in localStorage
-        const recentPickupAddress = localStorage.getItem("recentPickupAddress");
-        const timestamp = localStorage.getItem("pickupAddressTimestamp");
+        // Always check the database first as the primary source of truth
+        const { getPickupAddress } = await import("../../authServices");
+        const pickupAddressResult = await getPickupAddress();
 
-        if (recentPickupAddress && timestamp) {
-          const timeDiff = Date.now() - parseInt(timestamp);
-          const isRecent = timeDiff < 24 * 60 * 60 * 1000; // 24 hours
-          setHasRecentPickupAddress(isRecent);
+        if (pickupAddressResult.success && pickupAddressResult.hasAddress) {
+          // User has a pickup address saved in database - this is the primary check
+          console.log(
+            "✅ User has pickup address in database (primary source)",
+          );
+          setHasRecentPickupAddress(true);
+          setShowPickupModal(false);
 
-          if (!isRecent) {
-            localStorage.removeItem("recentPickupAddress");
-            localStorage.removeItem("pickupAddressTimestamp");
+          // Sync localStorage cache to match database state
+          localStorage.setItem("recentPickupAddress", "true");
+          localStorage.setItem("pickupAddressTimestamp", Date.now().toString());
+        } else if (
+          pickupAddressResult.success &&
+          !pickupAddressResult.hasAddress
+        ) {
+          // Database confirms no pickup address exists
+          console.log(
+            "❌ No pickup address found in database (primary source)",
+          );
+
+          // Clear any stale localStorage data since database is authoritative
+          localStorage.removeItem("recentPickupAddress");
+          localStorage.removeItem("pickupAddressTimestamp");
+
+          setHasRecentPickupAddress(false);
+          setShowPickupModal(true);
+        } else {
+          // Database query failed - fallback to localStorage temporarily
+          console.warn("⚠️ Database query failed, using localStorage fallback");
+          const recentPickupAddress = localStorage.getItem(
+            "recentPickupAddress",
+          );
+          const timestamp = localStorage.getItem("pickupAddressTimestamp");
+
+          if (recentPickupAddress && timestamp) {
+            const timeDiff = Date.now() - parseInt(timestamp);
+            const isRecent = timeDiff < 24 * 60 * 60 * 1000; // 24 hours
+
+            if (isRecent) {
+              setHasRecentPickupAddress(true);
+              setShowPickupModal(false);
+            } else {
+              localStorage.removeItem("recentPickupAddress");
+              localStorage.removeItem("pickupAddressTimestamp");
+              setHasRecentPickupAddress(false);
+              setShowPickupModal(true);
+            }
+          } else {
+            setHasRecentPickupAddress(false);
+            setShowPickupModal(true);
           }
         }
-
-        // If no recent pickup address, check with server or show modal
-        if (!hasRecentPickupAddress) {
-          // You can add server check here if needed
-          setShowPickupModal(true);
-        }
       } catch (error) {
-        console.error("Failed to check pickup address:", error);
+        console.error("Failed to check pickup address from database:", error);
+        // On error, show modal to be safe
+        setShowPickupModal(true);
       }
     };
 
     checkPickupAddress();
-  }, [isAuthenticated, user, hasRecentPickupAddress]);
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     const fetchUserPreferences = async () => {
@@ -145,17 +184,18 @@ const CheckoutPage = () => {
     const fetchPremiumBenefits = async () => {
       if (subtotal > 0) {
         try {
-          // Only fetch discount for premium users on subtotal
+          // Only fetch discount and miles for premium users
           if (isPremium) {
             const discount = await premiumService.calculateDiscount(subtotal);
             setPremiumDiscountInfo(discount);
+
+            // Calculate miles on subtotal - only for premium users
+            const miles = await premiumService.calculateMiles(subtotal);
+            setMilesInfo(miles);
           } else {
             setPremiumDiscountInfo(null);
+            setMilesInfo(null);
           }
-
-          // Calculate miles on subtotal
-          const miles = await premiumService.calculateMiles(subtotal);
-          setMilesInfo(miles);
         } catch (error) {
           console.error("Error fetching premium benefits:", error);
         }
@@ -181,14 +221,14 @@ const CheckoutPage = () => {
   // Apply Nile Miles discount to the already premium-discounted subtotal
   const finalSubtotal = Math.max(
     0,
-    premiumDiscountedSubtotal - validDiscountAmount
+    premiumDiscountedSubtotal - validDiscountAmount,
   );
   const total = Math.round((finalSubtotal + shipping) * 100) / 100; // Ensure 2 decimal precision
 
   // For display purposes, show original subtotal
-  const formattedSubtotal = convertPrice(subtotal);
-  const formattedShipping = convertPrice(shipping);
-  const formattedTotal = convertPrice(total);
+  const formattedSubtotal = formatPrice(subtotal);
+  const formattedShipping = formatPrice(shipping);
+  const formattedTotal = formatPrice(total);
 
   useEffect(() => {
     console.log("useEffect triggered, user:", user);
@@ -202,7 +242,7 @@ const CheckoutPage = () => {
       try {
         console.log("Fetching Nile Miles for user:", uid);
         const res = await axiosClient.get(
-          `/api/nilemiles/nilemiles/status?userId=${uid}`
+          `/api/nilemiles/nilemiles/status?userId=${uid}`,
         );
         const data = res.data || {};
         let redeemedParsed = [];
@@ -265,9 +305,13 @@ const CheckoutPage = () => {
       const result = await savePickupAddress(addressData);
 
       if (result.success) {
-        // Store pickup address info in localStorage
+        console.log("✅ Pickup address saved successfully to database");
+
+        // Store pickup address info in localStorage for faster subsequent checks
         localStorage.setItem("recentPickupAddress", "true");
         localStorage.setItem("pickupAddressTimestamp", Date.now().toString());
+
+        // Update state
         setHasRecentPickupAddress(true);
         setShowPickupModal(false);
       } else {
@@ -281,7 +325,7 @@ const CheckoutPage = () => {
 
   const handlePickupModalClose = () => {
     // Redirect to home if user tries to close without providing address
-    navigate("/home");
+    navigate("/checkout");
   };
 
   const applyReward = () => {
@@ -291,7 +335,7 @@ const CheckoutPage = () => {
     }
     const availableRewards = nileMilesData.redeemed || [];
     const rewardToApply = availableRewards.find(
-      (r) => r.rewardName === appliedCode
+      (r) => r.rewardName === appliedCode,
     );
 
     if (!rewardToApply) {
@@ -352,7 +396,7 @@ const CheckoutPage = () => {
         {
           userId: uid,
           redeemedRewardName: rewardName,
-        }
+        },
       );
       console.log("✅ Reward marked as used:", response.data);
     } catch (error) {
@@ -371,7 +415,7 @@ const CheckoutPage = () => {
         {
           orderId,
           reason: "user_cancelled",
-        }
+        },
       );
 
       if (response.data.success) {
@@ -396,7 +440,7 @@ const CheckoutPage = () => {
         "/api/payments/cash-on-delivery/cancel",
         {
           orderId,
-        }
+        },
       );
 
       if (response.data.success) {
@@ -442,7 +486,7 @@ const CheckoutPage = () => {
     }
 
     const confirmCancel = window.confirm(
-      "Are you sure you want to cancel this order?"
+      "Are you sure you want to cancel this order?",
     );
 
     if (!confirmCancel) return;
@@ -465,7 +509,7 @@ const CheckoutPage = () => {
 
       if (cancelled) {
         alert(
-          "Order cancelled successfully. Your items have been restored to stock."
+          "Order cancelled successfully. Your items have been restored to stock.",
         );
         setProcessingPayment(false);
         setShowCodConfirmation(false);
@@ -518,7 +562,7 @@ const CheckoutPage = () => {
           premiumDiscount: premiumDiscountInfo?.discountAmount || 0,
           currency: currency || "KES",
           status: "pending",
-        }
+        },
       );
 
       console.log("✅ Order Response:", response.data);
@@ -555,7 +599,7 @@ const CheckoutPage = () => {
       console.error("Error placing COD order:", error);
       alert(
         error.response?.data?.error ||
-          "An error occurred during checkout. Please try again."
+          "An error occurred during checkout. Please try again.",
       );
       setShowCodConfirmation(false);
     } finally {
@@ -573,7 +617,7 @@ const CheckoutPage = () => {
     const phoneRegex = /^(\+?254|0)?[17]\d{8}$/;
     if (!phoneRegex.test(mpesaPhoneNumber)) {
       alert(
-        "Please enter a valid Kenyan phone number (e.g., 0712345678 or 254712345678)"
+        "Please enter a valid Kenyan phone number (e.g., 0712345678 or 254712345678)",
       );
       return;
     }
@@ -592,7 +636,7 @@ const CheckoutPage = () => {
           JSON.stringify({
             userId: user.id ?? user.userId,
             rewardName: redeemedReward.rewardName,
-          })
+          }),
         );
       }
 
@@ -671,7 +715,7 @@ const CheckoutPage = () => {
 
       try {
         const response = await axiosClient.get(
-          `/api/payments/mpesa/status/${orderId}`
+          `/api/payments/mpesa/status/${orderId}`,
         );
         const { paymentStatus, orderStatus } = response.data;
 
@@ -716,7 +760,7 @@ const CheckoutPage = () => {
           setMpesaProcessing(false);
           setShowMpesaModal(false);
           alert(
-            "Payment verification timeout. Please check your orders page or contact support."
+            "Payment verification timeout. Please check your orders page or contact support.",
           );
         }
       } catch (error) {
@@ -748,8 +792,10 @@ const CheckoutPage = () => {
     }
 
     if (!isAuthenticated || !user) {
-      alert("Please log in to checkout.");
-      navigate("/signin");
+      alert(
+        "Please create an account or sign in to complete your order. Your cart items will be saved!",
+      );
+      navigate("/signup");
       return;
     }
 
@@ -807,7 +853,7 @@ const CheckoutPage = () => {
             JSON.stringify({
               userId: user.id ?? user.userId,
               rewardName: redeemedReward.rewardName,
-            })
+            }),
           );
         }
 
@@ -833,14 +879,14 @@ const CheckoutPage = () => {
             discountAmount: validDiscountAmount.toFixed(2),
             isPremium: isPremium,
             premiumDiscount: premiumDiscountInfo?.discountAmount || 0,
-          }
+          },
         );
 
         const { sessionId, orderId } = apiResponse.data;
 
         if (!sessionId || !orderId) {
           throw new Error(
-            "Invalid response from server. Missing sessionId or orderId."
+            "Invalid response from server. Missing sessionId or orderId.",
           );
         }
 
@@ -872,7 +918,7 @@ const CheckoutPage = () => {
       } else {
         alert(
           error.response?.data?.error ||
-            "An error occurred during checkout. Please try again."
+            "An error occurred during checkout. Please try again.",
         );
       }
     } finally {
@@ -1063,10 +1109,10 @@ const CheckoutPage = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-xl font-bold text-amber-300">
-                            {convertPrice(item.price * item.quantity)}
+                            {formatPrice(item.price * item.quantity)}
                           </p>
                           <p className="text-amber-100/50 text-sm">
-                            {convertPrice(item.price)} each
+                            {formatPrice(item.price)} each
                           </p>
                         </div>
                       </div>
@@ -1111,7 +1157,7 @@ const CheckoutPage = () => {
                             </span>
                           </div>
                           <span className="text-emerald-400 font-bold text-lg">
-                            -{convertPrice(premiumDiscountInfo.discountAmount)}
+                            -{formatPrice(premiumDiscountInfo.discountAmount)}
                           </span>
                         </div>
                       )}
@@ -1122,7 +1168,7 @@ const CheckoutPage = () => {
                         <div className="flex items-center space-x-2 text-purple-200/70 text-sm">
                           <Crown className="w-4 h-4 text-purple-400" />
                           <span>
-                            Add {convertPrice(500 - subtotal)} more for 5%
+                            Add {formatPrice(500 - subtotal)} more for 5%
                             premium discount
                           </span>
                         </div>
@@ -1133,7 +1179,7 @@ const CheckoutPage = () => {
                         <div className="flex items-center space-x-2 text-purple-200/70 text-sm">
                           <Crown className="w-4 h-4 text-purple-400" />
                           <span>
-                            Add {convertPrice(1000 - subtotal)} more for 10%
+                            Add {formatPrice(1000 - subtotal)} more for 10%
                             premium discount
                           </span>
                         </div>
@@ -1147,7 +1193,7 @@ const CheckoutPage = () => {
                           <span>Reward: {redeemedReward.rewardName}</span>
                         </span>
                         <span className="text-emerald-300 font-bold text-lg">
-                          -{convertPrice(discountAmount)}
+                          -{formatPrice(discountAmount)}
                         </span>
                       </div>
                     )}
@@ -1155,7 +1201,7 @@ const CheckoutPage = () => {
                     <div className="flex items-center justify-between py-4 border-t border-amber-500/30">
                       <span className="text-amber-100 text-xl">Total</span>
                       <span className="text-amber-300 font-bold text-3xl">
-                        {convertPrice(total)}
+                        {formatPrice(total)}
                       </span>
                     </div>
 
@@ -1284,7 +1330,7 @@ const CheckoutPage = () => {
                           {redeemedReward.rewardName} Applied!
                         </p>
                         <p className="text-emerald-100/70 text-sm">
-                          You saved {convertPrice(discountAmount)}
+                          You saved {formatPrice(discountAmount)}
                         </p>
                       </div>
                     </div>
@@ -1320,7 +1366,7 @@ const CheckoutPage = () => {
                               const availableRewards =
                                 nileMilesData.redeemed || [];
                               const rewardToApply = availableRewards.find(
-                                (r) => r.rewardName === reward.rewardName
+                                (r) => r.rewardName === reward.rewardName,
                               );
 
                               if (rewardToApply) {
@@ -1428,24 +1474,28 @@ const CheckoutPage = () => {
                             label: "Credit/Debit Card",
                             icon: CreditCard,
                             color: "from-blue-600 to-blue-700",
+                            comingSoon: true,
                           },
                           {
                             value: "mpesa",
                             label: "M-Pesa",
                             icon: Smartphone,
                             color: "from-green-600 to-emerald-700",
+                            comingSoon: true,
                           },
                           {
                             value: "cashOnDelivery",
                             label: "Cash on Delivery",
                             icon: Wallet,
                             color: "from-amber-600 to-amber-700",
+                            comingSoon: false,
                           },
                           {
                             value: "other",
                             label: "Digital Wallet",
                             icon: Smartphone,
                             color: "from-purple-600 to-purple-700",
+                            comingSoon: true,
                           },
                         ].map((method) => (
                           <div key={method.value}>
@@ -1456,32 +1506,49 @@ const CheckoutPage = () => {
                               id={method.value}
                               checked={selectedPayment === method.value}
                               onChange={() => handlePaymentChange(method.value)}
+                              disabled={method.comingSoon}
                               className="hidden"
                             />
                             <label
                               htmlFor={method.value}
                               className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all duration-300 ${
-                                selectedPayment === method.value
-                                  ? `bg-gradient-to-r ${method.color} border-transparent text-white shadow-lg`
-                                  : "bg-gradient-to-r from-gray-900/50 to-black/50 border-amber-800/30 text-amber-100 hover:border-amber-500/50"
+                                method.comingSoon
+                                  ? "bg-gradient-to-r from-gray-800/50 to-gray-900/50 border-gray-700/30 text-gray-500 opacity-60 cursor-not-allowed"
+                                  : selectedPayment === method.value
+                                    ? `bg-gradient-to-r ${method.color} border-transparent text-white shadow-lg`
+                                    : "bg-gradient-to-r from-gray-900/50 to-black/50 border-amber-800/30 text-amber-100 hover:border-amber-500/50"
                               }`}
                             >
                               <div className="flex items-center space-x-3">
                                 <div
                                   className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                    selectedPayment === method.value
-                                      ? "bg-white/20"
-                                      : "bg-gradient-to-br from-gray-800 to-black"
+                                    method.comingSoon
+                                      ? "bg-gray-700/50"
+                                      : selectedPayment === method.value
+                                        ? "bg-white/20"
+                                        : "bg-gradient-to-br from-gray-800 to-black"
                                   }`}
                                 >
                                   <method.icon className="w-5 h-5" />
                                 </div>
-                                <span className="font-semibold">
-                                  {method.label}
-                                </span>
+                                <div className="flex flex-col">
+                                  <span className="font-semibold">
+                                    {method.label}
+                                  </span>
+                                  {method.comingSoon && (
+                                    <span className="text-xs text-gray-400 font-normal">
+                                      Coming Soon
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              {selectedPayment === method.value && (
+                              {selectedPayment === method.value && !method.comingSoon && (
                                 <CheckCircle className="w-5 h-5" />
+                              )}
+                              {method.comingSoon && (
+                                <div className="bg-gray-600/50 text-gray-400 text-xs px-2 py-1 rounded-full">
+                                  Soon
+                                </div>
                               )}
                             </label>
                           </div>
@@ -1524,12 +1591,12 @@ const CheckoutPage = () => {
                                 {selectedPayment === "cashOnDelivery"
                                   ? "Cash on Delivery"
                                   : selectedPayment === "card"
-                                  ? "Credit/Debit Card"
-                                  : selectedPayment === "mpesa"
-                                  ? "M-Pesa"
-                                  : selectedPayment === "paypal"
-                                  ? "PayPal"
-                                  : "Digital Wallet"}
+                                    ? "Credit/Debit Card"
+                                    : selectedPayment === "mpesa"
+                                      ? "M-Pesa"
+                                      : selectedPayment === "paypal"
+                                        ? "PayPal"
+                                        : "Digital Wallet"}
                               </span>
                             </div>
                             <button
@@ -1756,7 +1823,7 @@ const CheckoutPage = () => {
                 <div className="flex items-center justify-center space-x-2 mb-2">
                   <Package className="w-5 h-5 text-amber-400" />
                   <span className="text-amber-100 font-semibold">
-                    Total: {convertPrice(total)}
+                    Total: {formatPrice(total)}
                   </span>
                 </div>
                 <p className="text-gray-300 text-sm">

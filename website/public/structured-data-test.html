@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Structured Data Validation Test</title>
+
+    <!-- Organization Schema (from Homepage) -->
+    <script type="application/ld+json" id="organization-schema">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Nile Flow Africa",
+        "url": "https://nileflowafrica.com",
+        "logo": "https://nileflowafrica.com/images/logo.png",
+        "description": "Premium African E-commerce Marketplace offering authentic handcrafted products from across Africa. Connecting global customers with talented African artisans and unique cultural treasures.",
+        "founder": {
+          "@type": "Person",
+          "name": "Anthony Wai",
+          "jobTitle": "Founder & CEO"
+        },
+        "sameAs": ["https://www.linkedin.com/in/anthony-wai-a4bb5a348"],
+        "address": {
+          "@type": "PostalAddress",
+          "addressCountry": "Africa"
+        },
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "Customer Service",
+          "availableLanguage": ["English", "French", "Swahili"]
+        }
+      }
+    </script>
+
+    <!-- Person Schema (from About Page) -->
+    <script type="application/ld+json" id="founder-person-schema">
+      {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "Anthony Wai",
+        "jobTitle": "Founder & CEO of Nile Flow Africa",
+        "worksFor": {
+          "@type": "Organization",
+          "name": "Nile Flow Africa",
+          "url": "https://nileflowafrica.com"
+        },
+        "url": "https://nileflowafrica.com/about",
+        "sameAs": ["https://www.linkedin.com/in/anthony-wai-a4bb5a348"],
+        "description": "Visionary entrepreneur dedicated to connecting global markets with authentic African craftsmanship and culture.",
+        "knowsAbout": [
+          "E-commerce",
+          "African Markets",
+          "Cultural Heritage",
+          "Sustainable Business"
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <h1>Structured Data Validation Test</h1>
+    <p>This page contains the structured data schemas for validation.</p>
+
+    <div>
+      <h2>Testing Instructions:</h2>
+      <ol>
+        <li>
+          Use Google's Rich Results Test:
+          <a href="https://search.google.com/test/rich-results" target="_blank"
+            >https://search.google.com/test/rich-results</a
+          >
+        </li>
+        <li>
+          Use Google's Structured Data Testing Tool:
+          <a
+            href="https://developers.google.com/search/docs/appearance/structured-data"
+            target="_blank"
+            >Structured Data Guidelines</a
+          >
+        </li>
+        <li>
+          Use Schema.org validation:
+          <a href="https://validator.schema.org/" target="_blank"
+            >https://validator.schema.org/</a
+          >
+        </li>
+        <li>
+          Check browser developer tools → Elements → Head section for the script
+          tags with type="application/ld+json"
+        </li>
+      </ol>
+    </div>
+
+    <div>
+      <h2>Schemas Implemented:</h2>
+      <ul>
+        <li><strong>Organization Schema</strong> - Added to Homepage (/)</li>
+        <li><strong>Person Schema</strong> - Added to About Page (/about)</li>
+      </ul>
+    </div>
+  </body>
+</html>

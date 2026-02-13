@@ -86,8 +86,8 @@ const languages = [
 
 const Language = () => {
   const [selectedLanguage, setSelectedLanguage] = useState("en");
-  const [availableLanguages, setAvailableLanguages] = useState(
-    languages.slice(0, 2)
+  const [displayedLanguages, setDisplayedLanguages] = useState(
+    languages.slice(0, 2),
   );
   const [showAllLanguages, setShowAllLanguages] = useState(false);
 
@@ -101,17 +101,24 @@ const Language = () => {
 
     // Check if user's browser language is not in basic list
     if (!["en", "kis"].includes(savedLang)) {
-      setAvailableLanguages(languages);
+      setDisplayedLanguages(languages);
       setShowAllLanguages(true);
     }
   }, []);
 
-  const handleLanguageChange = (lang) => {
-    changeLanguage(lang);
-    setSelectedLanguage(lang);
+  // Define which languages are actually available
+  const availableLanguages = ["en"]; // Only English is available for now
 
-    // Show premium toast notification instead of alert
-    showLanguageChangeToast(lang);
+  const handleLanguageChange = (lang) => {
+    // Check if language is available
+    if (availableLanguages.includes(lang)) {
+      changeLanguage(lang);
+      setSelectedLanguage(lang);
+      showLanguageChangeToast(lang);
+    } else {
+      // Show coming soon message for unavailable languages
+      showComingSoonToast(lang);
+    }
   };
 
   const showLanguageChangeToast = (lang) => {
@@ -141,9 +148,34 @@ const Language = () => {
     }, 3000);
   };
 
+  const showComingSoonToast = (lang) => {
+    const langInfo = languages.find((l) => l.lang === lang);
+    const toast = document.createElement("div");
+    toast.className = "fixed top-4 right-4 z-50 animate-fadeIn";
+    toast.innerHTML = `
+      <div class="bg-gradient-to-r from-amber-900/80 to-yellow-900/80 backdrop-blur-sm border border-amber-700/50 rounded-2xl p-4 shadow-2xl">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+          </div>
+          <div>
+            <p class="font-bold text-white">Coming Soon!</p>
+            <p class="text-amber-100 text-sm">${langInfo?.label || lang} translation is being developed</p>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.remove();
+    }, 4000);
+  };
+
   const toggleAllLanguages = () => {
     setShowAllLanguages(!showAllLanguages);
-    setAvailableLanguages(showAllLanguages ? languages.slice(0, 2) : languages);
+    setDisplayedLanguages(showAllLanguages ? languages.slice(0, 2) : languages);
   };
 
   return (
@@ -271,9 +303,10 @@ const Language = () => {
 
             {/* Languages Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {availableLanguages.map(
+              {displayedLanguages.map(
                 ({ lang, label, description, region, flag, speakers }) => {
                   const isSelected = selectedLanguage === lang;
+                  const isAvailable = availableLanguages.includes(lang);
 
                   return (
                     <div
@@ -282,13 +315,20 @@ const Language = () => {
                       className={`group relative p-6 rounded-2xl border backdrop-blur-sm cursor-pointer transition-all duration-300 ${
                         isSelected
                           ? "bg-gradient-to-r from-amber-600/30 to-amber-700/20 border-amber-500/50 shadow-lg shadow-amber-900/30"
-                          : "bg-gradient-to-r from-gray-900/50 to-black/50 border-amber-800/30 hover:border-amber-500/50"
+                          : isAvailable
+                            ? "bg-gradient-to-r from-gray-900/50 to-black/50 border-amber-800/30 hover:border-amber-500/50"
+                            : "bg-gradient-to-r from-gray-900/30 to-black/30 border-gray-700/30 hover:border-gray-500/50 opacity-75"
                       }`}
                     >
-                      {/* Selection Indicator */}
+                      {/* Selection Indicator or Coming Soon Badge */}
                       {isSelected && (
                         <div className="absolute -top-2 -right-2 w-10 h-10 rounded-full bg-gradient-to-r from-amber-600 to-amber-700 flex items-center justify-center shadow-lg">
                           <Check className="w-5 h-5 text-white" />
+                        </div>
+                      )}
+                      {!isAvailable && (
+                        <div className="absolute -top-2 -right-2 bg-gradient-to-r from-gray-600 to-gray-700 text-white text-xs font-bold px-2 py-1 rounded-full border border-gray-500">
+                          Coming Soon
                         </div>
                       )}
 
@@ -298,7 +338,9 @@ const Language = () => {
                           className={`w-14 h-14 rounded-xl flex items-center justify-center text-3xl ${
                             isSelected
                               ? "bg-gradient-to-br from-amber-500 to-yellow-600"
-                              : "bg-gradient-to-br from-gray-800 to-black border border-amber-800/30"
+                              : isAvailable
+                                ? "bg-gradient-to-br from-gray-800 to-black border border-amber-800/30"
+                                : "bg-gradient-to-br from-gray-700 to-gray-800 border border-gray-600/30 grayscale"
                           }`}
                         >
                           {flag}
@@ -307,7 +349,11 @@ const Language = () => {
                           <div className="flex items-center justify-between">
                             <h3
                               className={`text-xl font-bold ${
-                                isSelected ? "text-amber-300" : "text-white"
+                                isSelected
+                                  ? "text-amber-300"
+                                  : isAvailable
+                                    ? "text-white"
+                                    : "text-gray-300"
                               }`}
                             >
                               {label}
@@ -316,12 +362,18 @@ const Language = () => {
                               <div className="flex items-center space-x-1 bg-gradient-to-r from-amber-900/40 to-yellow-900/30 backdrop-blur-sm px-2 py-1 rounded border border-amber-700/30">
                                 <Star className="w-3 h-3 text-amber-400" />
                                 <span className="text-xs text-amber-200">
-                                  Default
+                                  Available
                                 </span>
                               </div>
                             )}
                           </div>
-                          <p className="text-sm mt-1 text-amber-100/70">
+                          <p
+                            className={`text-sm mt-1 ${
+                              isAvailable
+                                ? "text-amber-100/70"
+                                : "text-gray-400/70"
+                            }`}
+                          >
                             {description}
                           </p>
                         </div>
@@ -330,14 +382,34 @@ const Language = () => {
                       {/* Language Details */}
                       <div className="grid grid-cols-2 gap-3">
                         <div className="flex items-center space-x-2">
-                          <Users className="w-4 h-4 text-amber-400" />
-                          <span className="text-xs text-amber-100/80">
+                          <Users
+                            className={`w-4 h-4 ${
+                              isAvailable ? "text-amber-400" : "text-gray-500"
+                            }`}
+                          />
+                          <span
+                            className={`text-xs ${
+                              isAvailable
+                                ? "text-amber-100/80"
+                                : "text-gray-400/80"
+                            }`}
+                          >
                             {speakers}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Shield className="w-4 h-4 text-emerald-400" />
-                          <span className="text-xs text-emerald-100/80">
+                          <Shield
+                            className={`w-4 h-4 ${
+                              isAvailable ? "text-emerald-400" : "text-gray-500"
+                            }`}
+                          />
+                          <span
+                            className={`text-xs ${
+                              isAvailable
+                                ? "text-emerald-100/80"
+                                : "text-gray-400/80"
+                            }`}
+                          >
                             {region}
                           </span>
                         </div>
@@ -364,7 +436,7 @@ const Language = () => {
                       )}
                     </div>
                   );
-                }
+                },
               )}
             </div>
 
@@ -421,28 +493,6 @@ const Language = () => {
                   </p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Language Assistance */}
-          <div className="mt-8 bg-gradient-to-r from-emerald-900/20 to-green-900/20 backdrop-blur-sm border border-emerald-800/30 rounded-3xl p-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 flex items-center justify-center">
-                  <Languages className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white">
-                    Need Translation Help?
-                  </h3>
-                  <p className="text-emerald-100/70">
-                    Our multilingual support team is here to assist you
-                  </p>
-                </div>
-              </div>
-              <button className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold rounded-xl hover:from-emerald-700 hover:to-emerald-800 transition-all duration-300 whitespace-nowrap">
-                Contact Language Support
-              </button>
             </div>
           </div>
         </div>

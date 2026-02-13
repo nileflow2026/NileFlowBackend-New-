@@ -2,6 +2,7 @@
 // components/RecommendationCard.jsx
 import React from "react";
 import { Star, Heart, ShoppingBag, Globe, Award } from "lucide-react";
+import { formatPrice } from "../utils/priceFormatter";
 
 export const RecommendationCard = ({
   item,
@@ -91,11 +92,11 @@ export const RecommendationCard = ({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className="text-amber-400 font-bold text-lg">
-              {item.currency || "KES"} {(item.price || 0).toLocaleString()}
+              {formatPrice(item.price || 0)}
             </span>
             {item.originalPrice && item.originalPrice > (item.price || 0) && (
               <span className="text-gray-500 line-through text-sm">
-                {item.currency || "KES"} {item.originalPrice.toLocaleString()}
+                {formatPrice(item.originalPrice)}
               </span>
             )}
           </div>

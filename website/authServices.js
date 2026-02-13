@@ -327,11 +327,80 @@ export const signInWithFacebook = async () => {
 };
 
 /**
+ * Get pickup address for the authenticated user
+ */
+export const getPickupAddress = async () => {
+  try {
+    console.log("🔄 Fetching pickup address from database (primary source)");
+
+    // Fetch pickup addresses with type filter
+    const response = await axiosClient.get("/api/customerauth/pickup-address", {
+      params: {
+        type: "pickup", // Filter for pickup type addresses only
+      },
+    });
+
+    console.log(
+      "✅ Pickup address fetched successfully from database:",
+      response.data
+    );
+
+    // Check if we have valid pickup address data
+    const hasValidAddress =
+      response.data &&
+      (Array.isArray(response.data)
+        ? response.data.length > 0
+        : Object.keys(response.data).length > 0);
+
+    return {
+      success: true,
+      data: response.data,
+      hasAddress: hasValidAddress,
+    };
+  } catch (error) {
+    console.error(
+      "❌ Pickup address fetch error from database:",
+      error.response?.data || error.message
+    );
+
+    // If it's a 404, user doesn't have an address saved
+    if (error.response?.status === 404) {
+      console.log("ℹ️ No pickup address found in database (404)");
+      return {
+        success: true,
+        data: null,
+        hasAddress: false,
+      };
+    }
+
+    return {
+      success: false,
+      error:
+        error.response?.data?.error ||
+        "Failed to fetch pickup address from database. Please try again.",
+    };
+  }
+};
+
+/**
  * Save pickup address and phone for delivery tracking
  */
 export const savePickupAddress = async (addressData) => {
   try {
     console.log("🔄 Saving pickup address:", addressData);
+
+    // Get current user data to extract fullName
+    const userResult = await getCurrentUser();
+    if (!userResult.success) {
+      throw new Error("Failed to get user information");
+    }
+
+    const fullName =
+      userResult.data?.fullName ||
+      userResult.data?.username ||
+      userResult.data?.name ||
+      "";
+    console.log("👤 User fullName for pickup address:", fullName);
 
     const response = await axiosClient.post(
       "/api/customerauth/pickup-address",
@@ -341,6 +410,8 @@ export const savePickupAddress = async (addressData) => {
         city: addressData.city,
         state: addressData.state,
         postalCode: addressData.postalCode,
+        type: "pickup", // Set the type attribute to "pickup" for the enum
+        fullName: fullName, // Include user's full name
       }
     );
 
@@ -363,6 +434,74 @@ export const savePickupAddress = async (addressData) => {
   }
 };
 
+/**
+ * Send forgot password email
+ */
+export const sendForgotPasswordEmail = async (email) => {
+  try {
+    console.log("📧 Sending forgot password email to:", email);
+    
+    const response = await axiosClient.post(
+      "/api/nileflowafrica/passwordchange/forgot-password",
+      {
+        email,
+      },
+    );
+
+    console.log("✅ Forgot password email sent successfully");
+    return {
+      success: true,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error(
+      "❌ Send forgot password email error:",
+      error.response?.data || error.message
+    );
+    return {
+      success: false,
+      error:
+        error.response?.data?.message ||
+        "Failed to send password reset email. Please try again.",
+    };
+  }
+};
+
+/**
+ * Reset password with token
+ */
+export const resetPasswordWithToken = async (email, token, newPassword) => {
+  try {
+    console.log("🔐 Resetting password for:", email);
+    
+    const response = await axiosClient.post(
+      "/api/nileflowafrica/passwordchange/reset-password",
+      {
+        email,
+        token,
+        newPassword,
+      },
+    );
+
+    console.log("✅ Password reset successfully");
+    return {
+      success: true,
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error(
+      "❌ Reset password error:",
+      error.response?.data || error.message
+    );
+    return {
+      success: false,
+      error:
+        error.response?.data?.message ||
+        "Failed to reset password. Please try again.",
+    };
+  }
+};
+
 export default {
   signUpCustomer,
   signInCustomer,
@@ -373,4 +512,7 @@ export default {
   signInWithGoogle,
   signInWithFacebook,
   savePickupAddress,
+  getPickupAddress,
+  sendForgotPasswordEmail,
+  resetPasswordWithToken,
 };

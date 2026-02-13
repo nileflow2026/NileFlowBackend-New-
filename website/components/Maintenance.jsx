@@ -17,7 +17,7 @@ import {
   Compass,
   Heart,
 } from "lucide-react";
-import newlogo from "../public/images/newlogo.png"; // Change this to your image path
+import newlogo from "../src/assets/newlogo.png";
 
 const Maintenance = () => {
   const [contact, setContact] = useState("");
@@ -460,7 +460,7 @@ import {
   Compass,
   Heart,
 } from "lucide-react";
-import newlogo from "../public/images/newlogo.png"; // Change this to your image path
+import newlogo from "../src/assets/newlogo.png";
 
 const Maintenance = () => {
   const [contact, setContact] = useState("");
@@ -484,7 +484,7 @@ const Maintenance = () => {
     if (difference > 0) {
       const days = Math.floor(difference / (1000 * 60 * 60 * 24));
       const hours = Math.floor(
-        (difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+        (difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
       );
       const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((difference % (1000 * 60)) / 1000);
@@ -531,7 +531,7 @@ const Maintenance = () => {
           method: "POST",
           body: JSON.stringify({ value, type }),
           contentType: "application/json",
-        }
+        },
       );
 
       setContact("");
@@ -610,7 +610,7 @@ const Maintenance = () => {
                   e.target.parentElement.classList.add(
                     "bg-gradient-to-br",
                     "from-amber-600",
-                    "to-amber-700"
+                    "to-amber-700",
                   );
                 }}
               />

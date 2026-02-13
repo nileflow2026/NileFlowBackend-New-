@@ -11,7 +11,6 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { useCurrency } from "./CurrencyProvider";
 import { fetchUserId, fetchUserName } from "../CustomerServices";
 import axiosClient from "../api";
 import * as Toastify from "react-toastify";
@@ -25,7 +24,6 @@ export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
   const [loadingUser, setLoadingUser] = useState(false);
   const [userId, setUserId] = useState(null);
-  const { convertPrice } = useCurrency();
 
   useEffect(() => {
     loadCartFromStorage();

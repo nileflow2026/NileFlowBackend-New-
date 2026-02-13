@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "./CartContext";
@@ -13,6 +14,7 @@ import {
   FiLogOut,
 } from "react-icons/fi";
 import { useNotification } from "../Context/NotificationContext";
+import NotificationSettings from "./NotificationSettings";
 import i18n from "../i18n";
 import { logoutCustomer } from "../authServices";
 import { useState, useEffect } from "react";
@@ -31,11 +33,13 @@ const Header = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [headerGradient, setHeaderGradient] = useState("");
   const [scrollEffect, setScrollEffect] = useState(false);
+  const [notificationSettingsOpen, setNotificationSettingsOpen] =
+    useState(false);
 
   // ✅ Use the auth context instead of local state
   const { user, isLoading: userLoading } = useCustomerAuth();
   const { cart } = useCart();
-  const { notificationCount } = useNotification();
+  const { notificationCount, isNotificationsEnabled } = useNotification();
 
   useEffect(() => {
     const randomGradient =
@@ -65,36 +69,36 @@ const Header = () => {
     <header className="sticky top-0 z-50 shadow-2xl" style={headerStyle}>
       <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Top Announcement Bar */}
-        <div className="hidden md:flex justify-center py-2 bg-black/20">
-          <div className="flex items-center space-x-2 text-amber-100 text-sm">
-            <span className="inline-block w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
+        <div className="hidden md:flex justify-center py-1.5 bg-black/30 border-b border-amber-900/20">
+          <div className="flex items-center space-x-2 text-amber-200/90 text-xs font-medium">
+            <span className="inline-block w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"></span>
             <span>
-              🌟 Premium African Marketplace • Express Delivery • 100% Authentic
+              ✨ Premium African Marketplace • Express Delivery • 100% Authentic
             </span>
           </div>
         </div>
 
         {/* Main Header */}
-        <div className="flex items-center justify-between py-4">
+        <div className="flex items-center justify-between py-2.5">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3 group">
+          <Link to="/" className="flex items-center space-x-2.5 group">
             <div className="relative">
-              <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 to-emerald-500 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-500"></div>
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-400 to-emerald-500 rounded-full blur opacity-60 group-hover:opacity-90 transition duration-300"></div>
               <img
                 src="/images/logo.png"
                 alt="Nile Flow"
-                className="relative h-16 w-16 md:h-20 md:w-20 object-contain drop-shadow-lg"
+                className="relative h-12 w-12 md:h-14 md:w-14 object-contain drop-shadow-md"
               />
             </div>
-            <div className="flex flex-col">
-              <span className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-amber-300 to-emerald-200 bg-clip-text text-transparent font-serif tracking-wider">
+            <div className="hidden lg:flex flex-col">
+              <span className="text-xl md:text-2xl font-bold bg-gradient-to-r from-amber-300 to-emerald-200 bg-clip-text text-transparent font-serif tracking-wide">
                 NILE FLOW
               </span>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-1">
+          <nav className="hidden lg:flex items-center space-x-0.5">
             {[
               { to: "/home", label: i18n.t("Home") },
               { to: "/shop", label: "Shop" },
@@ -107,37 +111,65 @@ const Header = () => {
               <Link
                 key={item.to}
                 to={item.to}
-                className="relative px-5 py-3 text-amber-50 font-medium text-sm tracking-wide hover:text-white transition-colors duration-300 group whitespace-nowrap"
+                className="relative px-3 py-2 text-amber-50/90 font-medium text-sm hover:text-white transition-all duration-300 group whitespace-nowrap rounded-lg hover:bg-black/20"
               >
                 {item.label}
-                <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-gradient-to-r from-amber-400 to-emerald-400 group-hover:w-4/5 group-hover:left-1/10 transition-all duration-400"></span>
+                <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-gradient-to-r from-amber-400 to-emerald-400 group-hover:w-3/4 group-hover:left-1/8 transition-all duration-300"></span>
               </Link>
             ))}
           </nav>
 
           {/* Action Icons & Profile */}
-          <div className="flex items-center space-x-4 sm:space-x-6">
+          <div className="flex items-center space-x-2.5 sm:space-x-3">
             {/* Search */}
             <Link
               to="/search"
-              className="p-2.5 rounded-full bg-black/20 hover:bg-black/30 text-amber-100 hover:text-white transition-all duration-300 transform hover:scale-110"
+              className="p-2 rounded-full bg-black/20 hover:bg-black/30 text-amber-100 hover:text-white transition-all duration-300 transform hover:scale-105"
             >
-              <FiSearch size={20} />
+              <FiSearch size={18} />
             </Link>
 
             {/* Cart */}
             <Link
               to="/cart"
-              className="relative p-2.5 rounded-full bg-black/20 hover:bg-black/30 text-amber-100 hover:text-white transition-all duration-300 transform hover:scale-110"
+              className="relative p-2 rounded-full bg-black/20 hover:bg-black/30 text-amber-100 hover:text-white transition-all duration-300 transform hover:scale-105"
             >
-              <FiShoppingCart size={20} />
+              <FiShoppingCart size={18} />
               {cart.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-gradient-to-br from-red-500 to-amber-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center shadow-lg animate-bounce">
+                <span className="absolute -top-1 -right-1 bg-gradient-to-br from-red-500 to-amber-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-md">
                   {cart.length}
                 </span>
               )}
             </Link>
 
+            {/* Notifications */}
+            {/* <div className="relative">
+              <Link
+                to="/notification"
+                className="relative p-2 rounded-full bg-black/20 hover:bg-black/30 text-amber-100 hover:text-white transition-all duration-300 transform hover:scale-105"
+              >
+                <FiBell
+                  size={18}
+                  className={isNotificationsEnabled ? "text-emerald-300" : ""}
+                />
+                {notificationCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-gradient-to-br from-red-500 to-amber-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center shadow-md">
+                    {notificationCount > 9 ? "9+" : notificationCount}
+                  </span>
+                )}
+                {isNotificationsEnabled && (
+                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-black/20 animate-pulse"></div>
+                )}
+              </Link>
+               Notification Settings Button 
+              <button
+                onClick={() => setNotificationSettingsOpen(true)}
+                className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-gradient-to-r from-amber-600 to-amber-700 text-white text-xs hover:from-amber-700 hover:to-amber-800 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100 group-hover:opacity-100"
+                title="Notification Settings"
+              >
+                <FiSettings size={10} />
+              </button>{" "}
+            </div> */}
             {/* Notifications */}
             <Link
               to="/notification"
@@ -165,7 +197,7 @@ const Header = () => {
                         <img
                           src={user.avatarUrl || "/images/logo.png"}
                           alt="Profile"
-                          className="relative w-14 h-14 rounded-full border-2 border-amber-300/30 object-cover"
+                          className="relative w-10 h-10 rounded-full border border-amber-300/40 object-cover"
                         />
                       </div>
                       <FiChevronDown
@@ -237,113 +269,133 @@ const Header = () => {
 
             {/* Mobile Menu Button */}
             <button
-              className="lg:hidden p-2.5 rounded-full bg-black/30 text-amber-100 hover:text-white transition-all duration-300"
+              className="lg:hidden p-2 min-w-[36px] min-h-[36px] rounded-full bg-black/40 hover:bg-black/60 text-amber-100 hover:text-white transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
               onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Toggle mobile menu"
+              style={{
+                willChange: "transform, background-color",
+                backfaceVisibility: "hidden",
+              }}
             >
-              {menuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+              <div
+                className="transition-transform duration-300 ease-in-out"
+                style={{
+                  transform: menuOpen ? "rotate(90deg)" : "rotate(0deg)",
+                  willChange: "transform",
+                }}
+              >
+                {menuOpen ? (
+                  <FiX className="w-5 h-5" />
+                ) : (
+                  <FiMenu className="w-5 h-5" />
+                )}
+              </div>
             </button>
           </div>
         </div>
       </div>
 
       {/* Mobile Menu Overlay */}
-      <div
-        className={`lg:hidden fixed inset-0 z-40 transition-all duration-500 ease-in-out ${
-          menuOpen ? "opacity-100 visible" : "opacity-0 invisible"
-        }`}
-      >
-        {/* Backdrop */}
-        <div
-          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-          onClick={() => setMenuOpen(false)}
-        />
+      {menuOpen && (
+        <div className="mobile-menu-overlay lg:hidden animate-fadeIn">
+          {/* Backdrop */}
+          <div
+            className="mobile-menu-backdrop bg-black/70"
+            onClick={() => setMenuOpen(false)}
+          />
 
-        {/* Menu Panel */}
-        <div
-          className={`absolute top-0 right-0 h-full w-80 bg-gradient-to-b from-gray-900 to-black transform transition-transform duration-500 ease-out shadow-2xl ${
-            menuOpen ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          {/* Menu Header */}
-          <div className="p-6 border-b border-amber-900/30">
-            {user ? (
-              <div className="flex items-center space-x-3">
-                <img
-                  src={user.avatarUrl || "/images/logo.png"}
-                  alt="Profile"
-                  className="w-12 h-12 rounded-full border-2 border-amber-400/30"
-                />
-                <div>
-                  <p className="font-bold text-amber-100">{user.username}</p>
-                  <p className="text-sm text-amber-100/60">Welcome back!</p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-emerald-500 flex items-center justify-center mb-3">
-                  <FiUser size={28} className="text-white" />
-                </div>
-                <p className="text-amber-100 font-bold">Welcome to Nile Flow</p>
-              </div>
-            )}
-          </div>
-
-          {/* Menu Links */}
-          <div className="p-4 space-y-1">
-            {[
-              { to: "/home", label: i18n.t("Home"), icon: "🏠" },
-              { to: "/shop", label: "Shop", icon: "🛒" },
-              { to: "/deals", label: "Deals", icon: "🔥" },
-              { to: "/contact", label: "Contact Us", icon: "📞" },
-              { to: "/language", label: "Language", icon: "🌍" },
-              { to: "/profile", label: "Profile", icon: "👤" },
-              { to: "/settings", label: "Settings", icon: "⚙️" },
-            ].map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className="flex items-center space-x-3 px-4 py-4 rounded-xl hover:bg-amber-900/20 text-amber-100 transition-all duration-200"
-                onClick={() => setMenuOpen(false)}
-              >
-                <span className="text-xl">{item.icon}</span>
-                <span className="font-medium">{item.label}</span>
-              </Link>
-            ))}
-
-            {/* Auth Buttons */}
-            <div className="pt-6 border-t border-amber-900/30">
+          {/* Menu Panel */}
+          <div className="mobile-menu-panel w-80 bg-gradient-to-b from-gray-900 to-black shadow-2xl animate-slideInRight">
+            {/* Menu Header */}
+            <div className="p-6 border-b border-amber-900/30">
               {user ? (
-                <button
-                  onClick={async () => {
-                    await logoutCustomer();
-                    setMenuOpen(false);
-                  }}
-                  className="flex items-center justify-center space-x-2 w-full px-4 py-3 bg-gradient-to-r from-red-600 to-red-800 text-white rounded-xl hover:opacity-90 transition-all duration-300"
-                >
-                  <FiLogOut />
-                  <span>Logout</span>
-                </button>
+                <div className="flex items-center space-x-3">
+                  <img
+                    src={user.avatarUrl || "/images/logo.png"}
+                    alt="Profile"
+                    className="w-12 h-12 rounded-full border-2 border-amber-400/30"
+                  />
+                  <div>
+                    <p className="font-bold text-amber-100">{user.username}</p>
+                    <p className="text-sm text-amber-100/60">Welcome back!</p>
+                  </div>
+                </div>
               ) : (
-                <Link
-                  to="/signin"
-                  className="flex items-center justify-center space-x-2 w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-700 text-white rounded-xl hover:opacity-90 transition-all duration-300"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <FiUser />
-                  <span>Sign In / Register</span>
-                </Link>
+                <div className="flex flex-col items-center">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-emerald-500 flex items-center justify-center mb-3">
+                    <FiUser size={28} className="text-white" />
+                  </div>
+                  <p className="text-amber-100 font-bold">
+                    Welcome to Nile Flow
+                  </p>
+                </div>
               )}
             </div>
-          </div>
 
-          {/* Footer */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 text-center">
-            <p className="text-xs text-amber-100/50">
-              © 2025 Nile Flow. Premium African E-commerce
-            </p>
+            {/* Menu Links */}
+            <div className="p-4 space-y-1">
+              {[
+                { to: "/home", label: i18n.t("Home"), icon: "🏠" },
+                { to: "/shop", label: "Shop", icon: "🛒" },
+                { to: "/deals", label: "Deals", icon: "🔥" },
+                { to: "/contact", label: "Contact Us", icon: "📞" },
+                { to: "/about-us", label: "About Us", icon: "ℹ️" },
+                { to: "/language", label: "Language", icon: "🌍" },
+                { to: "/profile", label: "Profile", icon: "👤" },
+                { to: "/settings", label: "Settings", icon: "⚙️" },
+              ].map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className="flex items-center space-x-3 px-4 py-4 rounded-xl hover:bg-amber-900/20 text-amber-100 transition-all duration-200"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <span className="text-xl">{item.icon}</span>
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              ))}
+
+              {/* Auth Buttons */}
+              <div className="pt-6 border-t border-amber-900/30">
+                {user ? (
+                  <button
+                    onClick={async () => {
+                      await logoutCustomer();
+                      setMenuOpen(false);
+                    }}
+                    className="flex items-center justify-center space-x-2 w-full px-4 py-3 bg-gradient-to-r from-red-600 to-red-800 text-white rounded-xl hover:opacity-90 transition-all duration-300"
+                  >
+                    <FiLogOut />
+                    <span>Logout</span>
+                  </button>
+                ) : (
+                  <Link
+                    to="/signin"
+                    className="flex items-center justify-center space-x-2 w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-700 text-white rounded-xl hover:opacity-90 transition-all duration-300"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <FiUser />
+                    <span>Sign In / Register</span>
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="absolute bottom-0 left-0 right-0 p-6 text-center">
+              <p className="text-xs text-amber-100/50">
+                © 2026 Nile Flow Africa. Premium African E-commerce
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Notification Settings Modal */}
+      <NotificationSettings
+        isOpen={notificationSettingsOpen}
+        onClose={() => setNotificationSettingsOpen(false)}
+      />
     </header>
   );
 };

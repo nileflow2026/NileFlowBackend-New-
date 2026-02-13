@@ -93,8 +93,8 @@ const MarketplaceHub = () => {
         "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
       rating: 4.9,
       reviews: 128,
-      price: "$249",
-      originalPrice: "$349",
+      price: "KSh 24,900",
+      originalPrice: "KSh 34,900",
       discount: 29,
       verified: true,
       featured: true,
@@ -120,7 +120,7 @@ const MarketplaceHub = () => {
         "https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
       rating: 4.8,
       followers: "150K",
-      price: "$1,250",
+      price: "KSh 125,000",
       platform: "Instagram",
       verified: true,
       featured: true,
@@ -146,8 +146,8 @@ const MarketplaceHub = () => {
         "https://images.unsplash.com/photo-1556228578-9c360e1d8d34?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
       rating: 4.7,
       reviews: 89,
-      price: "$89",
-      originalPrice: "$120",
+      price: "KSh 8,900",
+      originalPrice: "KSh 12,000",
       discount: 26,
       verified: true,
       featured: false,
@@ -173,7 +173,7 @@ const MarketplaceHub = () => {
         "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
       rating: 4.9,
       followers: "320K",
-      price: "$2,500",
+      price: "KSh 250,000",
       platform: "YouTube",
       verified: true,
       featured: false,
@@ -199,8 +199,8 @@ const MarketplaceHub = () => {
         "https://images.unsplash.com/photo-1558769132-cb1a40ed0ada?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
       rating: 4.6,
       reviews: 203,
-      price: "$45/yard",
-      originalPrice: "$60/yard",
+      price: "KSh 4,500/yard",
+      originalPrice: "KSh 6,000/yard",
       discount: 25,
       verified: true,
       featured: true,
@@ -226,7 +226,7 @@ const MarketplaceHub = () => {
         "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
       rating: 4.7,
       followers: "85K",
-      price: "$850",
+      price: "KSh 85,000",
       platform: "Instagram & TikTok",
       verified: false,
       featured: false,
@@ -404,7 +404,7 @@ const MarketplaceHub = () => {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-purple-300">
-                    From $99
+                    From KSh 9,900
                   </div>
                   <div className="text-purple-100/80 text-sm">Per Campaign</div>
                 </div>

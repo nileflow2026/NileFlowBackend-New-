@@ -42,7 +42,7 @@ const AllFeaturedProductsPage = () => {
     const fetchAllFeaturedProducts = async () => {
       try {
         const response = await axiosClient(
-          "/api/customerprofile/featured-products?showAll=true"
+          "/api/customerprofile/featured-products?showAll=true",
         );
         setProducts(response.data);
       } catch (err) {
@@ -60,14 +60,14 @@ const AllFeaturedProductsPage = () => {
     setSelectedCategories((prev) =>
       prev.includes(categoryId)
         ? prev.filter((id) => id !== categoryId)
-        : [...prev, categoryId]
+        : [...prev, categoryId],
     );
   };
 
   const filteredProducts =
     selectedCategories.length > 0
       ? products.filter((product) =>
-          selectedCategories.includes(product.category || "fashion")
+          selectedCategories.includes(product.category || "fashion"),
         )
       : products;
 
@@ -297,7 +297,7 @@ const AllFeaturedProductsPage = () => {
             <div
               className={`${
                 viewMode === "grid"
-                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                  ? "grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                   : "flex flex-col"
               } gap-6`}
             >

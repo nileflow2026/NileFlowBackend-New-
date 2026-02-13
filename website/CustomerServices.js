@@ -39,29 +39,30 @@ export const createNotification = async ({
   }
 };
 
-export const saveRecentSearch = async (userId, query) => {
+export const saveRecentSearch = async (query) => {
   try {
-    const token = localStorage.getItem("accessToken"); // ✅ Ensure this matches where you save
+    const token = localStorage.getItem("accessToken");
 
     if (!token) {
-      throw new Error("No access token found");
+      console.log("No token found, skipping save recent search");
+      return;
     }
 
     const userId = await fetchUserId();
+    if (!userId) {
+      console.log("No userId found, skipping save recent search");
+      return;
+    }
+    
     const response = await axiosClient.post(
       `/api/customerprofile/customer-searches`,
       {
         userId,
         query,
       }
-      /*       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      } */
     );
 
-    console.log(response.data.message);
+    console.log("Recent search saved:", response.data.message);
   } catch (error) {
     console.error(
       "Failed to save recent search:",
@@ -72,20 +73,24 @@ export const saveRecentSearch = async (userId, query) => {
 
 export const getRecentSearches = async () => {
   try {
-    const token = localStorage.getItem("accessToken"); // ✅ Ensure this matches where you save
+    const token = localStorage.getItem("accessToken");
 
     if (!token) {
-      throw new Error("No access token found");
+      console.log("No token found, skipping recent searches");
+      return [];
     }
+    
     const userId = await fetchUserId();
+    if (!userId) {
+      console.log("No userId found, skipping recent searches");
+      return [];
+    }
+    
     const response = await axiosClient.get(
       "/api/customerprofile/customer-recent-search",
       {
-        /*  headers: {
-          Authorization: `Bearer ${token}`,
-        }, */
         params: {
-          userId: userId, // 👈 send userId as a query parameter
+          userId: userId,
         },
       }
     );
@@ -93,6 +98,24 @@ export const getRecentSearches = async () => {
   } catch (error) {
     console.error(
       "Error fetching recent searches:",
+      error.response?.data || error.message
+    );
+    return [];
+  }
+};
+
+export const getPopularSearches = async (limit = 6) => {
+  try {
+    const response = await axiosClient.get(
+      "/api/customerprofile/popular-searches",
+      {
+        params: { limit }
+      }
+    );
+    return response.data.searches || [];
+  } catch (error) {
+    console.error(
+      "Error fetching popular searches:",
       error.response?.data || error.message
     );
     return [];

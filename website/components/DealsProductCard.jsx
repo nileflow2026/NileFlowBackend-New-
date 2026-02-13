@@ -1,7 +1,8 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
 import { Link } from "react-router-dom";
 import AddToCartButton from "./AddToCartButton";
-import { useCurrency } from "../Context/CurrencyProvider";
+import { formatPrice } from "../utils/priceFormatter";
 
 import {
   Clock,
@@ -17,12 +18,12 @@ import {
   Heart,
   ArrowRight,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const DealsProductCard = ({ product }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const { convertPrice } = useCurrency();
+  const [currentTimeLeft, setCurrentTimeLeft] = useState(null);
 
   // Calculate discount percentage
   const discount =
@@ -31,8 +32,8 @@ const DealsProductCard = ({ product }) => {
       ? Math.round(((product.price - product.dealPrice) / product.price) * 100)
       : 0);
 
-  // Time left for deal (simulated)
-  const timeLeft = {
+  // Time left for deal - use real data from backend
+  const timeLeft = product.timeLeft || {
     hours: Math.floor(Math.random() * 24),
     minutes: Math.floor(Math.random() * 60),
     seconds: Math.floor(Math.random() * 60),
@@ -46,10 +47,11 @@ const DealsProductCard = ({ product }) => {
 
   const dealIntensityClass = getDealIntensity(discount);
 
-  // Calculate stock percentage and color
-  const stockQuantity = product.stock || product.stockQuantity || 0;
-  const initialStock = product.initialStock || 100; // Fallback if not provided
-  const stockPercentage = (stockQuantity / initialStock) * 100;
+  // Calculate stock percentage and color - use real data from backend
+  const stockQuantity = product.stockQuantity || product.stock || 0;
+  const initialStock = product.initialStock || product.totalStock || 100; // Use backend data or fallback
+  const stockPercentage =
+    stockQuantity > 0 ? (stockQuantity / initialStock) * 100 : 0;
 
   const getStockColor = (percentage) => {
     if (percentage <= 20) return "from-red-500 to-orange-500";
@@ -58,6 +60,40 @@ const DealsProductCard = ({ product }) => {
   };
 
   const stockColorClass = getStockColor(stockPercentage);
+
+  // Initialize and update countdown timer with real backend data
+  useEffect(() => {
+    if (product.dealEndTime) {
+      const updateCountdown = () => {
+        const now = new Date();
+        const end = new Date(product.dealEndTime);
+        const timeDiff = end.getTime() - now.getTime();
+
+        if (timeDiff <= 0) {
+          setCurrentTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+          return;
+        }
+
+        const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+
+        setCurrentTimeLeft({ hours, minutes, seconds });
+      };
+
+      // Update immediately and then every second
+      updateCountdown();
+      const interval = setInterval(updateCountdown, 1000);
+
+      return () => clearInterval(interval);
+    } else {
+      // Use the timeLeft from product if dealEndTime is not available
+      setCurrentTimeLeft(timeLeft);
+    }
+  }, [product.dealEndTime, timeLeft]);
+
+  // Use real-time countdown or fallback to product timeLeft
+  const displayTimeLeft = currentTimeLeft || timeLeft;
 
   return (
     <div
@@ -69,7 +105,7 @@ const DealsProductCard = ({ product }) => {
       <div
         className={`absolute inset-0 bg-gradient-to-br ${dealIntensityClass.replace(
           "600",
-          "500"
+          "500",
         )}/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
       ></div>
 
@@ -79,12 +115,12 @@ const DealsProductCard = ({ product }) => {
         <div className="absolute top-4 right-4 z-10">
           <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white text-sm font-bold px-4 py-2 rounded-full shadow-lg flex items-center space-x-1">
             <TrendingDown className="w-4 h-4" />
-            <span>{discount}% OFF</span>
+            <span>{Math.round(discount)}% OFF</span>
           </div>
         </div>
 
         {/* Image Container */}
-        <div className="relative h-64 overflow-hidden bg-gradient-to-br from-gray-900 to-black">
+        <div className="relative h-48 sm:h-56 md:h-64 overflow-hidden bg-gradient-to-br from-gray-900 to-black">
           <Link
             to={`/products/${product.productId || product.$id}`}
             className="block h-full"
@@ -120,62 +156,86 @@ const DealsProductCard = ({ product }) => {
         </div>
 
         {/* Product Info */}
-        <div className="p-6">
+        <div className="p-3 sm:p-4 md:p-6">
           <div className="mb-4">
             <Link to={`/products/${product.productId || product.$id}`}>
-              <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition-colors duration-300 line-clamp-2 min-h-[3.5rem]">
+              <h3 className="text-sm sm:text-base md:text-lg font-bold text-white group-hover:text-amber-300 transition-colors duration-300 line-clamp-2 min-h-[2.5rem] sm:min-h-[3.5rem]">
                 {product.productName || product.name}
               </h3>
             </Link>
 
             {/* Deal Features */}
             <div className="flex items-center space-x-2 mt-2">
-              <div className="flex items-center space-x-1">
-                <Truck className="w-3 h-3 text-emerald-400" />
-                <span className="text-xs text-emerald-100">Free Shipping</span>
-              </div>
+              {product.freeShipping !== false && (
+                <div className="flex items-center space-x-1">
+                  <Truck className="w-3 h-3 text-emerald-400" />
+                  <span className="text-xs text-emerald-100">
+                    Free Shipping
+                  </span>
+                </div>
+              )}
+              {product.isExpiringSoon && (
+                <div className="flex items-center space-x-1">
+                  <Clock className="w-3 h-3 text-red-400" />
+                  <span className="text-xs text-red-100">Ending Soon</span>
+                </div>
+              )}
+              {product.isPremium && (
+                <div className="flex items-center space-x-1">
+                  <Sparkles className="w-3 h-3 text-purple-400" />
+                  <span className="text-xs text-purple-100">Premium</span>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Price Section */}
           <div className="mb-6">
             <div className="flex items-baseline gap-3 mb-2">
-              <span className="text-3xl font-bold text-amber-300">
-                {convertPrice(
-                  product.dealPrice?.toFixed(2) || product.price?.toFixed(2)
-                )}
+              <span className="text-xl sm:text-2xl md:text-3xl font-bold text-amber-300">
+                {formatPrice(product.dealPrice || product.price)}
               </span>
-              {product.price && product.dealPrice && (
-                <span className="text-gray-500 line-through text-lg">
-                  {convertPrice(product.price.toFixed(2))}
-                </span>
-              )}
+              {product.dealPrice &&
+                product.price &&
+                product.dealPrice !== product.price && (
+                  <span className="text-gray-500 line-through text-lg">
+                    {formatPrice(product.price)}
+                  </span>
+                )}
             </div>
 
             {/* Savings Amount */}
-            {product.price && product.dealPrice && (
-              <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-emerald-900/30 to-green-900/30 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-emerald-700/30">
-                <span className="text-xs text-emerald-100">You save</span>
-                <span className="text-emerald-300 font-bold">
-                  {convertPrice((product.price - product.dealPrice).toFixed(2))}
-                </span>
-              </div>
-            )}
+            {product.dealPrice &&
+              product.price &&
+              product.dealPrice !== product.price && (
+                <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-emerald-900/30 to-green-900/30 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-emerald-700/30">
+                  <span className="text-xs text-emerald-100">You save</span>
+                  <span className="text-emerald-300 font-bold">
+                    {formatPrice(product.price - product.dealPrice)}
+                  </span>
+                </div>
+              )}
 
             {/* Progress Bar (Limited Stock Indicator) */}
             <div className="mt-4">
               <div className="flex items-center justify-between text-xs text-amber-100/70 mb-1">
                 <span>
-                  {stockPercentage <= 20 ? "Almost gone!" : "Limited stock"}
+                  {stockPercentage <= 20
+                    ? "Almost gone!"
+                    : stockPercentage <= 50
+                      ? "Limited stock"
+                      : "In stock"}
                 </span>
                 <span className="font-bold text-amber-200">
-                  {stockQuantity} left
+                  {stockQuantity > 0 ? `${stockQuantity} left` : "Out of stock"}
                 </span>
               </div>
               <div className="w-full h-2 bg-gray-800/50 rounded-full overflow-hidden">
                 <div
                   className={`h-full bg-gradient-to-r ${stockColorClass} rounded-full transition-all duration-1000`}
-                  style={{ width: `${Math.min(stockPercentage, 100)}%` }}
+                  style={{
+                    width: `${Math.min(Math.max(stockPercentage, 5), 100)}%`,
+                  }}
                 />
               </div>
             </div>
@@ -186,7 +246,7 @@ const DealsProductCard = ({ product }) => {
             <div className="flex-1">
               <AddToCartButton
                 product={product}
-                className="w-full px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-bold rounded-xl hover:from-amber-700 hover:to-amber-800 hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2"
+                className="w-full px-2 sm:px-3 md:px-4 py-2 sm:py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white text-sm sm:text-base font-bold rounded-xl hover:from-amber-700 hover:to-amber-800 hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2"
               >
                 <ShoppingBag className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 <span>Add to Cart</span>
@@ -205,27 +265,41 @@ const DealsProductCard = ({ product }) => {
           <div className="mt-4 bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-xl p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Timer className="w-4 h-4 text-red-400 animate-pulse" />
-                <span className="text-xs text-amber-100">Deal ends in</span>
+                <Timer
+                  className={`w-4 h-4 text-red-400 ${displayTimeLeft.hours <= 1 ? "animate-pulse" : ""}`}
+                />
+                <span className="text-xs text-amber-100">
+                  {displayTimeLeft.hours === 0 &&
+                  displayTimeLeft.minutes === 0 &&
+                  displayTimeLeft.seconds === 0
+                    ? "Deal expired"
+                    : "Deal ends in"}
+                </span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="text-center">
-                  <div className="text-sm font-bold text-white">
-                    {String(timeLeft.hours).padStart(2, "0")}
+                  <div
+                    className={`text-sm font-bold ${displayTimeLeft.hours <= 1 ? "text-red-300" : "text-white"}`}
+                  >
+                    {String(displayTimeLeft.hours).padStart(2, "0")}
                   </div>
                   <div className="text-xs text-amber-100/70">HRS</div>
                 </div>
                 <div className="text-amber-400">:</div>
                 <div className="text-center">
-                  <div className="text-sm font-bold text-white">
-                    {String(timeLeft.minutes).padStart(2, "0")}
+                  <div
+                    className={`text-sm font-bold ${displayTimeLeft.hours <= 1 ? "text-red-300" : "text-white"}`}
+                  >
+                    {String(displayTimeLeft.minutes).padStart(2, "0")}
                   </div>
                   <div className="text-xs text-amber-100/70">MIN</div>
                 </div>
                 <div className="text-amber-400">:</div>
                 <div className="text-center">
-                  <div className="text-sm font-bold text-white">
-                    {String(timeLeft.seconds).padStart(2, "0")}
+                  <div
+                    className={`text-sm font-bold ${displayTimeLeft.hours <= 1 ? "text-red-300" : "text-white"}`}
+                  >
+                    {String(displayTimeLeft.seconds).padStart(2, "0")}
                   </div>
                   <div className="text-xs text-amber-100/70">SEC</div>
                 </div>

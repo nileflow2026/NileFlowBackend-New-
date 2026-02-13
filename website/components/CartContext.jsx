@@ -24,9 +24,19 @@ export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
   const [loadingUser, setLoadingUser] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [guestCart, setGuestCart] = useState([]);
 
   useEffect(() => {
     loadUserId();
+    // Load guest cart from localStorage on initialization
+    const savedGuestCart = localStorage.getItem("@guest_cart_items");
+    if (savedGuestCart) {
+      try {
+        setGuestCart(JSON.parse(savedGuestCart));
+      } catch (err) {
+        console.warn("Invalid guest cart cache:", err);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -43,8 +53,16 @@ export const CartProvider = ({ children }) => {
 
       // step 3: always refresh from backend
       loadCartFromStorage();
+
+      // step 4: merge guest cart with user cart if guest cart exists
+      if (guestCart.length > 0) {
+        mergeGuestCartWithUserCart();
+      }
+    } else {
+      // If no userId, show guest cart
+      setCart(guestCart);
     }
-  }, [userId]);
+  }, [userId, guestCart]);
 
   const loadCartFromStorage = async () => {
     if (!userId) return; // prevent null fetch
@@ -84,6 +102,45 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  const mergeGuestCartWithUserCart = async () => {
+    if (!userId || guestCart.length === 0) return;
+
+    try {
+      const userName = await fetchUserName();
+
+      // Add each guest cart item to user's cart
+      for (const guestItem of guestCart) {
+        try {
+          await axiosClient.post("/cart/add", {
+            userId,
+            productId: guestItem.productId,
+            productName: guestItem.productName,
+            price: guestItem.price,
+            image: guestItem.productImage,
+            userName,
+          });
+        } catch (error) {
+          console.warn(
+            `Failed to merge guest item ${guestItem.productName}:`,
+            error
+          );
+        }
+      }
+
+      // Clear guest cart after successful merge
+      setGuestCart([]);
+      localStorage.removeItem("@guest_cart_items");
+
+      // Reload user cart to include merged items
+      await loadCartFromStorage();
+
+      toast.success(`Merged ${guestCart.length} items to your cart!`);
+    } catch (error) {
+      console.error("Error merging guest cart:", error);
+      toast.error("Failed to merge cart items");
+    }
+  };
+
   const loadUserId = async () => {
     setLoadingUser(true); // Start loading
     try {
@@ -98,6 +155,57 @@ export const CartProvider = ({ children }) => {
   };
 
   const addToCart = async (product) => {
+    console.log("Adding product to cart:", product);
+
+    // Check if user is authenticated
+    if (!userId) {
+      // Handle guest user - store in guest cart
+      const existingGuestItem = guestCart.find(
+        (item) => item.productId === product.$id
+      );
+
+      if (existingGuestItem) {
+        toast.info("Item already exists in your cart");
+        return;
+      }
+
+      const guestItem = {
+        id: `guest-${Date.now()}`,
+        $id: `guest-${Date.now()}`,
+        userId: null,
+        productId: product.$id,
+        productName: product.productName,
+        productImage: product.productImage,
+        price: product.price,
+        quantity: 1,
+        userName: null,
+        isGuest: true,
+      };
+
+      const updatedGuestCart = [...guestCart, guestItem];
+      setGuestCart(updatedGuestCart);
+      setCart(updatedGuestCart); // Update cart display
+      localStorage.setItem(
+        "@guest_cart_items",
+        JSON.stringify(updatedGuestCart)
+      );
+
+      toast.success("Added to Cart (Sign in to save your cart!)");
+      return;
+    }
+
+    // Check if item already exists in current cart for authenticated users
+    const existingItem = cart.find(
+      (item) =>
+        item.productId === product.$id || item.productId === String(product.$id)
+    );
+
+    if (existingItem) {
+      toast.info("Item already exists in your cart");
+      return;
+    }
+
+    // Handle authenticated user - original logic
     const userName = await fetchUserName();
 
     // create a temporary optimistic item
@@ -151,17 +259,35 @@ export const CartProvider = ({ children }) => {
         createdAt: backendItem.createdAt,
       };
 
-      if (res.data.message === "Already in cart") {
-        // rollback optimistic item if backend says exists
-        setCart((prev) => {
-          const updated = prev.filter((item) => item.id !== tempItem.id);
-          localStorage.setItem(
-            `@cart_items_${userId}`,
-            JSON.stringify(updated)
+      if (
+        res.data.message === "Already in cart" ||
+        res.data.message === "Item already exists"
+      ) {
+        // Instead of rolling back, check if the item actually exists in the current cart state
+        const actualExistingItem = cart.find(
+          (item) =>
+            item.productId === product.$id ||
+            item.productId === String(product.$id)
+        );
+
+        if (!actualExistingItem) {
+          // Item doesn't exist in current state, so let's keep the optimistic item
+          console.log(
+            "Backend says already exists but not in current cart state, keeping item"
           );
-          return updated;
-        });
-        toast.info("Item already exists in your cart");
+          toast.success("Added to Cart");
+        } else {
+          // Item actually exists, rollback optimistic item
+          setCart((prev) => {
+            const updated = prev.filter((item) => item.id !== tempItem.id);
+            localStorage.setItem(
+              `@cart_items_${userId}`,
+              JSON.stringify(updated)
+            );
+            return updated;
+          });
+          toast.info("Item already exists in your cart");
+        }
         return;
       }
 
@@ -188,8 +314,25 @@ export const CartProvider = ({ children }) => {
 
   const removeFromCart = async (cartItemId) => {
     const prevCart = [...cart];
+    const itemToRemove = cart.find((item) => item.id === cartItemId);
 
-    // Optimistic removal
+    // Check if it's a guest item
+    if (!userId || itemToRemove?.isGuest) {
+      // Handle guest cart removal
+      const updatedGuestCart = guestCart.filter(
+        (item) => item.id !== cartItemId
+      );
+      setGuestCart(updatedGuestCart);
+      setCart(updatedGuestCart);
+      localStorage.setItem(
+        "@guest_cart_items",
+        JSON.stringify(updatedGuestCart)
+      );
+      toast.success("Removed from Cart");
+      return;
+    }
+
+    // Optimistic removal for authenticated users
     const updatedCart = prevCart.filter((item) => item.id !== cartItemId);
     setCart(updatedCart);
     localStorage.setItem(`@cart_items_${userId}`, JSON.stringify(updatedCart));
@@ -210,8 +353,17 @@ export const CartProvider = ({ children }) => {
 
   // ✅ Clear Cart
   const clearCart = async () => {
+    if (!userId) {
+      // Handle guest cart clear
+      setGuestCart([]);
+      setCart([]);
+      localStorage.removeItem("@guest_cart_items");
+      toast.info("Cart cleared");
+      return;
+    }
+
     try {
-      // 1. Optimistic update
+      // 1. Optimistic update for authenticated users
       const prevCart = cart;
       setCart([]);
       localStorage.setItem(`@cart_items_${userId}`, JSON.stringify([]));
@@ -256,51 +408,117 @@ export const CartProvider = ({ children }) => {
   const updateQuantity = async (cartItemId, newQuantity) => {
     if (newQuantity < 1) return;
 
+    // Find the item to check if it's a guest item - check both id and productId
+    const itemToUpdate = cart.find(
+      (item) =>
+        item.id === cartItemId ||
+        item.productId === cartItemId ||
+        item.$id === cartItemId
+    );
+
+    if (!userId || itemToUpdate?.isGuest) {
+      // Handle guest cart quantity update - check all possible ID fields
+      const updatedGuestCart = guestCart.map((item) =>
+        item.id === cartItemId ||
+        item.productId === cartItemId ||
+        item.$id === cartItemId
+          ? { ...item, quantity: newQuantity }
+          : item
+      );
+      setGuestCart(updatedGuestCart);
+      setCart(updatedGuestCart);
+      localStorage.setItem(
+        "@guest_cart_items",
+        JSON.stringify(updatedGuestCart)
+      );
+      toast.info("Quantity updated");
+      return;
+    }
+
     // Snapshot for rollback
     const prevCart = [...cart];
 
-    // 1. Optimistic update
+    // 1. Optimistic update for authenticated users - check all possible ID fields
     const updatedCart = prevCart.map((item) =>
-      item.productId === cartItemId ? { ...item, quantity: newQuantity } : item
+      item.id === cartItemId ||
+      item.productId === cartItemId ||
+      item.$id === cartItemId
+        ? { ...item, quantity: newQuantity }
+        : item
     );
     setCart(updatedCart);
     localStorage.setItem(`@cart_items_${userId}`, JSON.stringify(updatedCart));
     toast.info("Quantity updated");
 
     try {
-      // 2. Background sync
-      const res = await axiosClient.put(`/cart/update/${cartItemId}`, {
+      // 2. Background sync - use the productId for the API call, not the document ID
+      const productIdForAPI = itemToUpdate?.productId || cartItemId;
+      console.log(
+        "Updating quantity for productId:",
+        productIdForAPI,
+        "to quantity:",
+        newQuantity
+      );
+
+      const res = await axiosClient.put(`/cart/update/${productIdForAPI}`, {
         quantity: newQuantity,
         userId,
       });
 
+      console.log("Update quantity response:", res.status, res.data);
+
       if (res.status === 200) {
         const updated = res.data;
 
-        // use latest state instead of stale `cart`
-        setCart((current) =>
-          current.map((item) =>
-            item.productId === cartItemId
+        // Only update if backend returned valid data
+        if (updated && typeof updated.quantity === "number") {
+          // use latest state instead of stale `cart` - check all possible ID fields
+          setCart((current) =>
+            current.map((item) =>
+              item.id === cartItemId ||
+              item.productId === cartItemId ||
+              item.$id === cartItemId
+                ? { ...item, quantity: updated.quantity }
+                : item
+            )
+          );
+
+          // also refresh cache from latest state - check all possible ID fields
+          const fresh = updatedCart.map((item) =>
+            item.id === cartItemId ||
+            item.productId === cartItemId ||
+            item.$id === cartItemId
               ? { ...item, quantity: updated.quantity }
               : item
-          )
-        );
-
-        // also refresh cache from latest state
-        const fresh = updatedCart.map((item) =>
-          item.productId === cartItemId
-            ? { ...item, quantity: updated.quantity }
-            : item
-        );
-        localStorage.setItem(`@cart_items_${userId}`, JSON.stringify(fresh));
+          );
+          localStorage.setItem(`@cart_items_${userId}`, JSON.stringify(fresh));
+        } else {
+          console.log(
+            "Backend returned invalid quantity data, keeping optimistic update"
+          );
+        }
+      } else {
+        console.warn("Backend update failed with status:", res.status);
+        // Don't rollback for non-200 status if it's not a critical error
+        toast.warning("Quantity updated locally (sync pending)");
       }
     } catch (error) {
       console.error("Error updating cart quantity:", error);
 
-      // Rollback if backend fails
-      setCart(prevCart);
-      localStorage.setItem(`@cart_items_${userId}`, JSON.stringify(prevCart));
-      toast.error("Failed to update quantity");
+      // Only rollback if it's a network error or critical failure
+      // Don't rollback for validation errors or other non-critical issues
+      if (error.code === "NETWORK_ERROR" || error.response?.status >= 500) {
+        // Rollback if backend fails critically
+        setCart(prevCart);
+        localStorage.setItem(`@cart_items_${userId}`, JSON.stringify(prevCart));
+        toast.error("Failed to update quantity");
+      } else {
+        console.log(
+          "Non-critical error, keeping optimistic update:",
+          error.message
+        );
+        toast.warning("Quantity updated (sync will retry later)");
+      }
     }
   };
 

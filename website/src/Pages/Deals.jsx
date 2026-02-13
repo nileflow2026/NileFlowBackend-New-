@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Header from "../../components/Header";
@@ -32,23 +33,48 @@ const Deals = () => {
     minutes: 59,
     seconds: 59,
   });
+  const [analytics, setAnalytics] = useState({
+    totalDeals: 0,
+    maxDiscount: 70,
+    endingSoon: 0,
+    categories: {},
+  });
+  const [realTimeCountdown, setRealTimeCountdown] = useState(null);
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axiosClient(
-          "/api/customerprofile/deal-products"
-        );
-        setProducts(response.data);
+        setLoading(true);
+
+        // Fetch products and analytics in parallel
+        const [productsResponse, analyticsResponse, countdownResponse] =
+          await Promise.all([
+            axiosClient("/api/customerprofile/deal-products"),
+            axiosClient("/api/customerprofile/deal-analytics"),
+            axiosClient("/api/customerprofile/deal-countdown"),
+          ]);
+
+        setProducts(productsResponse.data);
+        setAnalytics(analyticsResponse.data);
+        setRealTimeCountdown(countdownResponse.data);
+
+        // Set initial countdown from backend
+        if (countdownResponse.data && countdownResponse.data.hasActiveDeals) {
+          setTimeLeft({
+            hours: countdownResponse.data.hours || 0,
+            minutes: countdownResponse.data.minutes || 0,
+            seconds: countdownResponse.data.seconds || 0,
+          });
+        }
       } catch (err) {
-        console.error("Failed to fetch products:", err);
-        setError("Failed to load featured products. Please try again later.");
+        console.error("Failed to fetch deals data:", err);
+        setError("Failed to load deals data. Please try again later.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProducts();
+    fetchData();
   }, []);
 
   // Filter products based on selected category
@@ -59,31 +85,32 @@ const Deals = () => {
 
     switch (selectedFilter) {
       case "Most Popular":
-        // Products with views/purchases (simulated with random for now)
-        return products.filter((p, i) => i % 3 === 0);
+        // Products with high view count or recent purchases
+        return products.filter((p) => p.viewCount > 100 || p.salesCount > 10);
 
       case "Ending Soon":
-        // Products ending within next 6 hours (simulated)
-        return products.filter((p, i) => i % 4 === 0);
+        // Products ending within next 6 hours
+        return products.filter(
+          (p) => p.isExpiringSoon || (p.timeLeft && p.timeLeft.totalHours <= 6),
+        );
 
       case "Best Value":
-        // Products with highest discount
-        return products.filter((p) => {
-          const discount = p.originalPrice
-            ? Math.round((1 - p.price / p.originalPrice) * 100)
-            : 0;
-          return discount >= 40;
-        });
+        // Products with highest discount (40% or more)
+        return products.filter(
+          (p) => p.isHighDiscount || (p.discount && p.discount >= 40),
+        );
 
       case "Premium Offers":
-        // Products with premium tag or high price
-        return products.filter((p) => p.price > 100 || p.premium);
+        // Products marked as premium deals
+        return products.filter((p) => p.isPremium || p.premiumDeal);
 
-      case "New Arrivals": {
-        // Recently added products (simulated with last 30% of products)
-        const thirtyPercent = Math.ceil(products.length * 0.3);
-        return products.slice(-thirtyPercent);
-      }
+      case "New Arrivals":
+        // Recently added products (created in last 7 days)
+        return products.filter((p) => {
+          const createdDate = new Date(p.$createdAt);
+          const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+          return createdDate >= weekAgo;
+        });
 
       default:
         return products;
@@ -102,6 +129,8 @@ const Deals = () => {
         } else if (prev.hours > 0) {
           return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
         } else {
+          // Timer reached zero, refresh data
+          window.location.reload();
           return { hours: 0, minutes: 0, seconds: 0 };
         }
       });
@@ -194,26 +223,31 @@ const Deals = () => {
           </p>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-            <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-red-300">
-                {products.length}
+          <div className="max-w-3xl mx-auto">
+            {/* Mobile: Horizontal Scroll, Desktop: Grid */}
+            <div className="flex overflow-x-auto gap-4 pb-2 sm:pb-0 md:grid md:grid-cols-2 lg:grid-cols-4 md:overflow-visible scrollbar-thin scrollbar-thumb-red-600 scrollbar-track-red-900/20">
+              <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-4 flex-shrink-0 min-w-[200px] md:min-w-0">
+                <div className="text-2xl font-bold text-red-300">
+                  {analytics.totalDeals || products.length}
+                </div>
+                <div className="text-red-100/80 text-sm">Hot Deals</div>
               </div>
-              <div className="text-red-100/80 text-sm">Hot Deals</div>
-            </div>
-            <div className="bg-gradient-to-br from-orange-900/20 to-transparent backdrop-blur-sm border border-orange-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-orange-300">
-                Up to 70%
+              <div className="bg-gradient-to-br from-orange-900/20 to-transparent backdrop-blur-sm border border-orange-800/30 rounded-2xl p-4 flex-shrink-0 min-w-[200px] md:min-w-0">
+                <div className="text-2xl font-bold text-orange-300">
+                  Up to {analytics.maxDiscount}%
+                </div>
+                <div className="text-orange-100/80 text-sm">Discount</div>
               </div>
-              <div className="text-orange-100/80 text-sm">Discount</div>
-            </div>
-            <div className="bg-gradient-to-br from-yellow-900/20 to-transparent backdrop-blur-sm border border-yellow-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-yellow-300">24H</div>
-              <div className="text-yellow-100/80 text-sm">Time Left</div>
-            </div>
-            <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-amber-300">100%</div>
-              <div className="text-amber-100/80 text-sm">Authentic</div>
+              <div className="bg-gradient-to-br from-yellow-900/20 to-transparent backdrop-blur-sm border border-yellow-800/30 rounded-2xl p-4 flex-shrink-0 min-w-[200px] md:min-w-0">
+                <div className="text-2xl font-bold text-yellow-300">
+                  {timeLeft.hours}H {timeLeft.minutes}M
+                </div>
+                <div className="text-yellow-100/80 text-sm">Time Left</div>
+              </div>
+              <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-4 flex-shrink-0 min-w-[200px] md:min-w-0">
+                <div className="text-2xl font-bold text-amber-300">100%</div>
+                <div className="text-amber-100/80 text-sm">Authentic</div>
+              </div>
             </div>
           </div>
         </div>
@@ -232,22 +266,30 @@ const Deals = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-white">
-                      Flash Sale Active
+                      {analytics.isFlashSaleActive
+                        ? "Flash Sale Active"
+                        : "Deals Available"}
                     </h3>
                     <p className="text-gray-300">
-                      Limited stock available at discounted prices
+                      {analytics.endingSoon > 0
+                        ? `${analytics.endingSoon} deals ending soon!`
+                        : "Limited stock available at discounted prices"}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-amber-300">70%</div>
+                    <div className="text-3xl font-bold text-amber-300">
+                      {analytics.maxDiscount}%
+                    </div>
                     <div className="text-amber-100/80 text-sm">
                       Max Discount
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-red-300">24H</div>
+                    <div className="text-3xl font-bold text-red-300">
+                      {timeLeft.hours}H {timeLeft.minutes}M
+                    </div>
                     <div className="text-red-100/80 text-sm">Time Left</div>
                   </div>
                 </div>
@@ -277,38 +319,52 @@ const Deals = () => {
           {!loading && products.length > 0 && (
             <>
               {/* Category Filters */}
-              <div className="flex flex-wrap gap-3 mb-8">
-                {[
-                  "All Deals",
-                  "Most Popular",
-                  "Ending Soon",
-                  "Best Value",
-                  "Premium Offers",
-                  "New Arrivals",
-                ].map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedFilter(category)}
-                    className={`px-5 py-2.5 font-bold rounded-xl transition-all duration-300 ${
-                      selectedFilter === category
-                        ? "bg-gradient-to-r from-red-600 to-red-700 text-white border border-red-500 shadow-lg shadow-red-900/30"
-                        : "bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 text-gray-300 hover:border-amber-500/50 hover:text-white"
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
+              <div className="mb-8">
+                {/* Mobile: Horizontal Scroll, Desktop: Flex Wrap */}
+                <div className="flex overflow-x-auto gap-3 pb-2 sm:pb-0 sm:flex-wrap sm:overflow-visible scrollbar-thin scrollbar-thumb-red-600 scrollbar-track-red-900/20">
+                  {[
+                    "All Deals",
+                    "Most Popular",
+                    "Ending Soon",
+                    "Best Value",
+                    "Premium Offers",
+                    "New Arrivals",
+                  ].map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedFilter(category)}
+                      className={`px-5 py-2.5 font-bold rounded-xl transition-all duration-300 flex-shrink-0 whitespace-nowrap ${
+                        selectedFilter === category
+                          ? "bg-gradient-to-r from-red-600 to-red-700 text-white border border-red-500 shadow-lg shadow-red-900/30"
+                          : "bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 text-gray-300 hover:border-amber-500/50 hover:text-white"
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Products Grid */}
               {filteredProducts.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {filteredProducts.map((product, index) => {
-                    const discount = product.originalPrice
-                      ? Math.round(
-                          (1 - product.price / product.originalPrice) * 100
-                        )
-                      : Math.floor(Math.random() * 30) + 10;
+                    // Use discount from backend or calculate if needed
+                    const discount =
+                      product.discount ||
+                      (product.originalPrice && product.price
+                        ? Math.round(
+                            ((product.originalPrice - product.price) /
+                              product.originalPrice) *
+                              100,
+                          )
+                        : product.dealPrice && product.price
+                          ? Math.round(
+                              ((product.price - product.dealPrice) /
+                                product.price) *
+                                100,
+                            )
+                          : Math.floor(Math.random() * 30) + 10);
 
                     return (
                       <div key={product.$id} className="group relative">
@@ -326,7 +382,9 @@ const Deals = () => {
                             <div className="flex items-center space-x-1">
                               <Clock className="w-3 h-3 text-amber-300" />
                               <span className="text-xs font-bold text-amber-200">
-                                24H
+                                {product.timeLeft
+                                  ? `${product.timeLeft.hours}H ${product.timeLeft.minutes}M`
+                                  : `${timeLeft.hours}H ${timeLeft.minutes}M`}
                               </span>
                             </div>
                           </div>
@@ -375,28 +433,6 @@ const Deals = () => {
                   </button>
                 </div>
               )}
-
-              {/* View All Deals */}
-              <div className="text-center mt-16">
-                <button className="group inline-flex items-center space-x-4 px-10 py-5 bg-gradient-to-r from-red-900/30 to-orange-900/30 backdrop-blur-sm border border-red-700/40 rounded-2xl hover:border-red-500/60 transition-all duration-300">
-                  <div className="relative">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-red-500 to-orange-500 rounded-full blur opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
-                    <ShoppingBag className="w-6 h-6 text-red-400 group-hover:text-red-300 transition-colors duration-300 relative" />
-                  </div>
-                  <span className="text-xl font-bold text-red-200 group-hover:text-white transition-colors duration-300">
-                    View All Hot Deals
-                  </span>
-                  <div className="relative">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-red-500 to-orange-500 rounded-full blur opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
-                    <ArrowRight className="w-6 h-6 text-red-400 group-hover:text-red-300 group-hover:translate-x-1 transition-all duration-300 relative" />
-                  </div>
-                </button>
-
-                <p className="text-gray-400 mt-6 text-sm">
-                  New deals refresh every 24 hours. Check back tomorrow for
-                  more!
-                </p>
-              </div>
             </>
           )}
 
@@ -421,52 +457,55 @@ const Deals = () => {
           )}
 
           {/* Trust Badges */}
-          <div className="mt-16 grid grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-6 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 mb-4">
-                <Shield className="w-6 h-6 text-white" />
+          <div className="mt-16">
+            {/* Mobile: Horizontal Scroll, Desktop: Grid */}
+            <div className="flex overflow-x-auto gap-6 pb-4 lg:grid lg:grid-cols-4 lg:overflow-visible scrollbar-thin scrollbar-thumb-red-600 scrollbar-track-red-900/20">
+              <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-6 text-center flex-shrink-0 min-w-[280px] lg:min-w-0">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 mb-4">
+                  <Shield className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-xl font-bold text-red-300 mb-2">
+                  Best Price
+                </div>
+                <div className="text-red-100/80 text-sm">
+                  Guaranteed lowest price
+                </div>
               </div>
-              <div className="text-xl font-bold text-red-300 mb-2">
-                Best Price
-              </div>
-              <div className="text-red-100/80 text-sm">
-                Guaranteed lowest price
-              </div>
-            </div>
 
-            <div className="bg-gradient-to-br from-orange-900/20 to-transparent backdrop-blur-sm border border-orange-800/30 rounded-2xl p-6 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 mb-4">
-                <Truck className="w-6 h-6 text-white" />
+              <div className="bg-gradient-to-br from-orange-900/20 to-transparent backdrop-blur-sm border border-orange-800/30 rounded-2xl p-6 text-center flex-shrink-0 min-w-[280px] lg:min-w-0">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 mb-4">
+                  <Truck className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-xl font-bold text-orange-300 mb-2">
+                  Fast Delivery
+                </div>
+                <div className="text-orange-100/80 text-sm">
+                  Express shipping available
+                </div>
               </div>
-              <div className="text-xl font-bold text-orange-300 mb-2">
-                Fast Delivery
-              </div>
-              <div className="text-orange-100/80 text-sm">
-                Express shipping available
-              </div>
-            </div>
 
-            <div className="bg-gradient-to-br from-yellow-900/20 to-transparent backdrop-blur-sm border border-yellow-800/30 rounded-2xl p-6 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 mb-4">
-                <Gem className="w-6 h-6 text-white" />
+              <div className="bg-gradient-to-br from-yellow-900/20 to-transparent backdrop-blur-sm border border-yellow-800/30 rounded-2xl p-6 text-center flex-shrink-0 min-w-[280px] lg:min-w-0">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 mb-4">
+                  <Gem className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-xl font-bold text-yellow-300 mb-2">
+                  Premium Quality
+                </div>
+                <div className="text-yellow-100/80 text-sm">
+                  Authentic African products
+                </div>
               </div>
-              <div className="text-xl font-bold text-yellow-300 mb-2">
-                Premium Quality
-              </div>
-              <div className="text-yellow-100/80 text-sm">
-                Authentic African products
-              </div>
-            </div>
 
-            <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-6 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 mb-4">
-                <Star className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-xl font-bold text-amber-300 mb-2">
-                5-Star Support
-              </div>
-              <div className="text-amber-100/80 text-sm">
-                24/7 customer service
+              <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-6 text-center flex-shrink-0 min-w-[280px] lg:min-w-0">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 mb-4">
+                  <Star className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-xl font-bold text-amber-300 mb-2">
+                  5-Star Support
+                </div>
+                <div className="text-amber-100/80 text-sm">
+                  24/7 customer service
+                </div>
               </div>
             </div>
           </div>

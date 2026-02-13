@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Header from "../../components/Header";
 import {
   HelpCircle,
@@ -23,6 +23,48 @@ import {
 import Footer from "../../components/Footer";
 
 const HelpCenterPage = () => {
+  const [expandedCategories, setExpandedCategories] = useState({});
+  const [emailForm, setEmailForm] = useState({
+    name: "",
+    email: "",
+    message: "",
+  });
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+
+  const toggleCategory = (index) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
+
+  const handleEmailSubmit = (e) => {
+    e.preventDefault();
+    // Here you would typically send the email to your backend
+    alert(
+      `Thank you ${emailForm.name}! Your message has been sent. We'll respond within 1 hour.`,
+    );
+    setEmailForm({ name: "", email: "", message: "" });
+    setIsEmailModalOpen(false);
+  };
+
+  const handleContactAction = (action, details) => {
+    switch (action) {
+      case "Start Live Chat":
+        // Open live chat widget or redirect to chat page
+        window.open("https://tawk.to/chat", "_blank");
+        break;
+      case "Send Email":
+        setIsEmailModalOpen(true);
+        break;
+      case "Call Now":
+        window.open(`tel:${details}`, "_self");
+        break;
+      default:
+        break;
+    }
+  };
+
   const faqCategories = [
     {
       title: "Account & Security",
@@ -162,41 +204,21 @@ const HelpCenterPage = () => {
             and more. Our dedicated team is here 24/7.
           </p>
 
-          {/* Search Bar */}
-          <div className="max-w-2xl mx-auto mb-12">
-            <div className="relative">
-              <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 to-emerald-500 rounded-2xl blur opacity-30"></div>
-              <div className="relative flex bg-gradient-to-b from-gray-900/90 to-black/90 backdrop-blur-sm border border-amber-800/30 rounded-2xl overflow-hidden">
-                <div className="pl-5 pr-3 flex items-center">
-                  <HelpCircle className="w-5 h-5 text-amber-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search for help articles, guides, and solutions..."
-                  className="flex-1 px-4 py-4 bg-transparent text-amber-100 placeholder-amber-100/50 focus:outline-none text-lg"
-                />
-                <button className="px-6 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-semibold hover:from-amber-700 hover:to-amber-800 transition-all duration-300">
-                  Search
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-            <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-4">
+          <div className="flex overflow-x-auto gap-4 pb-2 sm:pb-0 md:grid md:grid-cols-4 md:gap-4 md:overflow-visible max-w-3xl mx-auto scrollbar-thin scrollbar-thumb-amber-600 scrollbar-track-amber-900/30">
+            <div className="flex-shrink-0 min-w-[140px] md:min-w-0 bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-4">
               <div className="text-2xl font-bold text-amber-300">24/7</div>
               <div className="text-amber-100/80 text-sm">Premium Support</div>
             </div>
-            <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-4">
+            <div className="flex-shrink-0 min-w-[140px] md:min-w-0 bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-4">
               <div className="text-2xl font-bold text-emerald-300">1H</div>
               <div className="text-emerald-100/80 text-sm">Response Time</div>
             </div>
-            <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-4">
+            <div className="flex-shrink-0 min-w-[140px] md:min-w-0 bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-4">
               <div className="text-2xl font-bold text-blue-300">100%</div>
               <div className="text-blue-100/80 text-sm">Satisfaction</div>
             </div>
-            <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-4">
+            <div className="flex-shrink-0 min-w-[140px] md:min-w-0 bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-4">
               <div className="text-2xl font-bold text-red-300">5★</div>
               <div className="text-red-100/80 text-sm">Premium Service</div>
             </div>
@@ -224,61 +246,83 @@ const HelpCenterPage = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
               {faqCategories.map((category, index) => (
                 <div
                   key={index}
                   className="bg-gradient-to-br from-gray-900/80 to-black/80 backdrop-blur-sm border border-amber-800/30 rounded-3xl overflow-hidden group hover:border-amber-500/50 transition-all duration-300"
                 >
-                  <div className={`bg-gradient-to-r ${category.color} p-6`}>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
-                        {category.icon}
+                  <div
+                    className={`bg-gradient-to-r ${category.color} p-3 sm:p-4 md:p-5 lg:p-6`}
+                  >
+                    <div className="flex items-center space-x-2 sm:space-x-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center flex-shrink-0">
+                        <div className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6">
+                          {category.icon}
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-white">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-white truncate">
                           {category.title}
                         </h3>
-                        <p className="text-white/80 text-sm">
+                        <p className="text-white/80 text-xs sm:text-sm">
                           {category.questions.length} questions
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-6">
-                    <div className="space-y-4">
-                      {category.questions.map((item, idx) => (
+                  <div className="p-3 sm:p-4 md:p-5 lg:p-6">
+                    <div className="space-y-2 sm:space-y-3 md:space-y-4">
+                      {(expandedCategories[index]
+                        ? category.questions
+                        : category.questions.slice(0, 2)
+                      ).map((item, idx) => (
                         <div
                           key={idx}
                           className="border-b border-amber-800/30 pb-4 last:border-0 last:pb-0"
                         >
-                          <div className="flex items-start space-x-3 mb-2">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-r from-amber-900/30 to-yellow-900/30 border border-amber-700/30 flex items-center justify-center flex-shrink-0 mt-1">
+                          <div className="flex items-start space-x-2 sm:space-x-3 mb-1 sm:mb-2">
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-r from-amber-900/30 to-yellow-900/30 border border-amber-700/30 flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-1">
                               <span className="text-xs text-amber-400 font-bold">
                                 Q
                               </span>
                             </div>
-                            <h4 className="text-amber-100 font-semibold flex-1">
+                            <h4 className="text-sm sm:text-base text-amber-100 font-semibold flex-1 leading-tight">
                               {item.q}
                             </h4>
                           </div>
-                          <div className="flex items-start space-x-3">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-r from-emerald-900/30 to-green-900/30 border border-emerald-700/30 flex items-center justify-center flex-shrink-0 mt-1">
+                          <div className="flex items-start space-x-2 sm:space-x-3">
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-r from-emerald-900/30 to-green-900/30 border border-emerald-700/30 flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-1">
                               <span className="text-xs text-emerald-400 font-bold">
                                 A
                               </span>
                             </div>
-                            <p className="text-amber-100/70 flex-1">{item.a}</p>
+                            <p className="text-xs sm:text-sm text-amber-100/70 flex-1 leading-relaxed">
+                              {item.a}
+                            </p>
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    <button className="w-full mt-6 px-4 py-3 bg-gradient-to-r from-gray-900/50 to-black/50 border border-amber-800/30 rounded-xl text-amber-300 hover:text-amber-200 hover:border-amber-500/50 transition-all duration-300 flex items-center justify-center space-x-2">
-                      <span>View All Questions</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                    {category.questions.length > 2 && (
+                      <button
+                        onClick={() => toggleCategory(index)}
+                        className="w-full mt-3 sm:mt-4 md:mt-6 px-3 sm:px-4 py-2 sm:py-3 bg-gradient-to-r from-gray-900/50 to-black/50 border border-amber-800/30 rounded-lg sm:rounded-xl text-xs sm:text-sm text-amber-300 hover:text-amber-200 hover:border-amber-500/50 transition-all duration-300 flex items-center justify-center space-x-1 sm:space-x-2"
+                      >
+                        <span className="font-medium">
+                          {expandedCategories[index]
+                            ? "Show Less"
+                            : "View All Questions"}
+                        </span>
+                        <ChevronRight
+                          className={`w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-200 ${
+                            expandedCategories[index] ? "rotate-90" : ""
+                          }`}
+                        />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -305,7 +349,7 @@ const HelpCenterPage = () => {
                   <div
                     className={`absolute inset-0 bg-gradient-to-br ${method.color.replace(
                       "600",
-                      "500"
+                      "500",
                     )}/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
                   ></div>
 
@@ -330,6 +374,9 @@ const HelpCenterPage = () => {
                     </div>
 
                     <button
+                      onClick={() =>
+                        handleContactAction(method.action, method.details)
+                      }
                       className={`w-full px-6 py-3 bg-gradient-to-r ${method.color} text-white font-bold rounded-xl hover:opacity-90 transition-all duration-300 transform hover:scale-105`}
                     >
                       {method.action}
@@ -340,105 +387,8 @@ const HelpCenterPage = () => {
             </div>
           </div>
 
-          {/* Premium Features */}
-          <div className="mb-16">
-            <div className="bg-gradient-to-r from-amber-900/20 to-emerald-900/20 backdrop-blur-sm border border-amber-800/30 rounded-3xl p-8">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-white mb-3">
-                    Premium Support Features
-                  </h3>
-                  <p className="text-amber-100/70 mb-6">
-                    Experience exceptional customer service designed
-                    specifically for premium African product shoppers.
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-3">
-                      <Lock className="w-5 h-5 text-emerald-400" />
-                      <span className="text-emerald-100 text-sm">
-                        Secure Communications
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Clock className="w-5 h-5 text-blue-400" />
-                      <span className="text-blue-100 text-sm">
-                        24/7 Availability
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Globe className="w-5 h-5 text-amber-400" />
-                      <span className="text-amber-100 text-sm">
-                        African Languages
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Star className="w-5 h-5 text-red-400" />
-                      <span className="text-red-100 text-sm">
-                        Priority Handling
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex-shrink-0">
-                  <div className="relative">
-                    <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center">
-                      <Award className="w-16 h-16 text-white" />
-                    </div>
-                    <div className="absolute -top-2 -right-2 w-12 h-12 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center justify-center shadow-lg">
-                      <span className="text-white font-bold">5★</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Additional Resources */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-gradient-to-br from-gray-900/80 to-black/80 backdrop-blur-sm border border-amber-800/30 rounded-3xl p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center">
-                  <MessageSquare className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h4 className="text-lg font-bold text-amber-100">
-                    Live Community
-                  </h4>
-                  <p className="text-amber-100/70 text-sm">Join discussions</p>
-                </div>
-              </div>
-              <p className="text-amber-100/70 mb-4">
-                Connect with other premium African product enthusiasts
-              </p>
-              <button className="w-full px-4 py-2 bg-gradient-to-r from-amber-900/30 to-yellow-900/30 border border-amber-700/30 rounded-xl text-amber-300 hover:text-amber-200 hover:border-amber-500/50 transition-all duration-300">
-                Join Community
-              </button>
-            </div>
-
-            <div className="bg-gradient-to-br from-gray-900/80 to-black/80 backdrop-blur-sm border border-amber-800/30 rounded-3xl p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-700 flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h4 className="text-lg font-bold text-emerald-100">
-                    Premium Tutorials
-                  </h4>
-                  <p className="text-emerald-100/70 text-sm">
-                    Step-by-step guides
-                  </p>
-                </div>
-              </div>
-              <p className="text-emerald-100/70 mb-4">
-                Learn how to maximize your African shopping experience
-              </p>
-              <button className="w-full px-4 py-2 bg-gradient-to-r from-emerald-900/30 to-green-900/30 border border-emerald-700/30 rounded-xl text-emerald-300 hover:text-emerald-200 hover:border-emerald-500/50 transition-all duration-300">
-                View Tutorials
-              </button>
-            </div>
-
             <div className="bg-gradient-to-br from-gray-900/80 to-black/80 backdrop-blur-sm border border-amber-800/30 rounded-3xl p-6">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center">
@@ -461,6 +411,104 @@ const HelpCenterPage = () => {
           </div>
         </div>
       </main>
+
+      {/* Email Modal */}
+      {isEmailModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gradient-to-b from-gray-900 to-black border border-amber-800/30 rounded-3xl p-8 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-amber-200">Send Email</h3>
+              <button
+                onClick={() => setIsEmailModalOpen(false)}
+                className="text-amber-400 hover:text-amber-300 transition-colors"
+              >
+                <span className="sr-only">Close</span>✕
+              </button>
+            </div>
+
+            <form onSubmit={handleEmailSubmit} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="name"
+                  className="block text-amber-200 text-sm font-medium mb-2"
+                >
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  required
+                  value={emailForm.name}
+                  onChange={(e) =>
+                    setEmailForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  className="w-full px-4 py-3 bg-gray-900/50 border border-amber-800/30 rounded-xl text-amber-100 placeholder-amber-100/50 focus:outline-none focus:border-amber-500/50"
+                  placeholder="Enter your name"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-amber-200 text-sm font-medium mb-2"
+                >
+                  Your Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  required
+                  value={emailForm.email}
+                  onChange={(e) =>
+                    setEmailForm((prev) => ({ ...prev, email: e.target.value }))
+                  }
+                  className="w-full px-4 py-3 bg-gray-900/50 border border-amber-800/30 rounded-xl text-amber-100 placeholder-amber-100/50 focus:outline-none focus:border-amber-500/50"
+                  placeholder="Enter your email"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="message"
+                  className="block text-amber-200 text-sm font-medium mb-2"
+                >
+                  Message
+                </label>
+                <textarea
+                  id="message"
+                  required
+                  rows={4}
+                  value={emailForm.message}
+                  onChange={(e) =>
+                    setEmailForm((prev) => ({
+                      ...prev,
+                      message: e.target.value,
+                    }))
+                  }
+                  className="w-full px-4 py-3 bg-gray-900/50 border border-amber-800/30 rounded-xl text-amber-100 placeholder-amber-100/50 focus:outline-none focus:border-amber-500/50 resize-none"
+                  placeholder="How can we help you?"
+                ></textarea>
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsEmailModalOpen(false)}
+                  className="flex-1 px-6 py-3 bg-gray-900/50 border border-amber-800/30 rounded-xl text-amber-300 hover:text-amber-200 hover:border-amber-500/50 transition-all duration-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold rounded-xl hover:from-emerald-700 hover:to-emerald-800 transition-all duration-300"
+                >
+                  Send Message
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

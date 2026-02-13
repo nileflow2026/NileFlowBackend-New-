@@ -1,20 +1,32 @@
 @import "tailwindcss";
 
-/* Prevent horizontal scroll */
+/* Critical performance optimizations */
 html,
 body {
   overflow-x: hidden;
   max-width: 100vw;
+  direction: ltr;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  /* Remove contain property that interferes with fixed positioning */
 }
 
-/* fallback body style */
+/* Hide scrollbar for webkit browsers */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* Ensure consistent height */
 html,
 body,
 #root {
   height: 100%;
+  direction: ltr;
 }
 
-/* Ensure containers and content respect viewport width but not icons/small elements */
+/* Optimize layout and prevent CLS - but allow fixed positioning */
 main,
 section,
 article,
@@ -23,33 +35,47 @@ div[class*="max-w"] {
   max-width: 100%;
 }
 
-/* Prevent footer from jumping up while content loads */
-main {
-  min-height: calc(
-    100vh - 200px
-  ); /* Viewport height minus header/footer approximate height */
+/* Performance: Use will-change sparingly */
+.loading-spinner {
+  will-change: transform;
 }
 
-/* Responsive images and videos */
+/* Minimize main content reflow */
+main {
+  min-height: calc(100vh - 200px);
+  /* Remove contain property that interferes with fixed positioning */
+}
+
+/* Optimize media loading */
 img,
 video {
   max-width: 100%;
   height: auto;
+  object-fit: cover;
+  loading: lazy;
 }
 
-/* Allow SVGs and icons to maintain their size */
+/* Performance utilities */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Optimize SVG rendering */
 svg {
   flex-shrink: 0;
+  will-change: auto;
 }
 
-/* body {
-  @apply bg-secondary text-darkText antialiased;
-}
- */
-/* small UI tweaks */
+/* UI utilities */
 .card-rounded {
   border-radius: 14px;
 }
+
 .pill {
   @apply rounded-full px-4 py-2 text-sm;
 }
@@ -59,4 +85,105 @@ svg {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Animation performance optimizations */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* GPU acceleration for critical animations */
+.animate-spin,
+.transition-transform,
+[class*="translate-"],
+[class*="backdrop-blur"] {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Mobile menu animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    visibility: hidden;
+  }
+  to {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%) translateZ(0);
+  }
+  to {
+    transform: translateX(0) translateZ(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.3s ease-out forwards;
+}
+
+/* Mobile menu optimizations */
+.mobile-menu-backdrop {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  will-change: opacity;
+  /* Remove contain property for fixed positioning */
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 9998;
+}
+
+.mobile-menu-panel {
+  will-change: transform;
+  /* Remove contain property for fixed positioning */
+  transform: translateZ(0);
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  height: 100vh !important;
+  z-index: 9999;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure mobile menu works at any scroll position */
+.mobile-menu-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 9997;
+}
+
+/* Ensure smooth transitions on mobile devices */
+@media (max-width: 1024px) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .transition-all,
+  .transition-transform,
+  .transition-opacity {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
 }

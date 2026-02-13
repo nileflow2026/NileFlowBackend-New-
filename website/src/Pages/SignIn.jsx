@@ -266,14 +266,6 @@ const SignIn = () => {
                       <Globe className="w-5 h-5 text-blue-400" />
                       <span className="text-amber-100">Google</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleFacebookSignIn}
-                      className="flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-gray-900/50 to-black/50 border border-amber-800/30 rounded-xl hover:border-amber-500/50 transition-all duration-300"
-                    >
-                      <Users className="w-5 h-5 text-purple-400" />
-                      <span className="text-amber-100">Facebook</span>
-                    </button>
                   </div>
                 </form>
 

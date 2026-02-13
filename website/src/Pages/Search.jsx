@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { fetchProduct } from "../../CustomerServices";
+import {
+  fetchProduct,
+  saveRecentSearch,
+  getRecentSearches,
+  getPopularSearches,
+} from "../../CustomerServices";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import ProductCard from "../../components/ProductCard";
@@ -31,20 +36,9 @@ const SearchPage = () => {
   const [viewMode, setViewMode] = useState("grid");
   const [sortBy, setSortBy] = useState("relevance");
   const [selectedFilters, setSelectedFilters] = useState([]);
-  const [popularSearches] = useState([
-    "African Fashion",
-    "Handmade Crafts",
-    "Premium Jewelry",
-    "Traditional Art",
-    "Organic Products",
-    "Home Decor",
-  ]);
-  const [recentSearches] = useState([
-    "Kente Cloth",
-    "Maasai Beads",
-    "Wood Carvings",
-    "Shea Butter",
-  ]);
+  const [popularSearches, setPopularSearches] = useState([]);
+  const [recentSearches, setRecentSearches] = useState([]);
+  const [loadingSearchData, setLoadingSearchData] = useState(false);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -52,9 +46,10 @@ const SearchPage = () => {
     const fetchProducts = async () => {
       if (debouncedSearchTerm) {
         setLoading(true);
+        const normalizedTerm = debouncedSearchTerm.trim();
         const fetchedProducts = await fetchProduct(
-          { search: debouncedSearchTerm },
-          setLoading
+          { search: normalizedTerm },
+          setLoading,
         );
         setProducts(fetchedProducts);
         setHasSearched(true);
@@ -63,12 +58,54 @@ const SearchPage = () => {
     fetchProducts();
   }, [debouncedSearchTerm]);
 
+  // Load popular and recent searches
+  const loadSearchData = async () => {
+    setLoadingSearchData(true);
+    try {
+      const [popularData, recentData] = await Promise.all([
+        getPopularSearches(6),
+        getRecentSearches(),
+      ]);
+
+      // For popular searches, extract the displayQuery or query
+      const popularQueries = popularData.map(
+        (item) => item.displayQuery || item.query || item,
+      );
+      setPopularSearches(popularQueries);
+
+      // For recent searches, extract the query
+      const recentQueries = recentData
+        .slice(0, 4)
+        .map((item) => item.query || item);
+      setRecentSearches(recentQueries);
+    } catch (error) {
+      console.error("Error loading search data:", error);
+      // Set fallback data if API fails
+      setPopularSearches([
+        "African Fashion",
+        "Handmade Crafts",
+        "Premium Jewelry",
+        "Traditional Art",
+        "Organic Products",
+        "Home Decor",
+      ]);
+      setRecentSearches([
+        "Kente Cloth",
+        "Maasai Beads",
+        "Wood Carvings",
+        "Shea Butter",
+      ]);
+    } finally {
+      setLoadingSearchData(false);
+    }
+  };
+
   useEffect(() => {
     const fetchAllProducts = async () => {
       setLoading(true);
       const fetchedProducts = await fetchProduct(
         { category: "all", search: "" },
-        setLoading
+        setLoading,
       );
       setProducts(fetchedProducts);
       setLoading(false);
@@ -76,24 +113,55 @@ const SearchPage = () => {
     fetchAllProducts();
   }, []);
 
+  useEffect(() => {
+    loadSearchData();
+  }, []);
+
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchTerm.trim()) return;
 
+    // Normalize search term for consistency
+    const normalizedTerm = searchTerm.trim();
+
     setLoading(true);
     setHasSearched(true);
+
+    // Save the search query
+    try {
+      await saveRecentSearch(normalizedTerm);
+      // Refresh recent searches to show the new one
+      setTimeout(() => loadSearchData(), 1000);
+    } catch (error) {
+      console.error("Failed to save search:", error);
+    }
+
     const fetchedProducts = await fetchProduct(
-      { search: searchTerm },
-      setLoading
+      { search: normalizedTerm },
+      setLoading,
     );
     setProducts(fetchedProducts);
   };
 
   const handleQuickSearch = async (term) => {
-    setSearchTerm(term);
+    const normalizedTerm = term.trim();
+    setSearchTerm(normalizedTerm);
     setLoading(true);
     setHasSearched(true);
-    const fetchedProducts = await fetchProduct({ search: term }, setLoading);
+
+    // Save the search query
+    try {
+      await saveRecentSearch(normalizedTerm);
+      // Refresh recent searches to show the new one
+      setTimeout(() => loadSearchData(), 1000);
+    } catch (error) {
+      console.error("Failed to save search:", error);
+    }
+
+    const fetchedProducts = await fetchProduct(
+      { search: normalizedTerm },
+      setLoading,
+    );
     setProducts(fetchedProducts);
   };
 
@@ -104,7 +172,7 @@ const SearchPage = () => {
       setLoading(true);
       const fetchedProducts = await fetchProduct(
         { category: "all", search: "" },
-        setLoading
+        setLoading,
       );
       setProducts(fetchedProducts);
       setLoading(false);
@@ -116,7 +184,7 @@ const SearchPage = () => {
     setSelectedFilters((prev) =>
       prev.includes(filter)
         ? prev.filter((f) => f !== filter)
-        : [...prev, filter]
+        : [...prev, filter],
     );
   };
 
@@ -128,7 +196,7 @@ const SearchPage = () => {
     return selectedFilters.some(
       (filter) =>
         product.productName?.toLowerCase().includes(filter.toLowerCase()) ||
-        product.category?.toLowerCase().includes(filter.toLowerCase())
+        product.category?.toLowerCase().includes(filter.toLowerCase()),
     );
   });
 
@@ -144,22 +212,6 @@ const SearchPage = () => {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-red-500/10 to-amber-500/10 rounded-full blur-3xl translate-y-48 -translate-x-48"></div>
 
         <div className="relative max-w-8xl mx-auto text-center">
-          <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-900/30 to-emerald-900/30 backdrop-blur-sm px-6 py-3 rounded-2xl border border-amber-700/30 mb-6">
-            <Search className="w-5 h-5 text-amber-400" />
-            <span className="text-amber-200 font-medium tracking-wide">
-              Premium Search
-            </span>
-            <Sparkles className="w-4 h-4 text-yellow-400" />
-          </div>
-
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6">
-            <span className="bg-gradient-to-r from-amber-300 via-yellow-200 to-emerald-200 bg-clip-text text-transparent">
-              Discover Treasures
-            </span>
-            <br />
-            <span className="text-white">Premium African Products</span>
-          </h1>
-
           <p className="text-gray-300 text-lg max-w-2xl mx-auto mb-10">
             Search our curated collection of authentic African products. Find
             exactly what you're looking for.
@@ -201,28 +253,6 @@ const SearchPage = () => {
               </form>
             </div>
           </div>
-
-          {/* Search Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-            <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-amber-300">
-                {products.length}
-              </div>
-              <div className="text-amber-100/80 text-sm">Premium Products</div>
-            </div>
-            <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-emerald-300">50+</div>
-              <div className="text-emerald-100/80 text-sm">Categories</div>
-            </div>
-            <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-blue-300">100%</div>
-              <div className="text-blue-100/80 text-sm">Authentic</div>
-            </div>
-            <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-red-300">Instant</div>
-              <div className="text-red-100/80 text-sm">Search Results</div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -231,36 +261,51 @@ const SearchPage = () => {
         <div className="relative max-w-8xl mx-auto">
           {/* Quick Searches */}
           <div className="mb-8">
-            <div className="flex flex-wrap gap-3 mb-4">
-              <div className="flex items-center space-x-2 text-amber-200">
-                <Zap className="w-4 h-4" />
-                <span className="font-medium">Popular:</span>
+            {loadingSearchData ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 text-amber-400 animate-spin mr-2" />
+                <span className="text-amber-200">
+                  Loading search suggestions...
+                </span>
               </div>
-              {popularSearches.map((term) => (
-                <button
-                  key={term}
-                  onClick={() => handleQuickSearch(term)}
-                  className="px-4 py-2 bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-xl text-amber-100 hover:border-amber-500/50 hover:text-amber-300 transition-all duration-300"
-                >
-                  {term}
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <div className="flex items-center space-x-2 text-amber-200">
-                <Clock className="w-4 h-4" />
-                <span className="font-medium">Recent:</span>
-              </div>
-              {recentSearches.map((term) => (
-                <button
-                  key={term}
-                  onClick={() => handleQuickSearch(term)}
-                  className="px-4 py-2 bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-xl text-amber-100 hover:border-amber-500/50 hover:text-amber-300 transition-all duration-300"
-                >
-                  {term}
-                </button>
-              ))}
-            </div>
+            ) : (
+              <>
+                {popularSearches.length > 0 && (
+                  <div className="flex flex-wrap gap-3 mb-4">
+                    <div className="flex items-center space-x-2 text-amber-200">
+                      <Zap className="w-4 h-4" />
+                      <span className="font-medium">Popular:</span>
+                    </div>
+                    {popularSearches.map((term) => (
+                      <button
+                        key={term}
+                        onClick={() => handleQuickSearch(term)}
+                        className="px-4 py-2 bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-xl text-amber-100 hover:border-amber-500/50 hover:text-amber-300 transition-all duration-300"
+                      >
+                        {term}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {recentSearches.length > 0 && (
+                  <div className="flex flex-wrap gap-3">
+                    <div className="flex items-center space-x-2 text-amber-200">
+                      <Clock className="w-4 h-4" />
+                      <span className="font-medium">Recent:</span>
+                    </div>
+                    {recentSearches.map((term) => (
+                      <button
+                        key={term}
+                        onClick={() => handleQuickSearch(term)}
+                        className="px-4 py-2 bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-xl text-amber-100 hover:border-amber-500/50 hover:text-amber-300 transition-all duration-300"
+                      >
+                        {term}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Filters & Controls */}
@@ -413,7 +458,7 @@ const SearchPage = () => {
                 <div
                   className={`${
                     viewMode === "grid"
-                      ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                      ? "grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                       : "flex flex-col"
                   } gap-6`}
                 >

@@ -40,7 +40,7 @@ import {
   submitReview,
   uploadFile,
 } from "../../CustomerServices";
-import { useCurrency } from "../../Context/CurrencyProvider";
+import { formatPrice } from "../../utils/priceFormatter";
 import axiosClient from "../../api";
 import { useCustomerAuth } from "../../Context/CustomerAuthContext";
 
@@ -137,7 +137,7 @@ const ProductDetailPage = () => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState("");
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
-  const { convertPrice } = useCurrency();
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -213,20 +213,20 @@ const ProductDetailPage = () => {
       if (selectedImages && selectedImages.length > 0) {
         try {
           const urls = await Promise.all(
-            selectedImages.map(async (file) => await uploadFile(file))
+            selectedImages.map(async (file) => await uploadFile(file)),
           );
           imageUrls = urls.filter(Boolean);
           if (imageUrls.length === 0) {
             alert(
               "Upload Failed",
-              "Failed to upload selected images. Your review will be submitted without them."
+              "Failed to upload selected images. Your review will be submitted without them.",
             );
           }
         } catch (error) {
           console.error("Error uploading files:", error);
           alert(
             "Upload Error",
-            "Failed to upload the images. Please try again."
+            "Failed to upload the images. Please try again.",
           );
           return;
         }
@@ -365,6 +365,15 @@ const ProductDetailPage = () => {
     }
   };
 
+  const getDisplayedDescription = () => {
+    if (!product?.description) return "";
+    const maxLength = 200;
+    if (product.description.length <= maxLength || isDescriptionExpanded) {
+      return product.description;
+    }
+    return product.description.substring(0, maxLength) + "...";
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900">
@@ -433,28 +442,6 @@ const ProductDetailPage = () => {
       <div className="relative pt-24 pb-12 px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-amber-900/10 via-gray-900/10 to-emerald-900/10"></div>
         <div className="relative max-w-8xl mx-auto">
-          {/* Breadcrumb */}
-          <div className="flex items-center space-x-3 text-sm mb-8">
-            <a
-              href="/shop"
-              className="flex items-center space-x-2 text-amber-300 hover:text-amber-200 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Shop</span>
-            </a>
-            <ChevronRight className="w-4 h-4 text-amber-500/50" />
-            <span className="text-amber-200">
-              <span className="text-amber-200">
-                {product.category?.name || "Premium"}{" "}
-                {/* Access the name property */}
-              </span>
-            </span>
-            <ChevronRight className="w-4 h-4 text-amber-500/50" />
-            <span className="text-amber-300 font-bold">
-              {product.productName || product.name || "Product Name"}
-            </span>
-          </div>
-
           <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
             {/* Product Images */}
             <div className="space-y-6">
@@ -569,26 +556,37 @@ const ProductDetailPage = () => {
                   <div className="mb-4">
                     <span className="inline-flex items-center space-x-2 bg-gradient-to-r from-emerald-900/30 to-teal-900/30 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-emerald-700/30">
                       <span className="text-emerald-200 text-sm font-medium">
-                        Brand: {product.vendorName}
+                        Brand:{" "}
+                        {product.vendorName || product.brand || "Unknown"}
                       </span>
                     </span>
                   </div>
                 )}
 
                 <p className="text-gray-300 text-lg leading-relaxed mb-6">
-                  {product.description}
+                  {getDisplayedDescription()}
                 </p>
+                {product?.description && product.description.length > 200 && (
+                  <button
+                    onClick={() =>
+                      setIsDescriptionExpanded(!isDescriptionExpanded)
+                    }
+                    className="text-amber-400 hover:text-amber-300 font-semibold transition-colors duration-200 mb-6"
+                  >
+                    {isDescriptionExpanded ? "See Less" : "See More"}
+                  </button>
+                )}
               </div>
 
               {/* Price Section */}
               <div className="bg-gradient-to-br from-amber-900/20 to-yellow-900/20 backdrop-blur-sm border border-amber-800/30 rounded-2xl p-6">
                 <div className="flex items-baseline gap-4 mb-4">
                   <span className="text-3xl sm:text-4xl md:text-5xl font-bold text-amber-300">
-                    {convertPrice(product.price)}
+                    {formatPrice(product.price)}
                   </span>
                   {product.originalPrice && (
                     <span className="text-gray-400 line-through text-lg sm:text-xl md:text-2xl">
-                      {convertPrice(product.originalPrice)}
+                      {formatPrice(product.originalPrice)}
                     </span>
                   )}
                 </div>
@@ -597,7 +595,7 @@ const ProductDetailPage = () => {
                   <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-red-900/40 to-amber-900/30 backdrop-blur-sm px-4 py-2 rounded-full border border-red-700/30">
                     <Zap className="w-4 h-4 text-red-400" />
                     <span className="text-red-200 font-bold">
-                      Save {convertPrice(product.originalPrice - product.price)}
+                      Save {formatPrice(product.originalPrice - product.price)}
                     </span>
                   </div>
                 )}
@@ -648,44 +646,6 @@ const ProductDetailPage = () => {
                   <Share2 className="w-5 h-5" />
                   <span>Share</span>
                 </button>
-              </div>
-
-              {/* Features */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-amber-800/30">
-                <div className="flex items-center space-x-3 p-4 bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-xl">
-                  <Truck className="w-6 h-6 text-blue-400" />
-                  <div>
-                    <div className="text-blue-100 text-sm">Free Shipping</div>
-                    <div className="text-blue-100/70 text-xs">
-                      Across Africa
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 p-4 bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-xl">
-                  <Shield className="w-6 h-6 text-emerald-400" />
-                  <div>
-                    <div className="text-emerald-100 text-sm">Authentic</div>
-                    <div className="text-emerald-100/70 text-xs">
-                      Origin Guaranteed
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 p-4 bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-xl">
-                  <RotateCcw className="w-6 h-6 text-amber-400" />
-                  <div>
-                    <div className="text-amber-100 text-sm">30 Days</div>
-                    <div className="text-amber-100/70 text-xs">
-                      Easy Returns
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 p-4 bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-xl">
-                  <CreditCard className="w-6 h-6 text-purple-400" />
-                  <div>
-                    <div className="text-purple-100 text-sm">Secure</div>
-                    <div className="text-purple-100/70 text-xs">Payment</div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -997,7 +957,7 @@ const ProductDetailPage = () => {
                             type="button"
                             onClick={() =>
                               setSelectedImages((prev) =>
-                                prev.filter((_, idx) => idx !== i)
+                                prev.filter((_, idx) => idx !== i),
                               )
                             }
                             className="text-red-300 hover:text-red-200 text-xs"

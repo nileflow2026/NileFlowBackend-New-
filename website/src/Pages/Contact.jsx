@@ -44,7 +44,7 @@ const Contact = () => {
           username,
           email,
           message,
-        }
+        },
       );
 
       setStatus(response.data.message);
@@ -57,7 +57,7 @@ const Contact = () => {
       setStatus(
         `Failed to send message: ${
           error.response?.data?.error || error.message
-        }`
+        }`,
       );
     } finally {
       setLoading(false);
@@ -98,22 +98,25 @@ const Contact = () => {
           </p>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-            <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-amber-300">24/7</div>
-              <div className="text-amber-100/80 text-sm">Support</div>
-            </div>
-            <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-emerald-300">1H</div>
-              <div className="text-emerald-100/80 text-sm">Response Time</div>
-            </div>
-            <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-blue-300">100%</div>
-              <div className="text-blue-100/80 text-sm">Satisfaction</div>
-            </div>
-            <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-red-300">5★</div>
-              <div className="text-red-100/80 text-sm">Premium Service</div>
+          <div className="max-w-3xl mx-auto">
+            {/* Mobile: Horizontal Scroll, Desktop: Grid */}
+            <div className="flex overflow-x-auto gap-4 pb-2 sm:pb-0 md:grid md:grid-cols-2 lg:grid-cols-4 md:overflow-visible scrollbar-thin scrollbar-thumb-amber-600 scrollbar-track-amber-900/20">
+              <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-4 flex-shrink-0 min-w-[200px] md:min-w-0">
+                <div className="text-2xl font-bold text-amber-300">24/7</div>
+                <div className="text-amber-100/80 text-sm">Support</div>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-4 flex-shrink-0 min-w-[200px] md:min-w-0">
+                <div className="text-2xl font-bold text-emerald-300">1H</div>
+                <div className="text-emerald-100/80 text-sm">Response Time</div>
+              </div>
+              <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-4 flex-shrink-0 min-w-[200px] md:min-w-0">
+                <div className="text-2xl font-bold text-blue-300">100%</div>
+                <div className="text-blue-100/80 text-sm">Satisfaction</div>
+              </div>
+              <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-4 flex-shrink-0 min-w-[200px] md:min-w-0">
+                <div className="text-2xl font-bold text-red-300">5★</div>
+                <div className="text-red-100/80 text-sm">Premium Service</div>
+              </div>
             </div>
           </div>
         </div>
@@ -279,7 +282,7 @@ const Contact = () => {
                 </div>
 
                 {/* Contact Items */}
-                <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-6">
                   <div className="flex items-start space-x-4 p-4 bg-gradient-to-r from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-2xl hover:border-amber-500/50 transition-all duration-300">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center flex-shrink-0">
                       <MapPin className="w-6 h-6 text-white" />
@@ -347,30 +350,6 @@ const Contact = () => {
                   </div>
                 </div>
 
-                {/* Additional Info */}
-                <div className="mt-8 pt-8 border-t border-amber-800/30">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-xl p-4">
-                      <Globe className="w-6 h-6 text-amber-400 mb-2" />
-                      <h4 className="text-amber-100 font-bold text-sm">
-                        African Coverage
-                      </h4>
-                      <p className="text-amber-100/70 text-xs">
-                        Serving 54 countries
-                      </p>
-                    </div>
-                    <div className="bg-gradient-to-br from-gray-900/50 to-black/50 backdrop-blur-sm border border-amber-800/30 rounded-xl p-4">
-                      <Shield className="w-6 h-6 text-emerald-400 mb-2" />
-                      <h4 className="text-emerald-100 font-bold text-sm">
-                        Secure Support
-                      </h4>
-                      <p className="text-emerald-100/70 text-xs">
-                        Encrypted communications
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
                 {/* CTA */}
                 <div className="mt-8">
                   <div className="bg-gradient-to-r from-amber-900/20 to-emerald-900/20 backdrop-blur-sm border border-amber-700/30 rounded-2xl p-6 text-center">
@@ -394,22 +373,31 @@ const Contact = () => {
           </div>
 
           {/* Trust Badges */}
-          <div className="mt-16 grid grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-6 text-center">
-              <div className="text-2xl font-bold text-amber-300 mb-2">24/7</div>
-              <div className="text-amber-100/80">Premium Support</div>
-            </div>
-            <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-6 text-center">
-              <div className="text-2xl font-bold text-emerald-300 mb-2">1H</div>
-              <div className="text-emerald-100/80">Response Time</div>
-            </div>
-            <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-6 text-center">
-              <div className="text-2xl font-bold text-blue-300 mb-2">100%</div>
-              <div className="text-blue-100/80">Satisfaction</div>
-            </div>
-            <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-6 text-center">
-              <div className="text-2xl font-bold text-red-300 mb-2">54</div>
-              <div className="text-red-100/80">African Countries</div>
+          <div className="mt-16">
+            {/* Mobile: Horizontal Scroll, Desktop: Grid */}
+            <div className="flex overflow-x-auto gap-6 pb-4 lg:grid lg:grid-cols-4 lg:overflow-visible scrollbar-thin scrollbar-thumb-amber-600 scrollbar-track-amber-900/20">
+              <div className="bg-gradient-to-br from-amber-900/20 to-transparent backdrop-blur-sm border border-amber-800/30 rounded-2xl p-6 text-center flex-shrink-0 min-w-[280px] lg:min-w-0">
+                <div className="text-2xl font-bold text-amber-300 mb-2">
+                  24/7
+                </div>
+                <div className="text-amber-100/80">Premium Support</div>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-900/20 to-transparent backdrop-blur-sm border border-emerald-800/30 rounded-2xl p-6 text-center flex-shrink-0 min-w-[280px] lg:min-w-0">
+                <div className="text-2xl font-bold text-emerald-300 mb-2">
+                  1H
+                </div>
+                <div className="text-emerald-100/80">Response Time</div>
+              </div>
+              <div className="bg-gradient-to-br from-blue-900/20 to-transparent backdrop-blur-sm border border-blue-800/30 rounded-2xl p-6 text-center flex-shrink-0 min-w-[280px] lg:min-w-0">
+                <div className="text-2xl font-bold text-blue-300 mb-2">
+                  100%
+                </div>
+                <div className="text-blue-100/80">Satisfaction</div>
+              </div>
+              <div className="bg-gradient-to-br from-red-900/20 to-transparent backdrop-blur-sm border border-red-800/30 rounded-2xl p-6 text-center flex-shrink-0 min-w-[280px] lg:min-w-0">
+                <div className="text-2xl font-bold text-red-300 mb-2">54</div>
+                <div className="text-red-100/80">African Countries</div>
+              </div>
             </div>
           </div>
         </div>

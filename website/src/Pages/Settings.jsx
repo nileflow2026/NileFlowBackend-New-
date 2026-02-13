@@ -145,14 +145,14 @@ const SettingsPage = () => {
     },
     {
       title: i18n.t("Report a Problem"),
-      route: "/report-problem",
+      route: "/report-issue",
       icon: <AlertCircle className="w-5 h-5" />,
       description: "Quick issue resolution",
       color: "from-red-600 to-pink-600",
     },
     {
       title: i18n.t("About"),
-      route: "/about",
+      route: "/about-us",
       icon: <Info className="w-5 h-5" />,
       description: "About Nile Flow & team",
       color: "from-blue-600 to-cyan-600",
