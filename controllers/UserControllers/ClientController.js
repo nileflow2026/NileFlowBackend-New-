@@ -274,7 +274,7 @@ const getProducts = async (req, res) => {
       category,
       search,
       minPrice,
-      maxPrice,
+      maxPrice, 
       sort = "newest",
       inStock = true,
       vendorId,
@@ -284,10 +284,19 @@ const getProducts = async (req, res) => {
 
     let filters = [];
 
-    /* // ✅ CRITICAL: Only show APPROVED and ACTIVE products
-    filters.push(Query.equal("isApproved", true));
-    filters.push(Query.equal("isActive", true));
- */
+    // ✅ CRITICAL: Filter products based on source
+    // - Admin products: Show ALL (they don't need approval)
+    // - Vendor products: Show ONLY if APPROVED and ACTIVE
+    filters.push(Query.equal("isActive", true)); // All products must be active
+
+    // Show admin products OR approved vendor products
+    filters.push(
+      Query.or([
+        Query.equal("source", "admin"), // All admin products
+        Query.equal("isApproved", true), // Only approved vendor products
+      ]),
+    );
+ 
     // Category filter
     if (category && category !== "all") {
       // Handle both category and categoryId arrays
@@ -454,9 +463,18 @@ const getProductsForMobile = async (req, res) => {
 
     let filters = [];
 
-    // ✅ CRITICAL: Only show APPROVED and ACTIVE products
-    filters.push(Query.equal("isApproved", true));
-    filters.push(Query.equal("isActive", true));
+    // ✅ CRITICAL: Filter products based on source
+    // - Admin products: Show ALL (they don't need approval)
+    // - Vendor products: Show ONLY if APPROVED and ACTIVE
+    filters.push(Query.equal("isActive", true)); // All products must be active
+
+    // Show admin products OR approved vendor products
+    filters.push(
+      Query.or([
+        Query.equal("source", "admin"), // All admin products
+        Query.equal("isApproved", true), // Only approved vendor products
+      ]),
+    );
 
     // Category filter (use categoryId for consistency)
     if (category && category !== "all") {
@@ -1273,6 +1291,11 @@ const getProductsByCategory = async (req, res) => {
       env.APPWRITE_PRODUCT_COLLECTION_ID,
       [
         Query.equal("categoryId", categoryId),
+        Query.equal("isActive", true), // All products must be active
+        Query.or([
+          Query.equal("source", "admin"), // All admin products
+          Query.equal("isApproved", true), // Only approved vendor products
+        ]),
         Query.orderDesc("$createdAt"),
         Query.limit(50),
       ],
@@ -1402,9 +1425,14 @@ const getMobileProducts = async (req, res) => {
     const { category, limit = 50, page = 1 } = req.query;
 
     const queries = [
-      // ✅ CRITICAL: Only show APPROVED and ACTIVE products
-      Query.equal("isApproved", true),
-      Query.equal("isActive", true),
+      // ✅ CRITICAL: Filter products based on source
+      // - Admin products: Show ALL (they don't need approval)
+      // - Vendor products: Show ONLY if APPROVED and ACTIVE
+      Query.equal("isActive", true), // All products must be active
+      Query.or([
+        Query.equal("source", "admin"), // All admin products
+        Query.equal("isApproved", true), // Only approved vendor products
+      ]),
       Query.limit(parseInt(limit)),
       Query.orderDesc("$createdAt"), // Show newest first
     ];
@@ -1479,6 +1507,18 @@ const getProducts2 = async (req, res) => {
     const { category, search } = req.query;
 
     let filters = [];
+
+    // ✅ Filter products based on source
+    // - Admin products: Show ALL (they don't need approval)
+    // - Vendor products: Show ONLY if APPROVED and ACTIVE
+    filters.push(Query.equal("isActive", true)); // All products must be active
+    filters.push(
+      Query.or([
+        Query.equal("source", "admin"), // All admin products
+        Query.equal("isApproved", true), // Only approved vendor products
+      ]),
+    );
+
     if (category && category !== "all") {
       filters.push(Query.equal("categoryId", category)); // ✅ FIXED
     }

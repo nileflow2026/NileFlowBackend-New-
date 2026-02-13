@@ -277,6 +277,7 @@ const addProduct = async (req, res) => {
         images, // Make sure this is an array if defined as an array attribute
         specifications, // Also ensure correct structure (e.g., object or array)
         stock: parseInt(stock),
+        source: "admin", // ✅ Mark products added by admin
       },
     );
 
