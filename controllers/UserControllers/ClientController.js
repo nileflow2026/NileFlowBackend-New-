@@ -284,7 +284,6 @@ const getProducts = async (req, res) => {
 
     // Base filters applied to both queries
     let baseFilters = [];
-    baseFilters.push(Query.equal("isActive", true)); // All products must be active
 
     // Category filter
     if (category && category !== "all") {
@@ -350,99 +349,35 @@ const getProducts = async (req, res) => {
         sortQuery = Query.orderDesc("$createdAt");
     }
 
-    // ✅ CRITICAL: Fetch BOTH admin products AND approved vendor products
-    // Query 1: All admin products (Source = "admin")
-    let adminProducts = [];
-    let adminCursor = null;
+    // ✅ FETCH ALL PRODUCTS regardless of source or approval status
+    let allProducts = [];
+    let cursor = null;
+
     while (true) {
-      const adminQueries = [
-        Query.equal("source", "admin"),
-        ...baseFilters,
+      const queries = [
         Query.limit(100),
         sortQuery,
-        ...(adminCursor ? [Query.cursorAfter(adminCursor)] : []),
-      ];
-
-      const adminBatch = await db.listDocuments(
-        env.APPWRITE_DATABASE_ID,
-        env.APPWRITE_PRODUCT_COLLECTION_ID,
-        adminQueries,
-      );
-
-      adminProducts.push(...adminBatch.documents);
-
-      if (adminBatch.documents.length < 100) break;
-      adminCursor = adminBatch.documents[adminBatch.documents.length - 1].$id;
-    }
-
-    // Query 2: Approved vendor products (isApproved = true)
-    let vendorProducts = [];
-    let vendorCursor = null;
-    while (true) {
-      const vendorQueries = [
-        Query.equal("isApproved", true),
         ...baseFilters,
-        Query.limit(100),
-        sortQuery,
-        ...(vendorCursor ? [Query.cursorAfter(vendorCursor)] : []),
+        ...(cursor ? [Query.cursorAfter(cursor)] : []),
       ];
 
-      const vendorBatch = await db.listDocuments(
+      const batch = await db.listDocuments(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_PRODUCT_COLLECTION_ID,
-        vendorQueries,
+        queries,
       );
 
-      vendorProducts.push(...vendorBatch.documents);
+      allProducts.push(...batch.documents);
 
-      if (vendorBatch.documents.length < 100) break;
-      vendorCursor =
-        vendorBatch.documents[vendorBatch.documents.length - 1].$id;
+      if (batch.documents.length < 100) break;
+      cursor = batch.documents[batch.documents.length - 1].$id;
     }
-
-    // ✅ Merge and deduplicate products by $id
-    const allProducts = [];
-    const productIds = new Set();
-
-    // Add admin products first
-    adminProducts.forEach((product) => {
-      if (!productIds.has(product.$id)) {
-        allProducts.push(product);
-        productIds.add(product.$id);
-      }
-    });
-
-    // Add approved vendor products
-    vendorProducts.forEach((product) => {
-      if (!productIds.has(product.$id)) {
-        allProducts.push(product);
-        productIds.add(product.$id);
-      }
-    });
-
-    // Re-sort after merging
-    allProducts.sort((a, b) => {
-      switch (sort) {
-        case "price-low":
-          return (a.price || 0) - (b.price || 0);
-        case "price-high":
-          return (b.price || 0) - (a.price || 0);
-        case "popular":
-          return (b.salesCount || 0) - (a.salesCount || 0);
-        case "rating":
-          return (b.rating || 0) - (a.rating || 0);
-        case "featured":
-          return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
-        default: // newest
-          return new Date(b.$createdAt) - new Date(a.$createdAt);
-      }
-    });
 
     const totalProducts = allProducts.length;
     const pageLimit = Math.min(parseInt(limit), 100);
     const offset = (parseInt(page) - 1) * pageLimit;
 
-    // Apply offset for pagination (if not using cursor pagination)
+    // Apply offset for pagination
     const paginatedProducts = allProducts.slice(offset, offset + pageLimit);
 
     // Get unique categories for filter options
@@ -467,7 +402,7 @@ const getProducts = async (req, res) => {
       },
       availableCategories: categories,
       stats: {
-        approvedProducts: totalProducts,
+        totalProducts: totalProducts,
         outOfStock: allProducts.filter((p) => p.stock <= 0).length,
         averagePrice:
           allProducts.length > 0
