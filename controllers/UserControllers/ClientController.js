@@ -274,7 +274,7 @@ const getProducts = async (req, res) => {
       category,
       search,
       minPrice,
-      maxPrice, 
+      maxPrice,
       sort = "newest",
       inStock = true,
       vendorId,
@@ -282,39 +282,24 @@ const getProducts = async (req, res) => {
       page = 1,
     } = req.query;
 
-    let filters = [];
+    // Base filters applied to both queries
+    let baseFilters = [];
+    baseFilters.push(Query.equal("isActive", true)); // All products must be active
 
-    // ✅ CRITICAL: Filter products based on source
-    // - Admin products: Show ALL (they don't need approval)
-    // - Vendor products: Show ONLY if APPROVED and ACTIVE
-    filters.push(Query.equal("isActive", true)); // All products must be active
-
-    // Show admin products OR approved vendor products
-    filters.push(
-      Query.or([
-        Query.equal("source", "admin"), // All admin products
-        Query.equal("isApproved", true), // Only approved vendor products
-      ]),
-    );
- 
     // Category filter
     if (category && category !== "all") {
-      // Handle both category and categoryId arrays
-      filters.push(Query.equal("categoryId", category));
+      baseFilters.push(Query.equal("categoryId", category));
     }
 
     // Search filter (search in multiple fields)
     if (search) {
-      // Normalize search term for better matching
       const normalizedSearch = search.trim().toLowerCase();
-
-      filters.push(
+      baseFilters.push(
         Query.or([
           Query.search("productName", normalizedSearch),
           Query.search("description", normalizedSearch),
           Query.search("brand", normalizedSearch),
           Query.search("tags", normalizedSearch),
-          // Also search with original case for exact matches
           Query.search("productName", search),
           Query.search("description", search),
           Query.search("brand", search),
@@ -325,23 +310,23 @@ const getProducts = async (req, res) => {
 
     // Price range
     if (minPrice) {
-      filters.push(Query.greaterThanEqual("price", parseFloat(minPrice)));
+      baseFilters.push(Query.greaterThanEqual("price", parseFloat(minPrice)));
     }
     if (maxPrice) {
-      filters.push(Query.lessThanEqual("price", parseFloat(maxPrice)));
+      baseFilters.push(Query.lessThanEqual("price", parseFloat(maxPrice)));
     }
 
     // Stock filter
     if (inStock === "true" || inStock === true) {
-      filters.push(Query.greaterThan("stock", 0));
+      baseFilters.push(Query.greaterThan("stock", 0));
     }
 
     // Vendor filter
     if (vendorId) {
-      filters.push(Query.equal("vendorId", vendorId));
+      baseFilters.push(Query.equal("vendorId", vendorId));
     }
 
-    console.log("Appwrite Filters:", filters);
+    console.log("Appwrite Base Filters:", baseFilters);
 
     // Sort options
     let sortQuery;
@@ -359,58 +344,103 @@ const getProducts = async (req, res) => {
         sortQuery = Query.orderDesc("rating");
         break;
       case "featured":
-        sortQuery = Query.orderDesc("isFeatured"); // Show featured first
+        sortQuery = Query.orderDesc("isFeatured");
         break;
       default: // "newest"
         sortQuery = Query.orderDesc("$createdAt");
     }
 
-    // Pagination
-    const pageLimit = Math.min(parseInt(limit), 100); // Max 100 per page
-    const offset = (parseInt(page) - 1) * pageLimit;
-
-    let allProducts = [];
-    let totalProducts = 0;
-    let cursor = null;
-    let currentCount = 0;
-
-    // First, get total count for pagination info
-    try {
-      const countQuery = await db.listDocuments(
-        env.APPWRITE_DATABASE_ID,
-        env.APPWRITE_PRODUCT_COLLECTION_ID,
-        [...filters, Query.limit(1)],
-      );
-      totalProducts = countQuery.total;
-    } catch (countError) {
-      console.warn("Could not get total count:", countError);
-    }
-
-    // Fetch with pagination
+    // ✅ CRITICAL: Fetch BOTH admin products AND approved vendor products
+    // Query 1: All admin products (Source = "admin")
+    let adminProducts = [];
+    let adminCursor = null;
     while (true) {
-      const queries = [
-        Query.limit(pageLimit),
+      const adminQueries = [
+        Query.equal("source", "admin"),
+        ...baseFilters,
+        Query.limit(100),
         sortQuery,
-        ...filters,
-        ...(cursor ? [Query.cursorAfter(cursor)] : []),
+        ...(adminCursor ? [Query.cursorAfter(adminCursor)] : []),
       ];
 
-      const batch = await db.listDocuments(
+      const adminBatch = await db.listDocuments(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_PRODUCT_COLLECTION_ID,
-        queries,
+        adminQueries,
       );
 
-      allProducts.push(...batch.documents);
-      currentCount += batch.documents.length;
+      adminProducts.push(...adminBatch.documents);
 
-      // Stop conditions
-      if (batch.documents.length < pageLimit || currentCount >= pageLimit) {
-        break;
-      }
-
-      cursor = batch.documents[batch.documents.length - 1].$id;
+      if (adminBatch.documents.length < 100) break;
+      adminCursor = adminBatch.documents[adminBatch.documents.length - 1].$id;
     }
+
+    // Query 2: Approved vendor products (isApproved = true)
+    let vendorProducts = [];
+    let vendorCursor = null;
+    while (true) {
+      const vendorQueries = [
+        Query.equal("isApproved", true),
+        ...baseFilters,
+        Query.limit(100),
+        sortQuery,
+        ...(vendorCursor ? [Query.cursorAfter(vendorCursor)] : []),
+      ];
+
+      const vendorBatch = await db.listDocuments(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_PRODUCT_COLLECTION_ID,
+        vendorQueries,
+      );
+
+      vendorProducts.push(...vendorBatch.documents);
+
+      if (vendorBatch.documents.length < 100) break;
+      vendorCursor =
+        vendorBatch.documents[vendorBatch.documents.length - 1].$id;
+    }
+
+    // ✅ Merge and deduplicate products by $id
+    const allProducts = [];
+    const productIds = new Set();
+
+    // Add admin products first
+    adminProducts.forEach((product) => {
+      if (!productIds.has(product.$id)) {
+        allProducts.push(product);
+        productIds.add(product.$id);
+      }
+    });
+
+    // Add approved vendor products
+    vendorProducts.forEach((product) => {
+      if (!productIds.has(product.$id)) {
+        allProducts.push(product);
+        productIds.add(product.$id);
+      }
+    });
+
+    // Re-sort after merging
+    allProducts.sort((a, b) => {
+      switch (sort) {
+        case "price-low":
+          return (a.price || 0) - (b.price || 0);
+        case "price-high":
+          return (b.price || 0) - (a.price || 0);
+        case "popular":
+          return (b.salesCount || 0) - (a.salesCount || 0);
+        case "rating":
+          return (b.rating || 0) - (a.rating || 0);
+        case "featured":
+          return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
+        default: // newest
+          return new Date(b.$createdAt) - new Date(a.$createdAt);
+      }
+    });
+
+    const totalProducts = allProducts.length;
+    const pageLimit = Math.min(parseInt(limit), 100);
+    const offset = (parseInt(page) - 1) * pageLimit;
 
     // Apply offset for pagination (if not using cursor pagination)
     const paginatedProducts = allProducts.slice(offset, offset + pageLimit);
@@ -461,43 +491,69 @@ const getProductsForMobile = async (req, res) => {
   try {
     const { category, search, limit = 20, cursor } = req.query;
 
-    let filters = [];
-
-    // ✅ CRITICAL: Filter products based on source
-    // - Admin products: Show ALL (they don't need approval)
-    // - Vendor products: Show ONLY if APPROVED and ACTIVE
-    filters.push(Query.equal("isActive", true)); // All products must be active
-
-    // Show admin products OR approved vendor products
-    filters.push(
-      Query.or([
-        Query.equal("source", "admin"), // All admin products
-        Query.equal("isApproved", true), // Only approved vendor products
-      ]),
-    );
+    let baseFilters = [];
+    baseFilters.push(Query.equal("isActive", true)); // All products must be active
 
     // Category filter (use categoryId for consistency)
     if (category && category !== "all") {
-      filters.push(Query.equal("categoryId", category));
+      baseFilters.push(Query.equal("categoryId", category));
     }
 
     // Search filter
     if (search) {
-      filters.push(Query.search("productName", search));
+      baseFilters.push(Query.search("productName", search));
     }
 
-    const queries = [
+    // ✅ CRITICAL: Fetch BOTH admin products AND approved vendor products
+    // Query 1: Admin products
+    const adminQueries = [
+      Query.equal("source", "admin"),
+      ...baseFilters,
       Query.limit(parseInt(limit)),
       Query.orderDesc("$createdAt"),
-      ...filters,
       ...(cursor ? [Query.cursorAfter(cursor)] : []),
     ];
 
-    const batch = await db.listDocuments(
+    const adminBatch = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      queries,
+      adminQueries,
     );
+
+    // Query 2: Approved vendor products
+    const vendorQueries = [
+      Query.equal("isApproved", true),
+      ...baseFilters,
+      Query.limit(parseInt(limit)),
+      Query.orderDesc("$createdAt"),
+      ...(cursor ? [Query.cursorAfter(cursor)] : []),
+    ];
+
+    const vendorBatch = await db.listDocuments(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_PRODUCT_COLLECTION_ID,
+      vendorQueries,
+    );
+
+    // Merge and deduplicate
+    const combinedDocs = [];
+    const docIds = new Set();
+
+    adminBatch.documents.forEach((doc) => {
+      if (!docIds.has(doc.$id)) {
+        combinedDocs.push(doc);
+        docIds.add(doc.$id);
+      }
+    });
+
+    vendorBatch.documents.forEach((doc) => {
+      if (!docIds.has(doc.$id)) {
+        combinedDocs.push(doc);
+        docIds.add(doc.$id);
+      }
+    });
+
+    const batch = { documents: combinedDocs, total: combinedDocs.length };
 
     // ✅ ADD: Fetch review counts for all products in parallel
     const productsWithReviews = await Promise.all(
@@ -1285,21 +1341,47 @@ const getProductsByCategory = async (req, res) => {
       throw error;
     }
 
-    // Fetch products
-    const products = await db.listDocuments(
+    // Fetch products - use dual query approach
+    let baseFilters = [
+      Query.equal("categoryId", categoryId),
+      Query.equal("isActive", true), // All products must be active
+      Query.limit(50),
+      Query.orderDesc("$createdAt"),
+    ];
+
+    // Query 1: Admin products
+    const adminProducts = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      [
-        Query.equal("categoryId", categoryId),
-        Query.equal("isActive", true), // All products must be active
-        Query.or([
-          Query.equal("source", "admin"), // All admin products
-          Query.equal("isApproved", true), // Only approved vendor products
-        ]),
-        Query.orderDesc("$createdAt"),
-        Query.limit(50),
-      ],
+      [Query.equal("source", "admin"), ...baseFilters],
     );
+
+    // Query 2: Approved vendor products
+    const vendorProducts = await db.listDocuments(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_PRODUCT_COLLECTION_ID,
+      [Query.equal("isApproved", true), ...baseFilters],
+    );
+
+    // Merge and deduplicate
+    const combinedDocs = [];
+    const docIds = new Set();
+
+    adminProducts.documents.forEach((doc) => {
+      if (!docIds.has(doc.$id)) {
+        combinedDocs.push(doc);
+        docIds.add(doc.$id);
+      }
+    });
+
+    vendorProducts.documents.forEach((doc) => {
+      if (!docIds.has(doc.$id)) {
+        combinedDocs.push(doc);
+        docIds.add(doc.$id);
+      }
+    });
+
+    const products = { documents: combinedDocs, total: combinedDocs.length };
 
     console.log(`✅ Found ${products.total} products`);
 
@@ -1424,35 +1506,66 @@ const getMobileProducts = async (req, res) => {
   try {
     const { category, limit = 50, page = 1 } = req.query;
 
-    const queries = [
-      // ✅ CRITICAL: Filter products based on source
-      // - Admin products: Show ALL (they don't need approval)
-      // - Vendor products: Show ONLY if APPROVED and ACTIVE
+    let baseFilters = [
       Query.equal("isActive", true), // All products must be active
-      Query.or([
-        Query.equal("source", "admin"), // All admin products
-        Query.equal("isApproved", true), // Only approved vendor products
-      ]),
-      Query.limit(parseInt(limit)),
-      Query.orderDesc("$createdAt"), // Show newest first
+      Query.limit(parseInt(limit) * 2), // Get extra to merge and deduplicate
     ];
 
     // If a category is specified, add a filter query
     if (category && category !== "all") {
-      queries.push(Query.equal("categoryId", category));
+      baseFilters.push(Query.equal("categoryId", category));
     }
 
-    // Add offset for pagination
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-    if (offset > 0) {
-      queries.push(Query.offset(offset));
-    }
+    // ✅ CRITICAL: Fetch BOTH admin products AND approved vendor products
+    // Query 1: Admin products
+    const adminQueries = [
+      Query.equal("source", "admin"),
+      ...baseFilters,
+      Query.orderDesc("$createdAt"),
+    ];
 
-    const products = await db.listDocuments(
+    const adminBatch = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      queries,
+      adminQueries,
     );
+
+    // Query 2: Approved vendor products
+    const vendorQueries = [
+      Query.equal("isApproved", true),
+      ...baseFilters,
+      Query.orderDesc("$createdAt"),
+    ];
+
+    const vendorBatch = await db.listDocuments(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_PRODUCT_COLLECTION_ID,
+      vendorQueries,
+    );
+
+    // Merge and deduplicate
+    const combinedDocs = [];
+    const docIds = new Set();
+
+    adminBatch.documents.forEach((doc) => {
+      if (!docIds.has(doc.$id)) {
+        combinedDocs.push(doc);
+        docIds.add(doc.$id);
+      }
+    });
+
+    vendorBatch.documents.forEach((doc) => {
+      if (!docIds.has(doc.$id)) {
+        combinedDocs.push(doc);
+        docIds.add(doc.$id);
+      }
+    });
+
+    // Apply pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const paginatedDocs = combinedDocs.slice(offset, offset + parseInt(limit));
+
+    const products = { documents: paginatedDocs, total: combinedDocs.length };
 
     // ✅ ADD: Include review counts
     const productsWithReviews = await Promise.all(
@@ -1506,50 +1619,68 @@ const getProducts2 = async (req, res) => {
   try {
     const { category, search } = req.query;
 
-    let filters = [];
-
-    // ✅ Filter products based on source
-    // - Admin products: Show ALL (they don't need approval)
-    // - Vendor products: Show ONLY if APPROVED and ACTIVE
-    filters.push(Query.equal("isActive", true)); // All products must be active
-    filters.push(
-      Query.or([
-        Query.equal("source", "admin"), // All admin products
-        Query.equal("isApproved", true), // Only approved vendor products
-      ]),
-    );
+    let baseFilters = [
+      Query.equal("isActive", true), // All products must be active
+      Query.limit(100),
+      Query.orderDesc("$createdAt"),
+    ];
 
     if (category && category !== "all") {
-      filters.push(Query.equal("categoryId", category)); // ✅ FIXED
+      baseFilters.push(Query.equal("categoryId", category));
     }
     if (search) {
-      filters.push(Query.search("productName", search));
+      baseFilters.push(Query.search("productName", search));
     }
 
-    console.log("Appwrite Filters:", filters);
+    console.log("Base Filters:", baseFilters);
 
     const allProducts = [];
-    let cursor = null;
+    let adminCursor = null;
+    let vendorCursor = null;
 
+    // ✅ CRITICAL: Fetch BOTH admin products AND approved vendor products
+    // Query 1: Admin products with cursor pagination
     while (true) {
-      const queries = [
-        Query.limit(100),
-        Query.orderDesc("$createdAt"),
-        ...(filters.length > 0 ? filters : []),
-        ...(cursor ? [Query.cursorAfter(cursor)] : []),
+      const adminQueries = [
+        Query.equal("source", "admin"),
+        ...baseFilters,
+        ...(adminCursor ? [Query.cursorAfter(adminCursor)] : []),
       ];
 
-      const batch = await db.listDocuments(
+      const adminBatch = await db.listDocuments(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_PRODUCT_COLLECTION_ID,
-        queries,
+        adminQueries,
       );
 
-      allProducts.push(...batch.documents);
+      allProducts.push(...adminBatch.documents);
+      if (adminBatch.documents.length < 100) break;
+      adminCursor = adminBatch.documents[adminBatch.documents.length - 1].$id;
+    }
 
-      if (batch.documents.length < 100) break;
+    // Query 2: Approved vendor products with cursor pagination
+    while (true) {
+      const vendorQueries = [
+        Query.equal("isApproved", true),
+        ...baseFilters,
+        ...(vendorCursor ? [Query.cursorAfter(vendorCursor)] : []),
+      ];
 
-      cursor = batch.documents[batch.documents.length - 1].$id;
+      const vendorBatch = await db.listDocuments(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_PRODUCT_COLLECTION_ID,
+        vendorQueries,
+      );
+
+      vendorBatch.documents.forEach((doc) => {
+        if (!allProducts.find((p) => p.$id === doc.$id)) {
+          allProducts.push(doc);
+        }
+      });
+
+      if (vendorBatch.documents.length < 100) break;
+      vendorCursor =
+        vendorBatch.documents[vendorBatch.documents.length - 1].$id;
     }
 
     res.json({
