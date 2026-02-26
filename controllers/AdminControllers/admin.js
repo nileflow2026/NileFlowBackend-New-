@@ -652,118 +652,89 @@ const listRewards = async (req, res) => {
 
 // Updated updateProduct controller for Many-to-Many relationship
 const updateProduct = async (req, res) => {
-  const { productId, categoryId } = req.body;
-
-  console.log("Many-to-Many Update:", { productId, categoryId });
+  const { productId, categoryId, ...otherUpdates } = req.body;
 
   try {
-    // Get the current product
-    const currentProduct = await db.getDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId,
-    );
+    if (!productId) {
+      return res.status(400).json({ error: "Missing productId" });
+    }
 
-    console.log("Current product categories:", currentProduct.categories);
+    // if otherUpdates contains fields (like productName, price, colors etc.)
+    if (Object.keys(otherUpdates).length > 0) {
+      const updatedDoc = await db.updateDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_PRODUCT_COLLECTION_ID,
+        productId,
+        otherUpdates,
+      );
 
-    // Get existing categories array
-    let existingCategories = [];
+      return res.status(200).json({
+        success: true,
+        message: "Product updated successfully",
+        product: updatedDoc,
+      });
+    }
 
-    if (currentProduct.categories) {
-      if (Array.isArray(currentProduct.categories)) {
-        // Extract IDs from category objects
-        existingCategories = currentProduct.categories.map((cat) => {
-          if (typeof cat === "object" && cat.$id) {
-            return cat.$id;
-          }
-          return cat;
-        });
-      } else {
-        // Handle single category
-        const cat = currentProduct.categories;
-        existingCategories = [typeof cat === "object" ? cat.$id : cat];
+    // fallback to previous category-add logic when only categoryId is given
+    if (categoryId) {
+      console.log("Many-to-Many Update (category only):", {
+        productId,
+        categoryId,
+      });
+
+      const currentProduct = await db.getDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_PRODUCT_COLLECTION_ID,
+        productId,
+      );
+
+      let existingCategories = [];
+      if (currentProduct.categories) {
+        if (Array.isArray(currentProduct.categories)) {
+          existingCategories = currentProduct.categories.map((cat) => {
+            if (typeof cat === "object" && cat.$id) {
+              return cat.$id;
+            }
+            return cat;
+          });
+        } else {
+          const cat = currentProduct.categories;
+          existingCategories = [typeof cat === "object" ? cat.$id : cat];
+        }
       }
-    }
 
-    console.log("Existing category IDs:", existingCategories);
+      if (existingCategories.includes(categoryId)) {
+        return res.status(400).json({
+          error: "Product already belongs to this category",
+          productId,
+          categoryId,
+          currentCategories: existingCategories,
+        });
+      }
 
-    // Check if category already exists
-    if (existingCategories.includes(categoryId)) {
-      return res.status(400).json({
-        error: "Product already belongs to this category",
+      const updatedCategoryIds = [...existingCategories, categoryId];
+
+      const updatedDoc = await db.updateDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_PRODUCT_COLLECTION_ID,
         productId,
-        categoryId,
-        currentCategories: existingCategories,
+        {
+          categories: updatedCategoryIds,
+        },
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: `Category added successfully to ${currentProduct.productName}`,
+        product: updatedDoc,
+        categoriesCount: updatedDoc.categories?.length || 0,
       });
     }
 
-    // Add new category to array
-    const updatedCategoryIds = [...existingCategories, categoryId];
-
-    console.log("Updated category IDs:", updatedCategoryIds);
-
-    // Update the product with the new categories array
-    const updatedDoc = await db.updateDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId,
-      {
-        categories: updatedCategoryIds, // Just send IDs, Appwrite will handle the relationship
-      },
-    );
-
-    console.log(
-      "Update successful. Product now has categories:",
-      updatedDoc.categories?.length || 0,
-    );
-
-    // Optionally, verify the two-way relationship
-    const categoryDoc = await db.getDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_CATEGORIES_COLLECTION_ID,
-      categoryId,
-    );
-
-    console.log(
-      "Category now has products:",
-      categoryDoc.products?.length || 0,
-      "products",
-    );
-
-    res.status(200).json({
-      success: true,
-      message: `Category added successfully to ${currentProduct.productName}`,
-      product: updatedDoc,
-      categoriesCount: updatedDoc.categories?.length || 0,
-    });
+    res.status(400).json({ error: "No updates provided" });
   } catch (error) {
-    console.error("Many-to-Many update error:", {
-      message: error.message,
-      code: error.code,
-      type: error.type,
-    });
-
-    // Specific error handling
-    if (error.code === 404) {
-      return res.status(404).json({
-        error: "Product or Category not found",
-        productId,
-        categoryId,
-      });
-    }
-
-    if (error.message.includes("relationship") || error.code === 400) {
-      return res.status(400).json({
-        error:
-          "Relationship configuration error. Please check your Appwrite Many-to-Many setup.",
-        details: error.message,
-      });
-    }
-
-    res.status(500).json({
-      error: "Failed to update product categories",
-      details: error.message,
-    });
+    console.error("updateProduct error:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
