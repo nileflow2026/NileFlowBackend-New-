@@ -31,7 +31,7 @@ import {
 const Shop = () => {
   const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [priceRange, setPriceRange] = useState({ min: 0, max: 1000 });
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 500000 });
   const [ratings, setRatings] = useState({});
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
@@ -85,13 +85,12 @@ const Shop = () => {
           const res = await axiosClient.get(
             `/api/customerprofile/products/category/${selectedCategory}`,
           );
-          // Ensure we always get an array
           data = Array.isArray(res.data) ? res.data : res.data?.products || [];
         }
         setProducts(data);
       } catch (err) {
         console.error("Error fetching products:", err);
-        setProducts([]); // Set to empty array on error
+        setProducts([]);
       } finally {
         setLoading(false);
       }
@@ -151,10 +150,6 @@ const Shop = () => {
         desc.toLowerCase().includes(searchQuery.toLowerCase())
       );
     })
-    // .filter((product) => {
-    //   if (selectedRegions.length === 0) return true;
-    //   return selectedRegions.includes(product.region || "west");
-    // })
     .sort((a, b) => {
       switch (sortBy) {
         case "price-low":
@@ -172,7 +167,7 @@ const Shop = () => {
 
   const clearFilters = () => {
     setSelectedCategory("all");
-    setPriceRange({ min: 0, max: 1000 });
+    setPriceRange({ min: 0, max: 500000 });
     // setSelectedRegions([]);
     setSearchQuery("");
     setSortBy("featured");
@@ -504,7 +499,7 @@ const Shop = () => {
                           onChange={(e) =>
                             setPriceRange({
                               ...priceRange,
-                              max: Number(e.target.value) || 1000,
+                              max: Number(e.target.value) || 500000,
                             })
                           }
                           className="w-full px-4 py-2 bg-gray-900/50 border border-amber-800/30 rounded-lg text-amber-100 focus:outline-none focus:border-amber-500"
@@ -659,26 +654,46 @@ const Shop = () => {
 
               {/* Products */}
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredProducts.map((product) => (
-                  <div
-                    key={product.$id}
-                    className="transform transition-all duration-500 hover:-translate-y-2"
-                  >
-                    <ProductCard
-                      product={product}
-                      id={product.$id}
-                      totalRatings={
-                        product.totalRatings || ratings[product.$id]?.count || 0
-                      }
-                      averageRating={
-                        product.averageRating ||
-                        ratings[product.$id]?.average ||
-                        0
-                      }
-                      premium={true}
-                    />
-                  </div>
-                ))}
+                {filteredProducts.map((product, index) => {
+                  try {
+                    return (
+                      <div
+                        key={product.$id}
+                        className="transform transition-all duration-500 hover:-translate-y-2"
+                      >
+                        <ProductCard
+                          product={product}
+                          id={product.$id}
+                          totalRatings={
+                            product.totalRatings ||
+                            ratings[product.$id]?.count ||
+                            0
+                          }
+                          averageRating={
+                            product.averageRating ||
+                            ratings[product.$id]?.average ||
+                            0
+                          }
+                          premium={true}
+                        />
+                      </div>
+                    );
+                  } catch (error) {
+                    return (
+                      <div
+                        key={product.$id}
+                        className="bg-red-900/20 border border-red-700/50 rounded-lg p-4 text-center"
+                      >
+                        <p className="text-red-400 text-sm">
+                          Error rendering product
+                        </p>
+                        <p className="text-red-300 text-xs mt-2">
+                          {product.productName}
+                        </p>
+                      </div>
+                    );
+                  }
+                })}
               </div>
             </>
           ) : (

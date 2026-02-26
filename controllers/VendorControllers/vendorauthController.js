@@ -42,7 +42,7 @@ function getCookieDomain(req) {
 
   if (isCrossOrigin) {
     console.log(
-      "[Vendor Cookie] Cross-origin detected - no domain restriction"
+      "[Vendor Cookie] Cross-origin detected - no domain restriction",
     );
     return {
       domain: undefined, // No domain restriction for cross-origin
@@ -68,7 +68,7 @@ function getCookieDomain(req) {
     (host && host.includes("vendor.nileflowafrica.com"))
   ) {
     console.log(
-      "[Vendor Cookie] Using vendor.nileflowafrica.com domain (same-origin)"
+      "[Vendor Cookie] Using vendor.nileflowafrica.com domain (same-origin)",
     );
     return {
       domain: ".vendor.nileflowafrica.com",
@@ -83,7 +83,7 @@ function getCookieDomain(req) {
     (host && host.includes("nileflowafrica.com"))
   ) {
     console.log(
-      "[Vendor Cookie] Using nileflowafrica.com domain (same-origin)"
+      "[Vendor Cookie] Using nileflowafrica.com domain (same-origin)",
     );
     return {
       domain: ".nileflowafrica.com",
@@ -114,7 +114,7 @@ async function persistRefreshToken({
 }) {
   const hashedRefreshToken = hashToken(refreshToken);
   const expiresAt = new Date(
-    Date.now() + timeframeToMs(env.JWT_REFRESH_EXPIRES_IN || "30d")
+    Date.now() + timeframeToMs(env.JWT_REFRESH_EXPIRES_IN || "30d"),
   ).toISOString();
   const docId = ID.unique();
 
@@ -132,7 +132,7 @@ async function persistRefreshToken({
       userAgent,
       deviceId,
       rotatedFrom,
-    }
+    },
   );
 }
 
@@ -144,7 +144,7 @@ async function findRefreshTokenRecordByHash(refreshToken) {
   const result = await db.listDocuments(
     env.VENDOR_DATABASE_ID,
     env.VENDOR_SESSIONS_COLLECTION_ID,
-    [Query.equal("refreshToken", tokenHash)]
+    [Query.equal("refreshToken", tokenHash)],
   );
 
   if (!result || !result.documents || result.documents.length === 0)
@@ -160,7 +160,7 @@ async function findTokensByVendorAndDevice(vendorId, deviceId, userAgent) {
     const res = await db.listDocuments(
       env.VENDOR_DATABASE_ID,
       env.VENDOR_SESSIONS_COLLECTION_ID,
-      [Query.equal("vendorId", vendorId), Query.equal("deviceId", deviceId)]
+      [Query.equal("vendorId", vendorId), Query.equal("deviceId", deviceId)],
     );
     return res?.documents || [];
   }
@@ -168,14 +168,14 @@ async function findTokensByVendorAndDevice(vendorId, deviceId, userAgent) {
     const res = await db.listDocuments(
       env.VENDOR_DATABASE_ID,
       env.VENDOR_SESSIONS_COLLECTION_ID,
-      [Query.equal("vendorId", vendorId), Query.equal("userAgent", userAgent)]
+      [Query.equal("vendorId", vendorId), Query.equal("userAgent", userAgent)],
     );
     return res?.documents || [];
   }
   const res = await db.listDocuments(
     env.VENDOR_DATABASE_ID,
     env.VENDOR_SESSIONS_COLLECTION_ID,
-    [Query.equal("vendorId", vendorId)]
+    [Query.equal("vendorId", vendorId)],
   );
   return res?.documents || [];
 }
@@ -188,7 +188,7 @@ async function revokeRefreshTokenById(docId) {
     env.VENDOR_DATABASE_ID,
     env.VENDOR_SESSIONS_COLLECTION_ID,
     docId,
-    { revoked: true, revokedAt: new Date().toISOString() }
+    { revoked: true, revokedAt: new Date().toISOString() },
   );
 }
 
@@ -199,7 +199,7 @@ async function revokeAllVendorRefreshTokens(vendorId) {
   const res = await db.listDocuments(
     env.VENDOR_DATABASE_ID,
     env.VENDOR_SESSIONS_COLLECTION_ID,
-    [Query.equal("vendorId", vendorId)]
+    [Query.equal("vendorId", vendorId)],
   );
 
   if (!res || !res.documents) return 0;
@@ -214,7 +214,7 @@ async function revokeAllVendorRefreshTokens(vendorId) {
         {
           revoked: true,
           revokedAt: new Date().toISOString(),
-        }
+        },
       );
       count++;
     }
@@ -233,7 +233,9 @@ function sanitizeVendor(vendorObj) {
     storeName: sanitized.storeName,
     email: sanitized.email,
     isActive: sanitized.isActive,
+    category: sanitized.category || "",
     storeDescription: sanitized.storeDescription || "",
+    location: sanitized.location || "",
     profileImage: sanitized.profileImage || "",
     coverImage: sanitized.coverImage || "",
     socialLinks: sanitized.socialLinks || {},
@@ -247,14 +249,30 @@ const vendorauthController = {
    */
   async registerVendor(req, res) {
     try {
-      const { name, storeName, email, password, confirmPassword, deviceId } =
-        req.body;
+      const {
+        name,
+        storeName,
+        email,
+        password,
+        confirmPassword,
+        category,
+        storeDescription,
+        location,
+        deviceId,
+      } = req.body;
 
       // Validation
-      if (!name || !storeName || !email || !password) {
+      if (
+        !name ||
+        !storeName ||
+        !email ||
+        !password ||
+        !category ||
+        !storeDescription
+      ) {
         return res.status(400).json({
           success: false,
-          error: "All fields are required",
+          error: "All required fields must be provided",
         });
       }
 
@@ -272,11 +290,18 @@ const vendorauthController = {
         });
       }
 
+      if (storeDescription.length < 20) {
+        return res.status(400).json({
+          success: false,
+          error: "Store description must be at least 20 characters",
+        });
+      }
+
       // Check if vendor exists
       const existingVendors = await db.listDocuments(
         env.VENDOR_DATABASE_ID,
         env.VENDOR_COLLECTION_ID,
-        [Query.equal("email", email)]
+        [Query.equal("email", email)],
       );
 
       if (existingVendors.total > 0) {
@@ -295,6 +320,7 @@ const vendorauthController = {
       };
 
       // Create vendor
+      // Create vendor
       const vendor = await db.createDocument(
         env.VENDOR_DATABASE_ID,
         env.VENDOR_COLLECTION_ID,
@@ -305,14 +331,16 @@ const vendorauthController = {
           email,
           password: hashedPassword,
           isActive: true,
-          storeDescription: "",
+          category,
+          storeDescription,
+          location: location || "",
           profileImage: "",
           coverImage: "",
           socialLinks: {},
           storeStats: JSON.stringify(storeStatsObject),
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        }
+        },
       );
 
       // Generate tokens
@@ -393,7 +421,7 @@ const vendorauthController = {
       const vendors = await db.listDocuments(
         env.VENDOR_DATABASE_ID,
         env.VENDOR_COLLECTION_ID,
-        [Query.equal("email", email)]
+        [Query.equal("email", email)],
       );
 
       if (vendors.total === 0) {
@@ -501,7 +529,7 @@ const vendorauthController = {
       const vendor = await db.getDocument(
         env.VENDOR_DATABASE_ID,
         env.VENDOR_COLLECTION_ID,
-        decoded.sub
+        decoded.sub,
       );
 
       res.json({
@@ -557,7 +585,7 @@ const vendorauthController = {
       if (!record) {
         log.warn("Refresh token record not found for vendor:", vendorId);
         await revokeAllVendorRefreshTokens(vendorId).catch((e) =>
-          log.error("Error revoking all tokens:", e)
+          log.error("Error revoking all tokens:", e),
         );
         return res.status(401).json({
           success: false,
@@ -569,7 +597,7 @@ const vendorauthController = {
       if (record.revoked) {
         log.warn("Revoked refresh token used for vendor:", vendorId);
         await revokeAllVendorRefreshTokens(vendorId).catch((e) =>
-          log.error("Error revoking all tokens:", e)
+          log.error("Error revoking all tokens:", e),
         );
         return res.status(401).json({
           success: false,
@@ -579,7 +607,7 @@ const vendorauthController = {
 
       if (new Date(record.expiresAt) < new Date()) {
         await revokeRefreshTokenById(record.$id).catch((e) =>
-          log.error("Error revoking expired token:", e)
+          log.error("Error revoking expired token:", e),
         );
         return res.status(401).json({
           success: false,
@@ -594,13 +622,13 @@ const vendorauthController = {
       const deviceTokens = await findTokensByVendorAndDevice(
         vendorId,
         requestDeviceId,
-        requestUserAgent
+        requestUserAgent,
       );
 
       if (!deviceTokens || deviceTokens.length === 0) {
         log.warn("No device-scoped tokens found for vendor:", vendorId);
         await revokeAllVendorRefreshTokens(vendorId).catch((e) =>
-          log.error("Error revoking all tokens:", e)
+          log.error("Error revoking all tokens:", e),
         );
         return res.status(401).json({
           success: false,
@@ -626,7 +654,7 @@ const vendorauthController = {
       if (foundNewer) {
         log.warn("Refresh token reuse detected for vendor:", vendorId);
         await revokeAllVendorRefreshTokens(vendorId).catch((e) =>
-          log.error("Error revoking all tokens:", e)
+          log.error("Error revoking all tokens:", e),
         );
         return res.status(401).json({
           success: false,
@@ -638,7 +666,7 @@ const vendorauthController = {
       const vendor = await db.getDocument(
         env.VENDOR_DATABASE_ID,
         env.VENDOR_COLLECTION_ID,
-        vendorId
+        vendorId,
       );
 
       if (!vendor) {
@@ -669,7 +697,7 @@ const vendorauthController = {
       } catch (persistErr) {
         log.error(
           "Failed to persist rotated refresh token:",
-          persistErr?.message
+          persistErr?.message,
         );
         res.cookie("accessToken", newAccessToken, {
           httpOnly: true,
@@ -696,7 +724,7 @@ const vendorauthController = {
             {
               rotatedTo: newDoc.$id,
               rotatedAt: new Date().toISOString(),
-            }
+            },
           )
           .catch(() => {});
       } catch (revErr) {
@@ -769,14 +797,14 @@ const vendorauthController = {
         const result = await db.listDocuments(
           env.VENDOR_DATABASE_ID,
           env.VENDOR_SESSIONS_COLLECTION_ID,
-          queries
+          queries,
         );
 
         if (result && result.documents && result.documents.length > 0) {
           for (const doc of result.documents) {
             if (!doc.revoked) {
               await revokeRefreshTokenById(doc.$id).catch((e) =>
-                log.error("Failed to revoke token in logout:", e)
+                log.error("Failed to revoke token in logout:", e),
               );
             }
           }
