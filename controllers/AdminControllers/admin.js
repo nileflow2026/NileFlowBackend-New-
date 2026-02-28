@@ -236,6 +236,7 @@ const addProduct = async (req, res) => {
     type,
     description,
     price,
+    discountPrice,
     brand,
     details,
     currency,
@@ -253,7 +254,8 @@ const addProduct = async (req, res) => {
     warranty,
     careInstructions,
     stock,
-    subcategoryId, // 👈 Add this line
+    visibility = "visible", // default to visible
+    subcategoryId,
   } = req.body;
   // ✅ Log the received data
   console.log("Received product data:", req.body);
@@ -271,22 +273,16 @@ const addProduct = async (req, res) => {
         type,
         description,
         price: parseFloat(price),
+        discountPrice: discountPrice ? parseFloat(discountPrice) : null,
         brand,
         details,
         currency,
-        // ✅ The key change is here. Use the relationship attribute name.
         category: category,
-        // New (Correct for Many-to-One)
-        isApproved: true, // Auto-approve for now; adjust as needed
-        isActive: true, // New field to track if product is active or soft-deleted
-        // ✅ New line to populate the 'categoryId' array of string IDs
         categoryId: [category],
-        subcategoryId, // 👈 Store the subcategory ID as a string here
+        subcategoryId,
         image,
-        images, // Make sure this is an array if defined as an array attribute
-        specifications, // Also ensure correct structure (e.g., object or array)
-        stock: parseInt(stock),
-        source: "admin", // ✅ Mark products added by admin
+        images,
+        specifications,
         colors,
         sizes,
         sku,
