@@ -282,7 +282,7 @@ const addProduct = async (req, res) => {
         subcategoryId,
         image,
         images: images || [],
-        specifications: JSON.stringify(specifications || []),
+        specifications: specifications || [],
         colors: JSON.stringify(colors || []),
         sizes: JSON.stringify(sizes || []),
         sku,
