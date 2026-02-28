@@ -243,6 +243,15 @@ const addProduct = async (req, res) => {
     image,
     images,
     specifications,
+    colors,
+    sizes,
+    sku,
+    weight,
+    dimensions,
+    tags,
+    metaDescription,
+    warranty,
+    careInstructions,
     stock,
     subcategoryId, // 👈 Add this line
   } = req.body;
@@ -278,6 +287,17 @@ const addProduct = async (req, res) => {
         specifications, // Also ensure correct structure (e.g., object or array)
         stock: parseInt(stock),
         source: "admin", // ✅ Mark products added by admin
+        colors,
+        sizes,
+        sku,
+        weight: weight ? parseFloat(weight) : null,
+        dimensions,
+        tags,
+        metaDescription,
+        warranty,
+        careInstructions,
+        stock: parseInt(stock),
+        visibility,
       },
     );
 

@@ -7,9 +7,9 @@ const {
   clearVendorNotifications,
 } = require("../../controllers/VendorControllers/VendorNotificationControler");
 
-// Protected route
-router.get("/", getVendorNotifications);
-router.post("/mark-as-read", markVendorNotificationsAsRead);
-router.delete("/clear-all", clearVendorNotifications);
+// Protected routes - all routes require authentication
+router.get("/", authenticateToken, getVendorNotifications);
+router.post("/mark-as-read", authenticateToken, markVendorNotificationsAsRead);
+router.delete("/clear-all", authenticateToken, clearVendorNotifications);
 
 module.exports = router;

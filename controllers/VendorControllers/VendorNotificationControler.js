@@ -4,7 +4,11 @@ const { env } = require("../../src/env");
 
 const getVendorNotifications = async (req, res) => {
   try {
-    const query = [Query.orderDesc("$createdAt")];
+    const vendorId = req.user.userId; // Get vendor ID from authenticated user
+    const query = [
+      Query.orderDesc("$createdAt"),
+      Query.equal("userId", vendorId),
+    ];
 
     const typeParam = req.query.type;
 
@@ -17,6 +21,8 @@ const getVendorNotifications = async (req, res) => {
         "product_approved",
         "product_rejected",
         "product_submitted",
+        "order_received",
+        "payment_processed",
       ];
       const filteredTypes = types.filter((t) => allowed.includes(t));
 
@@ -28,7 +34,7 @@ const getVendorNotifications = async (req, res) => {
     const notifications = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_NOTIFICATIONS_COLLECTION_ID,
-      query
+      query,
     );
 
     res.status(200).json({ notifications: notifications.documents });
@@ -40,27 +46,56 @@ const getVendorNotifications = async (req, res) => {
 
 const markVendorNotificationsAsRead = async (req, res) => {
   const { ids = [] } = req.body;
+  const vendorId = req.user.userId; // Get vendor ID from authenticated user
   try {
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: "No notification IDs provided" });
     }
 
-    await Promise.all(
-      ids.map((id) =>
-        db.updateDocument(
+    // Verify that all notifications belong to the vendor before updating
+    let failedCount = 0;
+    const updatePromises = ids.map(async (id) => {
+      try {
+        const notification = await db.getDocument(
           env.APPWRITE_DATABASE_ID,
           env.APPWRITE_NOTIFICATIONS_COLLECTION_ID,
           id,
-          { read: true }
-        )
-      )
-    );
+        );
 
-    res.json({ success: true, updated: ids.length });
+        // Check if notification belongs to this vendor
+        if (notification.userId !== vendorId) {
+          console.warn(
+            `Unauthorized attempt to mark notification ${id} as read`,
+          );
+          failedCount++;
+          return null;
+        }
+
+        return db.updateDocument(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_NOTIFICATIONS_COLLECTION_ID,
+          id,
+          { read: true },
+        );
+      } catch (error) {
+        console.error(`Error updating notification ${id}:`, error.message);
+        failedCount++;
+        return null;
+      }
+    });
+
+    await Promise.all(updatePromises);
+    const updatedCount = ids.length - failedCount;
+
+    res.json({
+      success: true,
+      updated: updatedCount,
+      failed: failedCount,
+    });
   } catch (error) {
     console.error(
       "Failed to mark vendor notifications as read:",
-      error.message
+      error.message,
     );
     res.status(500).json({ error: "Failed to update notifications" });
   }
@@ -68,11 +103,13 @@ const markVendorNotificationsAsRead = async (req, res) => {
 
 const clearVendorNotifications = async (req, res) => {
   try {
-    // Get all vendor notifications
+    const vendorId = req.user.userId; // Get vendor ID from authenticated user
+    // Get all vendor's notifications
     const result = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_NOTIFICATIONS_COLLECTION_ID,
       [
+        Query.equal("userId", vendorId),
         Query.equal("type", [
           "product_submitted",
           "product_approved",
@@ -81,16 +118,16 @@ const clearVendorNotifications = async (req, res) => {
           "payment_processed",
         ]),
         Query.orderDesc("$createdAt"),
-      ]
+      ],
     );
 
-    // Delete all notifications
+    // Delete all vendor's notifications
     const deletions = result.documents.map((doc) =>
       db.deleteDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_NOTIFICATIONS_COLLECTION_ID,
-        doc.$id
-      )
+        doc.$id,
+      ),
     );
 
     await Promise.all(deletions);
