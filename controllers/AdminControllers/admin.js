@@ -283,8 +283,8 @@ const addProduct = async (req, res) => {
         image,
         images: images || [],
         specifications: specifications || [],
-        colors: JSON.stringify(colors || []),
-        sizes: JSON.stringify(sizes || []),
+        colors: colors || [],
+        sizes: sizes || [],
         sku,
         weight: weight ? parseFloat(weight) : null,
         dimensions: dimensions
