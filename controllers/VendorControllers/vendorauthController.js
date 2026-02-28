@@ -10,6 +10,9 @@ const {
   hashToken,
   timeframeToMs,
 } = require("../../utils/tokenManager");
+const {
+  sendVendorOnboardingEmails,
+} = require("../../services/vendorMailService");
 
 // Logger
 const log = {
@@ -342,6 +345,15 @@ const vendorauthController = {
           updatedAt: new Date().toISOString(),
         },
       );
+
+      // Send onboarding emails to vendor (fire and forget - don't block signup)
+      sendVendorOnboardingEmails({
+        vendorName: name,
+        vendorEmail: email,
+      }).catch((err) => {
+        log.error("Failed to send vendor onboarding emails:", err?.message);
+        // Don't throw - continue with signup even if emails fail
+      });
 
       // Generate tokens
       const accessPayload = { sub: vendor.$id, role: "vendor" };
