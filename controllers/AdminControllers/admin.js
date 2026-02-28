@@ -287,8 +287,10 @@ const addProduct = async (req, res) => {
         sizes: JSON.stringify(sizes || []),
         sku,
         weight: weight ? parseFloat(weight) : null,
-        dimensions: JSON.stringify(dimensions),
-        tags: JSON.stringify(tags || []),
+        dimensions: dimensions
+          ? [dimensions.length, dimensions.width, dimensions.height]
+          : [],
+        tags: tags || [],
         metaDescription,
         warranty,
         careInstructions,
