@@ -278,7 +278,7 @@ const addProduct = async (req, res) => {
         details,
         currency,
         category: category,
-        categoryId: JSON.stringify([category]),
+        categoryId: Array.isArray(category) ? category : [category],
         subcategoryId,
         image,
         images: JSON.stringify(images),
