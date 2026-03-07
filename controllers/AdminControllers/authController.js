@@ -447,7 +447,7 @@ const signin = async (req, res) => {
     }
 
     const role = user.prefs?.role || "user";
-    const accessPayload = { sub: user.$id, role };
+    const accessPayload = { sub: user.$id, role, email: user.email };
     const accessToken = signAccessToken(accessPayload);
     const refreshPayload = { sub: user.$id };
     const refreshToken = signRefreshToken(refreshPayload);

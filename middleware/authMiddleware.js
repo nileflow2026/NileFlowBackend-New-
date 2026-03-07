@@ -61,6 +61,7 @@ const authMiddleware = async (req, res, next) => {
     req.user = {
       userId: decoded.sub,
       role: decoded.role,
+      email: decoded.email || null,
     };
 
     console.log("✅ Auth middleware complete for user:", req.user.userId);
