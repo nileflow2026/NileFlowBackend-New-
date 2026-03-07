@@ -283,14 +283,14 @@ const addProduct = async (req, res) => {
         image,
         images: images || [],
         specifications: specifications || [],
-        colors: colors || [],
-        sizes: sizes || [],
+        colors: colors ? JSON.stringify(colors) : "[]",
+        sizes: sizes ? JSON.stringify(sizes) : "[]",
         sku,
         weight: weight ? parseFloat(weight) : null,
         dimensions: dimensions
           ? [dimensions.length, dimensions.width, dimensions.height]
           : [],
-        tags: tags || [],
+        tags: tags ? JSON.stringify(tags) : "[]",
         metaDescription,
         warranty,
         careInstructions,
