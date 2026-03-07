@@ -277,6 +277,8 @@ const addProduct = async (req, res) => {
         brand,
         details,
         currency,
+        isApproved: true, // Auto-approve for now; adjust as needed
+        isActive: true, // New field to track if product is active or soft-deleted
         category: category,
         categoryId: Array.isArray(category) ? category : [category],
         subcategoryId,
