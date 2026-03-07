@@ -290,7 +290,7 @@ const addProduct = async (req, res) => {
         dimensions: dimensions
           ? [dimensions.length, dimensions.width, dimensions.height]
           : [],
-        tags: tags ? JSON.stringify(tags) : "[]",
+        tags: tags || [],
         metaDescription,
         warranty,
         careInstructions,
