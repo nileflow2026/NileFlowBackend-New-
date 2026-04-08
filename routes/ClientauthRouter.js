@@ -12,6 +12,8 @@ const {
   googleOAuthCallback,
   getFacebookOAuthUrl,
   facebookOAuthCallback,
+  savePickupAddress,
+  getPickupAddress,
 } = require("../controllers/UserControllers/ClientauthController");
 const {
   verifyCustomer,
@@ -39,4 +41,9 @@ router.get("/oauth/google", getGoogleOAuthUrl);
 router.get("/oauth/google/callback", googleOAuthCallback);
 router.get("/oauth/facebook", getFacebookOAuthUrl);
 router.get("/oauth/facebook/callback", facebookOAuthCallback);
+
+// Pickup address routes
+router.post("/pickup-address", authMiddleware, savePickupAddress);
+router.get("/pickup-address", authMiddleware, getPickupAddress);
+
 module.exports = router;

@@ -136,3 +136,44 @@ exports.deleteAddress = async (req, res) => {
     return res.status(500).json({ error: "Internal server error." });
   }
 };
+
+// Admin controller to get customer addresses by type
+exports.getCustomerAddress = async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { type = "delivery" } = req.query;
+
+    // Validate admin access (optional - depends on your auth setup)
+    if (req.user && req.user.role !== "admin") {
+      return res
+        .status(403)
+        .json({ error: "Forbidden: Admin access required" });
+    }
+
+    if (!customerId) {
+      return res.status(400).json({ error: "Customer ID is required" });
+    }
+
+    console.log(`Fetching ${type} addresses for customer:`, customerId);
+
+    // Get customer addresses filtered by type
+    const addresses = await AddressService.getCustomerAddressByType(
+      customerId,
+      type
+    );
+
+    return res.status(200).json({
+      success: true,
+      addresses: addresses,
+      customerId: customerId,
+      type: type,
+    });
+  } catch (error) {
+    console.error("Controller Error (getCustomerAddress):", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch customer addresses",
+      message: error.message,
+    });
+  }
+};

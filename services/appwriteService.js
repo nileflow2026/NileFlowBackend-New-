@@ -7,7 +7,7 @@ const {
   Storage,
 } = require("node-appwrite");
 const { env } = require("../src/env");
-console.log("Appwrite Key Loaded:", env.APPWRITE_API_KEY ? "Loaded" : "FAILED/UNDEFINED"); // 👈 Check this!
+// console.log("Appwrite Key Loaded:", env.APPWRITE_API_KEY ? "Loaded" : "FAILED/UNDEFINED"); // 👈 Check this!
 const client = new Client()
   .setEndpoint(process.env.APPWRITE_ENDPOINT)
   .setProject(process.env.APPWRITE_PROJECT_ID)
@@ -33,4 +33,12 @@ async function getOrderById(orderId) {
   }
 }
 
-module.exports = { client, db, users, avatars, functions, getOrderById, storage };
+module.exports = {
+  client,
+  db,
+  users,
+  avatars,
+  functions,
+  getOrderById,
+  storage,
+};

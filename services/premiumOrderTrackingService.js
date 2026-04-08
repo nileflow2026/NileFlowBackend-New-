@@ -10,12 +10,15 @@ const logger = require("../utils/logger");
  */
 async function checkUserPremiumStatus(userId) {
   try {
-    const user = await users.get(userId);
+    // Ensure userId is a string, not an array
+    const cleanUserId = Array.isArray(userId) ? userId[0] : userId;
 
-    logger.info(`Checking premium status for user ${userId}`);
+    const user = await users.get(cleanUserId);
+
+    logger.info(`Checking premium status for user ${cleanUserId}`);
 
     if (!user) {
-      logger.warn(`User ${userId} not found`);
+      logger.warn(`User ${cleanUserId} not found`);
       return { isPremium: false, expiresAt: null };
     }
 
@@ -44,13 +47,13 @@ async function checkUserPremiumStatus(userId) {
         if (isActive) {
           return { isPremium: true, expiresAt: subscriptionExpiry };
         } else {
-          logger.warn(`Subscription expired for user ${userId}`);
+          logger.warn(`Subscription expired for user ${cleanUserId}`);
           return { isPremium: false, expiresAt: subscriptionExpiry };
         }
       } else {
         // User has isPremium but no expiry date - treat as active (for backward compatibility)
         logger.warn(
-          `User ${userId} has isPremium but no expiry date - treating as active`
+          `User ${cleanUserId} has isPremium but no expiry date - treating as active`
         );
         return { isPremium: true, expiresAt: null };
       }
@@ -117,13 +120,16 @@ function calculatePremiumSavings(subtotal, shippingFee, isPremium) {
  */
 async function awardMilesToUser(userId, miles, orderId) {
   try {
+    // Ensure userId is a string, not an array
+    const cleanUserId = Array.isArray(userId) ? userId[0] : userId;
+
     // Get current user data
-    const user = await users.get(userId);
+    const user = await users.get(cleanUserId);
     const currentMiles = user.prefs?.nileMiles || 0;
     const currentTotalMiles = user.prefs?.totalMilesEarned || 0;
 
     // Update user miles
-    await users.updatePrefs(userId, {
+    await users.updatePrefs(cleanUserId, {
       ...user.prefs,
       nileMiles: currentMiles + miles,
       totalMilesEarned: currentTotalMiles + miles,
@@ -141,7 +147,7 @@ async function awardMilesToUser(userId, miles, orderId) {
           env.APPWRITE_MILES_TRANSACTIONS_COLLECTION,
           "unique()",
           {
-            userId,
+            userId: cleanUserId,
             amount: miles,
             type: "earned",
             description: `Order purchase - Order #${orderId}`,
@@ -174,6 +180,9 @@ async function awardMilesToUser(userId, miles, orderId) {
  */
 async function updateOrderWithPremiumData(orderId, premiumData, userId) {
   try {
+    // Ensure userId is a string, not an array
+    const cleanUserId = Array.isArray(userId) ? userId[0] : userId;
+
     if (!env.APPWRITE_DATABASE_ID || !env.APPWRITE_ORDERS_COLLECTION) {
       logger.error("Order collection not configured");
       return false;
@@ -188,7 +197,7 @@ async function updateOrderWithPremiumData(orderId, premiumData, userId) {
       env.APPWRITE_ORDERS_COLLECTION,
       orderId,
       {
-        userId,
+        userId: cleanUserId,
         isPremiumOrder: premiumData.isPremiumOrder,
         premiumDiscountAmount: premiumData.discountAmount,
         premiumDeliverySavings: premiumData.deliverySavings,

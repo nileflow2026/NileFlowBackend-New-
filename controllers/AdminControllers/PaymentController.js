@@ -24,8 +24,154 @@ const {
   awardMilesToUser,
   updateOrderWithPremiumData,
 } = require("../../services/premiumOrderTrackingService");
+const { commissionService } = require("../../services/commissionService");
 
-const FRONTEND_URL = env.FRONTEND_UR || "http://localhost:5173";
+// Global cache for processed callbacks (in production, use Redis)
+const processedCallbacks = new Map();
+const FRONTEND_URL = env.FRONTEND_URL_PROD || "http://localhost:5173";
+
+// Clean up old entries every 10 minutes
+setInterval(
+  () => {
+    const now = Date.now();
+    const tenMinutes = 10 * 60 * 1000;
+    for (const [key, timestamp] of processedCallbacks.entries()) {
+      if (now - timestamp > tenMinutes) {
+        processedCallbacks.delete(key);
+      }
+    }
+  },
+  10 * 60 * 1000,
+);
+
+/**
+ * Process successful M-Pesa payment atomically
+ */
+async function processSuccessfulMpesaPayment(order, orderId, paymentDetails) {
+  const { mpesaReceiptNumber, amount, phoneNumber } = paymentDetails;
+
+  try {
+    console.log(`💰 Processing successful M-Pesa payment for order ${orderId}`);
+    // 1. Parse cart for stock reduction
+    const cart = JSON.parse(order.items || "[]");
+    let stockUpdateResult = { success: true, updatedProducts: [] };
+
+    // 2. Reduce stock atomically
+    if (cart.length > 0) {
+      stockUpdateResult = await reduceProductStock(cart, orderId);
+      if (!stockUpdateResult.success) {
+        console.error("Stock update failed:", stockUpdateResult.errors);
+        // Continue processing - stock failure shouldn't fail payment
+      }
+    }
+
+    // 3. Update order status atomically
+    await db.updateDocument(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_ORDERS_COLLECTION,
+      orderId,
+      {
+        orderStatus: "Ordered",
+        paymentStatus: "succeeded",
+        status: "Pending",
+        mpesaReceiptNumber,
+        mpesaPhone: phoneNumber,
+        mpesaTransactionDate: new Date().toISOString(),
+        stockUpdated: stockUpdateResult.success,
+        stockUpdateDetails: JSON.stringify(
+          stockUpdateResult.updatedProducts || [],
+        ),
+        updatedAt: new Date().toISOString(),
+      },
+    );
+
+    // 3.1 CALCULATE COMMISSION FOR COMPLETED ORDER
+    console.log("💰 Calculating commission for completed order...");
+    try {
+      const commissionResult = await commissionService.calculateOrderCommission(
+        orderId,
+        order,
+      );
+
+      if (commissionResult.success) {
+        console.log(
+          `✅ Commission calculated: ${commissionResult.commission_earned} at ${commissionResult.commission_percent}%`,
+        );
+      } else {
+        console.warn(
+          `⚠️ Commission calculation skipped: ${commissionResult.message}`,
+        );
+      }
+    } catch (commissionError) {
+      console.error("❌ Commission calculation failed:", commissionError);
+      // Don't fail the payment for commission calculation errors
+    }
+
+    // 4. Process premium benefits (non-blocking)
+    try {
+      const userId = order.userId || order.users;
+      if (userId) {
+        await processPremiumBenefits(order, orderId, cart);
+      }
+    } catch (premiumError) {
+      console.error("Premium benefits processing failed:", premiumError);
+      // Don't fail payment for premium processing errors
+    }
+
+    // 5. Send notifications (non-blocking)
+    try {
+      await createNotification({
+        userId: order.userId || order.users,
+        type: "payment_success",
+        title: "Payment Successful",
+        message: `Your M-Pesa payment of KES ${amount} has been confirmed.`,
+        orderId,
+        email: order.customerEmail,
+      });
+    } catch (notificationError) {
+      console.warn("Notification error:", notificationError.message);
+    }
+
+    console.log(`✅ M-Pesa payment processing completed for order ${orderId}`);
+  } catch (error) {
+    console.error(
+      `❌ Failed to process M-Pesa payment for order ${orderId}:`,
+      error,
+    );
+    throw error; // Re-throw to trigger callback retry
+  }
+}
+
+/**
+ * Process premium benefits for M-Pesa orders
+ */
+async function processPremiumBenefits(order, orderId, cart) {
+  const userId = order.userId || order.users;
+
+  // Check premium status
+  const premiumStatus = await checkUserPremiumStatus(userId);
+
+  // Calculate subtotal
+  const subtotal = cart.reduce((sum, item) => {
+    return sum + parseFloat(item.price || 0) * parseInt(item.quantity || 1);
+  }, 0);
+
+  // Calculate premium savings
+  const premiumSavings = calculatePremiumSavings(
+    subtotal,
+    0, // M-Pesa typically has no shipping
+    premiumStatus.isPremium,
+  );
+
+  // Update order with premium data
+  if (premiumSavings.milesTotal > 0) {
+    await updateOrderWithPremiumData(orderId, premiumSavings, userId);
+    await awardMilesToUser(userId, premiumSavings.milesTotal, orderId);
+    console.log(
+      `✅ Awarded ${premiumSavings.milesTotal} Nile Miles to user ${userId}`,
+    );
+  }
+}
 
 /**
  * Helper function to archive cancelled/failed order to separate collection
@@ -34,7 +180,7 @@ async function archiveCancelledOrder(order, reason, failureType) {
   // Only archive if collection is configured
   if (!env.APPWRITE_CANCELLED_ORDERS_COLLECTION_ID) {
     console.warn(
-      "Cancelled orders collection not configured, skipping archive"
+      "Cancelled orders collection not configured, skipping archive",
     );
     return null;
   }
@@ -46,7 +192,7 @@ async function archiveCancelledOrder(order, reason, failureType) {
       ID.unique(),
       {
         originalOrderId: order.$id,
-        users: order.users,
+        userId: order.userId || order.users,
         customerEmail: order.customerEmail,
         username: order.username,
         items: order.items,
@@ -62,11 +208,11 @@ async function archiveCancelledOrder(order, reason, failureType) {
         originalCreatedAt: order.createdAt,
         cancelledAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
-      }
+      },
     );
 
     console.log(
-      `✅ Order archived to cancelled collection: ${archivedOrder.$id}`
+      `✅ Order archived to cancelled collection: ${archivedOrder.$id}`,
     );
     return archivedOrder;
   } catch (error) {
@@ -85,6 +231,9 @@ const cashonDelivery = async (req, res) => {
     const { cart, userId, customerEmail, username, totalAmount, currency } =
       req.body;
 
+    // Ensure userId is a string, not an array
+    const userIdValue = Array.isArray(userId) ? userId[0] : userId;
+
     // VALIDATION - Only do this once
     if (!cart || !Array.isArray(cart) || cart.length === 0) {
       return res.status(400).json({
@@ -92,7 +241,7 @@ const cashonDelivery = async (req, res) => {
       });
     }
 
-    if (!userId)
+    if (!userIdValue)
       return res.status(400).json({ message: "User ID is required" });
     if (!customerEmail)
       return res.status(400).json({ message: "Customer email is required" });
@@ -124,12 +273,14 @@ const cashonDelivery = async (req, res) => {
 
     // 2. CREATE ORDER DOCUMENT
     const orderDocument = {
-      users: userId,
-      customerEmail,
-      username,
+      userId: userIdValue, // Changed from 'users' to 'userId' for clarity
+      customerEmail: Array.isArray(customerEmail)
+        ? customerEmail[0]
+        : customerEmail,
+      username: Array.isArray(username) ? username[0] : username,
       items: JSON.stringify(cart),
       amount: Math.round(parseFloat(totalAmount)), // Convert string to number
-      currency,
+      currency: Array.isArray(currency) ? currency[0] : currency,
       paymentMethod: "Cash on Delivery",
       status: "Pending",
       orderStatus: "Ordered",
@@ -146,7 +297,7 @@ const cashonDelivery = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_ORDERS_COLLECTION,
       ID.unique(),
-      orderDocument
+      orderDocument,
     );
 
     orderId = result.$id;
@@ -170,7 +321,7 @@ const cashonDelivery = async (req, res) => {
           stockUpdated: false,
           stockUpdateErrors: JSON.stringify(stockUpdateResult.errors),
           updatedAt: new Date().toISOString(),
-        }
+        },
       );
 
       return res.status(500).json({
@@ -183,7 +334,7 @@ const cashonDelivery = async (req, res) => {
     }
 
     console.log(
-      `✅ Stock updated for ${stockUpdateResult.updatedProducts.length} products`
+      `✅ Stock updated for ${stockUpdateResult.updatedProducts.length} products`,
     );
 
     // 5. UPDATE ORDER WITH STOCK UPDATE SUCCESS
@@ -195,7 +346,7 @@ const cashonDelivery = async (req, res) => {
         stockUpdated: true,
         stockUpdateDetails: JSON.stringify(stockUpdateResult.updatedProducts),
         updatedAt: new Date().toISOString(),
-      }
+      },
     );
 
     // 6. PREMIUM TRACKING AND MILES CALCULATION
@@ -203,11 +354,12 @@ const cashonDelivery = async (req, res) => {
 
     // Get user ID from authentication token
     const authenticatedUserId = req.user?.userId || req.user?.$id;
+    const finalUserId = Array.isArray(authenticatedUserId)
+      ? authenticatedUserId[0]
+      : authenticatedUserId || userIdValue;
 
     // Check if user has premium subscription
-    const premiumStatus = await checkUserPremiumStatus(
-      authenticatedUserId || userId
-    );
+    const premiumStatus = await checkUserPremiumStatus(finalUserId);
 
     // Parse cart to calculate subtotal (excluding shipping)
     const subtotal = cart.reduce((sum, item) => {
@@ -221,7 +373,7 @@ const cashonDelivery = async (req, res) => {
     const premiumSavings = calculatePremiumSavings(
       subtotal,
       shippingFee,
-      premiumStatus.isPremium
+      premiumStatus.isPremium,
     );
 
     console.log("Premium analysis:", {
@@ -233,22 +385,11 @@ const cashonDelivery = async (req, res) => {
 
     // Update order with premium tracking data
     if (orderId) {
-      await updateOrderWithPremiumData(
-        orderId,
-        premiumSavings,
-        authenticatedUserId || userId
-      );
+      await updateOrderWithPremiumData(orderId, premiumSavings, finalUserId);
 
       // Award correct miles amount (premium service handles 2x multiplier)
       if (premiumSavings.milesTotal > 0) {
-        await awardMilesToUser(
-          authenticatedUserId || userId,
-          premiumSavings.milesTotal,
-          orderId
-        );
-        console.log(
-          `✅ Awarded ${premiumSavings.milesTotal} Nile Miles (Premium: ${premiumStatus.isPremium})`
-        );
+        await awardMilesToUser(finalUserId, premiumSavings.milesTotal, orderId);
       }
     }
 
@@ -314,7 +455,7 @@ const cashonDelivery = async (req, res) => {
             paymentStatus: "failed",
             failureReason: error.message.substring(0, 200),
             updatedAt: new Date().toISOString(),
-          }
+          },
         );
         console.log(`Order ${orderId} marked as failed due to error`);
       } catch (updateError) {
@@ -336,11 +477,15 @@ const stripewebpayment = async (req, res) => {
   try {
     const { cart, userId, customerEmail, username } = req.body;
 
-    if (!cart || !cart.length || !userId || !customerEmail) {
+    // Ensure userId is a string, not an array
+    const userIdValue = Array.isArray(userId) ? userId[0] : userId;
+    console.log("User ID processed:", userIdValue, "Original:", userId);
+
+    if (!cart || !cart.length || !userIdValue || !customerEmail) {
       return res.status(400).json({ message: "Missing cart or user details" });
     }
 
-    if (!userId)
+    if (!userIdValue)
       return res.status(400).json({ message: "User ID is required" });
     if (!customerEmail)
       return res.status(400).json({ message: "Customer email is required" });
@@ -350,7 +495,7 @@ const stripewebpayment = async (req, res) => {
     console.log("=== STRIPE WEB PAYMENT REQUEST ===");
     console.log("Request Body:", JSON.stringify(req.body, null, 2));
     console.log(
-      `Processing Stripe order for ${username}, ${cart.length} items`
+      `Processing Stripe order for ${username}, ${cart.length} items`,
     );
 
     // 1. CHECK STOCK AVAILABILITY BEFORE CREATING ORDER
@@ -378,7 +523,7 @@ const stripewebpayment = async (req, res) => {
     // Create order document for database (before stripe session)
     const orderDocument = {
       orderId,
-      users: userId,
+      userId: userIdValue,
       customerEmail,
       username,
       items: JSON.stringify(cart),
@@ -408,7 +553,7 @@ const stripewebpayment = async (req, res) => {
     }
 
     console.log(
-      `✅ Stock reduced for ${stockUpdateResult.updatedProducts.length} products`
+      `✅ Stock reduced for ${stockUpdateResult.updatedProducts.length} products`,
     );
 
     // 4. CREATE STRIPE CHECKOUT SESSION
@@ -430,7 +575,7 @@ const stripewebpayment = async (req, res) => {
       mode: "payment",
       customer_email: customerEmail,
       metadata: {
-        users: userId,
+        userId: userIdValue,
         username,
         orderId,
         stockReduced: "true", // Flag to indicate stock was reduced
@@ -443,7 +588,7 @@ const stripewebpayment = async (req, res) => {
     // 5. SAVE ORDER TO DATABASE WITH STOCK INFO
     orderDocument.sessionId = session.id;
     orderDocument.stockUpdateDetails = JSON.stringify(
-      stockUpdateResult.updatedProducts
+      stockUpdateResult.updatedProducts,
     );
     orderDocument.stockUpdated = true; // Mark as updated (temporarily)
 
@@ -455,7 +600,7 @@ const stripewebpayment = async (req, res) => {
           paymentStatus: "initiated",
           stockUpdate: stockUpdateResult,
         }),
-        true // Synchronous
+        true, // Synchronous
       );
     } catch (orderError) {
       console.error("Order creation failed:", orderError);
@@ -527,7 +672,7 @@ const stripewebpayment = async (req, res) => {
       const cartItems = await db.listDocuments(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_CART_COLLECTION_ID,
-        [Query.equal("userId", userId)]
+        [Query.equal("userId", userId)],
       );
 
       // Delete all cart items
@@ -535,7 +680,7 @@ const stripewebpayment = async (req, res) => {
         await db.deleteDocument(
           env.APPWRITE_DATABASE_ID,
           env.APPWRITE_CART_COLLECTION_ID,
-          item.$id
+          item.$id,
         );
       }
 
@@ -565,6 +710,190 @@ const stripewebpayment = async (req, res) => {
   }
 };
 
+// NEW: Stripe mobile payment using PaymentSheets with enhanced error handling
+const stripeMobilePaymentSheet = async (req, res) => {
+  try {
+    console.log("=== STRIPE MOBILE PAYMENT SHEET REQUEST ===");
+    const { cart, userId, customerEmail, username } = req.body;
+
+    console.log("Request data:", { cart, userId, customerEmail, username });
+
+    if (!cart || !cart.length || !userId || !customerEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing cart or user details",
+      });
+    }
+
+    // 1. CHECK STOCK AVAILABILITY
+    const stockCheck = await checkStockAvailability(cart);
+    if (!stockCheck.isAvailable) {
+      return res.status(400).json({
+        success: false,
+        message: "Some items are out of stock or insufficient quantity",
+        unavailableItems: stockCheck.unavailableItems,
+      });
+    }
+
+    const createdAt = new Date().toISOString();
+
+    // Calculate amount in KES
+    const totalAmountKES = cart.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0,
+    );
+
+    console.log(`Total amount calculated: ${totalAmountKES} KES`);
+
+    if (!totalAmountKES || isNaN(totalAmountKES) || totalAmountKES <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid amount calculated from cart.",
+      });
+    }
+
+    // For small amounts, suggest alternative payment methods
+    const MINIMUM_RECOMMENDED_AMOUNT = 50; // Soft minimum
+    const ABSOLUTE_MINIMUM_AMOUNT = 30; // Hard minimum
+
+    if (totalAmountKES < ABSOLUTE_MINIMUM_AMOUNT) {
+      return res.status(400).json({
+        success: false,
+        message: `Cart amount is too small. Minimum cart value is KES ${ABSOLUTE_MINIMUM_AMOUNT}. Please add more items.`,
+        minimumAmount: ABSOLUTE_MINIMUM_AMOUNT,
+        currentAmount: totalAmountKES,
+        error: "amount_too_small",
+      });
+    }
+
+    // For amounts below recommended minimum, suggest M-Pesa but allow card payment
+    let warningMessage = null;
+    if (totalAmountKES < MINIMUM_RECOMMENDED_AMOUNT) {
+      warningMessage = `For small amounts like KES ${totalAmountKES}, we recommend using M-Pesa for faster processing.`;
+    }
+
+    const currency = "kes";
+    const orderId = `ORD-${Date.now()}`;
+
+    console.log(`Creating order ${orderId} for ${totalAmountKES} KES`);
+
+    // 2. CREATE ORDER
+    const orderData = {
+      orderId,
+      products: cart,
+      customerEmail,
+      username,
+      userId: userId,
+      paymentStatus: "initiated",
+      timestamp: createdAt,
+      stockChecked: true,
+      stockCheckedAt: new Date().toISOString(),
+      amountKES: totalAmountKES,
+      currency: currency,
+    };
+
+    try {
+      await functions.createExecution(
+        env.ORDER_FUNCTION_MOBILE_ID,
+        JSON.stringify(orderData),
+      );
+      console.log(`✅ Order ${orderId} created successfully`);
+    } catch (orderError) {
+      console.error("Order creation failed:", orderError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create order",
+        error: orderError.message,
+      });
+    }
+
+    // 3. CREATE PAYMENT INTENT
+    try {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(totalAmountKES * 100), // Convert to cents
+        currency: currency,
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        metadata: {
+          customerEmail,
+          userId: userId,
+          orderId,
+          stockReserved: "true",
+          productsCount: cart.length,
+          amountKES: totalAmountKES.toString(),
+        },
+        description: `NileMart Order ${orderId} - ${cart.length} items (KES ${totalAmountKES})`,
+      });
+
+      console.log(`✅ Payment intent created: ${paymentIntent.id}`);
+
+      // Send email confirmation
+      try {
+        await Emailconfirmation({
+          cart,
+          customerEmail,
+          customerName: username,
+          orderId,
+          orderTotal: totalAmountKES,
+          paymentMethod: "Card Payment",
+          status: "Payment Initiated",
+        });
+        console.log("✅ Email confirmation sent");
+      } catch (emailError) {
+        console.warn("Email confirmation failed:", emailError.message);
+      }
+
+      const response = {
+        success: true,
+        client_secret: paymentIntent.client_secret,
+        orderId,
+        orderStatus: "Ordered",
+        createdAt,
+        stockChecked: true,
+        amountKES: totalAmountKES,
+        currency: currency,
+        paymentIntentId: paymentIntent.id,
+      };
+
+      if (warningMessage) {
+        response.warning = warningMessage;
+        response.suggestedPaymentMethod = "M-Pesa";
+      }
+
+      return res.json(response);
+    } catch (stripeError) {
+      console.error("Stripe error:", stripeError);
+
+      // Handle specific Stripe errors
+      if (stripeError.code === "amount_too_small") {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Amount too small for card payments. Please add more items to your cart or use M-Pesa payment.",
+          error: "amount_too_small",
+          suggestedPaymentMethod: "M-Pesa",
+          minimumAmount: 50,
+          currentAmount: totalAmountKES,
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Payment processing failed",
+        error: stripeError.message,
+      });
+    }
+  } catch (error) {
+    console.error("❌ Mobile payment sheet error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Payment failed",
+      error: error.message,
+    });
+  }
+};
+
 // Add to your payments controller
 const stripePaymentCancelled = async (req, res) => {
   try {
@@ -587,7 +916,7 @@ const stripePaymentCancelled = async (req, res) => {
       order = await db.getDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_ORDERS_COLLECTION,
-        orderId
+        orderId,
       );
     } catch (error) {
       return res.status(404).json({
@@ -606,7 +935,7 @@ const stripePaymentCancelled = async (req, res) => {
       if (cart.length > 0) {
         const restoreResult = await restoreProductStock(
           cart,
-          "payment_cancelled"
+          "payment_cancelled",
         );
 
         console.log("🔄 Stock restored:", restoreResult.restoredProducts);
@@ -623,7 +952,7 @@ const stripePaymentCancelled = async (req, res) => {
             stockRestored: true,
             stockRestoreDetails: JSON.stringify(restoreResult.restoredProducts),
             updatedAt: new Date().toISOString(),
-          }
+          },
         );
 
         // Send notification
@@ -631,7 +960,7 @@ const stripePaymentCancelled = async (req, res) => {
           message: `❌ Payment cancelled for order #${orderId}. Stock restored.`,
           type: "payment_cancelled",
           username: order.username,
-          userId: order.users,
+          userId: order.userId || order.users,
           email: order.customerEmail,
           metadata: JSON.stringify({
             orderId,
@@ -669,7 +998,7 @@ const verifyStripePayment = async (req, res) => {
       // ✅ Update your DB order to "Paid"
       const order = {
         orderId: session.metadata.orderId,
-        userId: session.metadata.users,
+        userId: session.metadata.userId || session.metadata.users,
         username: session.metadata.username,
         totalAmount: (session.amount_total / 100).toFixed(2),
         status: "Paid",
@@ -770,12 +1099,12 @@ async function getMpesaAccessToken() {
 
   if (!consumerKey || !consumerSecret) {
     throw new Error(
-      "M-Pesa consumer key and secret are required. Check your .env file."
+      "M-Pesa consumer key and secret are required. Check your .env file.",
     );
   }
 
   const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString(
-    "base64"
+    "base64",
   );
 
   const url =
@@ -797,7 +1126,7 @@ async function getMpesaAccessToken() {
 
     if (!response.ok) {
       throw new Error(
-        `M-Pesa auth failed: ${data.errorMessage || response.statusText}`
+        `M-Pesa auth failed: ${data.errorMessage || response.statusText}`,
       );
     }
 
@@ -825,6 +1154,10 @@ const initiateMpesaPayment = async (req, res) => {
       username,
       currency,
     } = req.body;
+
+    // Ensure userId is a string, not an array
+    const userIdValue = Array.isArray(userId) ? userId[0] : userId;
+    console.log("User ID processed:", userIdValue, "Original:", userId);
 
     // Validation
     if (!phoneNumber || !amount || !accountReference) {
@@ -867,13 +1200,13 @@ const initiateMpesaPayment = async (req, res) => {
     const shortCode = env.MPESA_SHORTCODE;
     const passkey = env.MPESA_PASSKEY;
     const password = Buffer.from(`${shortCode}${passkey}${timestamp}`).toString(
-      "base64"
+      "base64",
     );
 
     // Create order in database first
     const orderId = ID.unique();
     const orderDocument = {
-      users: userId,
+      userId: userIdValue,
       customerEmail,
       username,
       items: JSON.stringify(cart || []),
@@ -894,7 +1227,7 @@ const initiateMpesaPayment = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_ORDERS_COLLECTION,
       orderId,
-      orderDocument
+      orderDocument,
     );
 
     console.log(`✅ M-Pesa order created: ${orderId}`);
@@ -951,7 +1284,7 @@ const initiateMpesaPayment = async (req, res) => {
           paymentStatus: "failed",
           failureReason: "Invalid M-Pesa response - likely callback URL issue",
           updatedAt: new Date().toISOString(),
-        }
+        },
       );
 
       return res.status(500).json({
@@ -974,7 +1307,7 @@ const initiateMpesaPayment = async (req, res) => {
           mpesaCheckoutRequestID: stkData.CheckoutRequestID,
           mpesaMerchantRequestID: stkData.MerchantRequestID,
           updatedAt: new Date().toISOString(),
-        }
+        },
       );
 
       return res.status(200).json({
@@ -995,7 +1328,7 @@ const initiateMpesaPayment = async (req, res) => {
           paymentStatus: "failed",
           failureReason: stkData.ResponseDescription || "STK Push failed",
           updatedAt: new Date().toISOString(),
-        }
+        },
       );
 
       return res.status(400).json({
@@ -1016,8 +1349,138 @@ const initiateMpesaPayment = async (req, res) => {
 };
 
 /**
- * M-Pesa Payment Callback
+ * M-Pesa Payment Callback - PRODUCTION SAFE with idempotency
  */
+const mpesaCallback1 = async (req, res) => {
+  try {
+    console.log("=== M-PESA CALLBACK RECEIVED ===");
+    console.log("Callback Body:", JSON.stringify(req.body, null, 2));
+
+    const { Body } = req.body;
+    const stkCallback = Body?.stkCallback;
+
+    if (!stkCallback) {
+      return res.status(400).json({ message: "Invalid callback data" });
+    }
+
+    const {
+      MerchantRequestID,
+      CheckoutRequestID,
+      ResultCode,
+      ResultDesc,
+      CallbackMetadata,
+    } = stkCallback;
+
+    // CRITICAL: Prevent duplicate processing with distributed lock
+    const lockKey = `mpesa_callback_${CheckoutRequestID}`;
+    if (processedCallbacks.has(lockKey)) {
+      console.log(`M-Pesa callback already processed: ${CheckoutRequestID}`);
+      return res
+        .status(200)
+        .json({ ResultCode: 0, ResultDesc: "Already processed" });
+    }
+
+    // Mark as processing
+    processedCallbacks.set(lockKey, Date.now());
+
+    // Find order by checkout request ID with proper error handling
+    let orders;
+    try {
+      orders = await db.listDocuments(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_ORDERS_COLLECTION,
+        [
+          Query.equal("mpesaCheckoutRequestID", CheckoutRequestID),
+          Query.limit(1),
+        ],
+      );
+    } catch (dbError) {
+      console.error("Database error finding order:", dbError);
+      processedCallbacks.delete(lockKey);
+      return res
+        .status(200)
+        .json({ ResultCode: 1, ResultDesc: "Database error" });
+    }
+
+    if (!orders.documents || orders.documents.length === 0) {
+      console.warn("No order found for CheckoutRequestID:", CheckoutRequestID);
+      processedCallbacks.delete(lockKey);
+      return res
+        .status(200)
+        .json({ ResultCode: 0, ResultDesc: "Order not found" });
+    }
+
+    const order = orders.documents[0];
+    const orderId = order.$id;
+
+    // Check if order is already processed (double callback protection)
+    if (order.paymentStatus === "succeeded") {
+      console.log(`Order ${orderId} already marked as paid`);
+      processedCallbacks.delete(lockKey);
+      return res
+        .status(200)
+        .json({ ResultCode: 0, ResultDesc: "Already processed" });
+    }
+
+    // ResultCode 0 = Success
+    if (ResultCode === 0) {
+      console.log("✅ M-Pesa payment successful for order:", orderId);
+
+      // Extract payment details from metadata
+      let mpesaReceiptNumber = "";
+      let amount = 0;
+      let phoneNumber = "";
+
+      if (CallbackMetadata && CallbackMetadata.Item) {
+        CallbackMetadata.Item.forEach((item) => {
+          if (item.Name === "MpesaReceiptNumber")
+            mpesaReceiptNumber = item.Value;
+          if (item.Name === "Amount") amount = item.Value;
+          if (item.Name === "PhoneNumber") phoneNumber = item.Value;
+        });
+      }
+
+      // Process payment atomically
+      await processSuccessfulMpesaPayment(order, orderId, {
+        mpesaReceiptNumber,
+        amount,
+        phoneNumber,
+      });
+    } else {
+      // Payment failed
+      console.log(
+        `❌ M-Pesa payment failed for order ${orderId}: ${ResultDesc}`,
+      );
+
+      await db.updateDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_ORDERS_COLLECTION,
+        orderId,
+        {
+          orderStatus: "Failed",
+          paymentStatus: "failed",
+          failureReason: ResultDesc,
+          updatedAt: new Date().toISOString(),
+        },
+      );
+    }
+
+    // Clear processing lock
+    processedCallbacks.delete(lockKey);
+
+    // Always respond with success to M-Pesa to prevent retries
+    return res
+      .status(200)
+      .json({ ResultCode: 0, ResultDesc: "Callback processed" });
+  } catch (error) {
+    console.error("❌ M-Pesa callback error:", error);
+    // Still return 200 to prevent retries
+    return res
+      .status(200)
+      .json({ ResultCode: 1, ResultDesc: "Internal error" });
+  }
+};
+
 const mpesaCallback = async (req, res) => {
   try {
     console.log("=== M-PESA CALLBACK RECEIVED ===");
@@ -1038,20 +1501,198 @@ const mpesaCallback = async (req, res) => {
       CallbackMetadata,
     } = stkCallback;
 
-    // Find order by checkout request ID
-    const orders = await db.listDocuments(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_ORDERS_COLLECTION,
-      [Query.equal("mpesaCheckoutRequestID", CheckoutRequestID)]
-    );
+    // CRITICAL: Prevent duplicate processing with distributed lock
+    const lockKey = `mpesa_callback_${CheckoutRequestID}`;
+    if (processedCallbacks.has(lockKey)) {
+      console.log(`M-Pesa callback already processed: ${CheckoutRequestID}`);
+      return res
+        .status(200)
+        .json({ ResultCode: 0, ResultDesc: "Already processed" });
+    }
 
+    // Mark as processing
+    processedCallbacks.set(lockKey, Date.now());
+
+    // Find order by checkout request ID with proper error handling
+    let orders;
+    try {
+      orders = await db.listDocuments(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_ORDERS_COLLECTION,
+        [
+          Query.equal("mpesaCheckoutRequestID", CheckoutRequestID),
+          Query.limit(1),
+        ],
+      );
+    } catch (dbError) {
+      console.error("Database error finding order:", dbError);
+      processedCallbacks.delete(lockKey);
+      return res
+        .status(200)
+        .json({ ResultCode: 1, ResultDesc: "Database error" });
+    }
+
+    // If no order found, check for subscription
     if (!orders.documents || orders.documents.length === 0) {
       console.warn("No order found for CheckoutRequestID:", CheckoutRequestID);
-      return res.status(200).json({ message: "Order not found" });
+
+      // Try to find a pending subscription instead
+      if (env.APPWRITE_SUBSCRIPTIONS_COLLECTION_ID) {
+        try {
+          const subscriptions = await db.listDocuments(
+            env.APPWRITE_DATABASE_ID,
+            env.APPWRITE_SUBSCRIPTIONS_COLLECTION_ID,
+            [
+              Query.equal("checkoutRequestId", CheckoutRequestID),
+              Query.equal("status", "pending"),
+              Query.limit(1),
+            ],
+          );
+
+          if (subscriptions.documents && subscriptions.documents.length > 0) {
+            console.log(
+              "Found pending subscription for CheckoutRequestID:",
+              CheckoutRequestID,
+            );
+
+            // Process subscription payment
+            const subscription = subscriptions.documents[0];
+            const userId = subscription.userId;
+
+            // ResultCode 0 = Success
+            if (ResultCode === 0) {
+              console.log("✅ M-Pesa subscription payment successful");
+
+              // Extract payment details from metadata
+              let mpesaReceiptNumber = "";
+              let amount = 0;
+              let phoneNumber = "";
+
+              if (CallbackMetadata && CallbackMetadata.Item) {
+                CallbackMetadata.Item.forEach((item) => {
+                  if (item.Name === "MpesaReceiptNumber")
+                    mpesaReceiptNumber = item.Value;
+                  if (item.Name === "Amount") amount = item.Value;
+                  if (item.Name === "PhoneNumber") phoneNumber = item.Value;
+                });
+              }
+
+              // Update subscription to active
+              await db.updateDocument(
+                env.APPWRITE_DATABASE_ID,
+                env.APPWRITE_SUBSCRIPTIONS_COLLECTION_ID,
+                subscription.$id,
+                {
+                  status: "active",
+                  transactionId: mpesaReceiptNumber,
+                },
+              );
+
+              // Get user and update premium status
+              const { users } = require("../../services/appwriteService");
+              const user = await users.get(userId);
+
+              // Update user prefs with premium status
+              await users.updatePrefs(userId, {
+                ...user.prefs,
+                isPremium: true,
+                subscriptionId: subscription.subscriptionId,
+                subscriptionExpiresAt: subscription.expiresAt,
+                subscriptionStartedAt: subscription.startedAt,
+                subscriptionCancelledAt: null,
+              });
+
+              // Update user collection document attributes if exists
+              if (env.APPWRITE_USER_COLLECTION_ID) {
+                try {
+                  const userDocs = await db.listDocuments(
+                    env.APPWRITE_DATABASE_ID,
+                    env.APPWRITE_USER_COLLECTION_ID,
+                    [Query.equal("email", user.email)],
+                  );
+                  if (userDocs.documents.length > 0) {
+                    await db.updateDocument(
+                      env.APPWRITE_DATABASE_ID,
+                      env.APPWRITE_USER_COLLECTION_ID,
+                      userDocs.documents[0].$id,
+                      {
+                        isPremium: true,
+                        subscriptionId: subscription.subscriptionId,
+                        startedAt: subscription.startedAt,
+                        cancelledAt: null,
+                      },
+                    );
+                  }
+                } catch (docError) {
+                  console.error("Error updating user document:", docError);
+                }
+              }
+
+              console.log(
+                `✅ User ${userId} premium activated until ${subscription.expiresAt}`,
+              );
+
+              // Send welcome email
+              try {
+                const SubscriptionEmailService = require("../../services/subscriptionEmailService");
+                const userName =
+                  user.name || user.prefs?.name || "Valued Customer";
+                await SubscriptionEmailService.sendWelcomeEmail({
+                  email: user.email,
+                  name: userName,
+                  expiresAt: subscription.expiresAt,
+                  subscriptionId: subscription.subscriptionId,
+                  amount: subscription.amount || 200,
+                  paymentMethod: "mpesa",
+                });
+              } catch (emailError) {
+                console.error("Failed to send welcome email:", emailError);
+              }
+            } else {
+              // Subscription payment failed
+              console.log(
+                `❌ M-Pesa subscription payment failed: ${ResultDesc}`,
+              );
+
+              await db.updateDocument(
+                env.APPWRITE_DATABASE_ID,
+                env.APPWRITE_SUBSCRIPTIONS_COLLECTION_ID,
+                subscription.$id,
+                {
+                  status: "failed",
+                  failureReason: ResultDesc,
+                },
+              );
+            }
+
+            processedCallbacks.delete(lockKey);
+            return res.status(200).json({
+              ResultCode: 0,
+              ResultDesc: "Subscription callback processed",
+            });
+          }
+        } catch (subError) {
+          console.error("Error processing subscription callback:", subError);
+        }
+      }
+
+      processedCallbacks.delete(lockKey);
+      return res
+        .status(200)
+        .json({ ResultCode: 0, ResultDesc: "No order or subscription found" });
     }
 
     const order = orders.documents[0];
     const orderId = order.$id;
+
+    // Check if order is already processed (double callback protection)
+    if (order.paymentStatus === "succeeded") {
+      console.log(`Order ${orderId} already marked as paid`);
+      processedCallbacks.delete(lockKey);
+      return res
+        .status(200)
+        .json({ ResultCode: 0, ResultDesc: "Already processed" });
+    }
 
     // ResultCode 0 = Success
     if (ResultCode === 0) {
@@ -1071,109 +1712,16 @@ const mpesaCallback = async (req, res) => {
         });
       }
 
-      // Reduce stock
-      const cart = JSON.parse(order.items || "[]");
-      if (cart.length > 0) {
-        const stockUpdateResult = await reduceProductStock(cart, orderId);
-        if (!stockUpdateResult.success) {
-          console.error("Stock update failed:", stockUpdateResult.errors);
-        }
-      }
-
-      // Update order status
-      await db.updateDocument(
-        env.APPWRITE_DATABASE_ID,
-        env.APPWRITE_ORDERS_COLLECTION,
-        orderId,
-        {
-          orderStatus: "Ordered",
-          paymentStatus: "succeeded",
-          status: "Pending",
-          mpesaReceiptNumber,
-          mpesaTransactionDate: new Date().toISOString(),
-          stockUpdated: true,
-          updatedAt: new Date().toISOString(),
-        }
-      );
-
-      // PREMIUM TRACKING AND MILES CALCULATION
-      console.log("Processing premium benefits for M-Pesa order...");
-
-      // Check if user has premium subscription
-      const premiumStatus = await checkUserPremiumStatus(order.users);
-
-      // Calculate subtotal from cart items
-      const orderCart = JSON.parse(order.items || "[]");
-      const subtotal = orderCart.reduce((sum, item) => {
-        return sum + parseFloat(item.price || 0) * parseInt(item.quantity || 0);
-      }, 0);
-
-      // Determine shipping fee (0 for premium users on orders >=500, otherwise 200)
-      const shippingFee = premiumStatus.isPremium && subtotal >= 500 ? 0 : 200;
-
-      // Calculate premium savings
-      const premiumSavings = calculatePremiumSavings(
-        subtotal,
-        shippingFee,
-        premiumStatus.isPremium
-      );
-
-      console.log("M-Pesa Premium analysis:", {
-        isPremium: premiumStatus.isPremium,
-        subtotal,
-        shippingFee,
-        savings: premiumSavings,
+      // Process payment atomically
+      await processSuccessfulMpesaPayment(order, orderId, {
+        mpesaReceiptNumber,
+        amount,
+        phoneNumber,
       });
-
-      // Update order with premium tracking data
-      await updateOrderWithPremiumData(orderId, premiumSavings, order.users);
-
-      // Award correct miles amount (using premium service instead of old method)
-      if (premiumSavings.milesTotal > 0) {
-        await awardMilesToUser(order.users, premiumSavings.milesTotal, orderId);
-        console.log(
-          `✅ Awarded ${premiumSavings.milesTotal} Nile Miles via premium service (Premium: ${premiumStatus.isPremium})`
-        );
-      }
-
-      // Send confirmation email
-      try {
-        await Emailconfirmation({
-          cart: orderCart,
-          customerEmail: order.customerEmail,
-          customerName: order.username,
-          orderId,
-          orderTotal: parseFloat(order.amount),
-          paymentMethod: "M-Pesa",
-          status: "Confirmed",
-        });
-      } catch (e) {
-        console.warn("Email error:", e.message);
-      }
-
-      // Create notification with premium benefits info
-      const notificationMessage = premiumStatus.isPremium
-        ? `Your M-Pesa payment of KES ${amount} was successful. Order ${orderId} confirmed. Premium benefits applied: ${premiumSavings.milesTotal} Nile Miles earned (2x bonus), ${premiumSavings.discountAmount} KSH discount saved.`
-        : `Your M-Pesa payment of KES ${amount} was successful. Order ${orderId} confirmed.`;
-
-      try {
-        await createNotification({
-          userId: order.users,
-          message: notificationMessage,
-          type: "payment",
-          username: order.username,
-          email: order.customerEmail,
-        });
-      } catch (e) {
-        console.warn("Notification error:", e.message);
-      }
-
-      console.log("🎉 M-Pesa order completed:", orderId);
     } else {
-      // Payment failed or cancelled
-      console.warn(
-        `❌ M-Pesa payment failed for order ${orderId}:`,
-        ResultDesc
+      // Payment failed
+      console.log(
+        `❌ M-Pesa payment failed for order ${orderId}: ${ResultDesc}`,
       );
 
       await db.updateDocument(
@@ -1184,49 +1732,15 @@ const mpesaCallback = async (req, res) => {
           orderStatus: "Failed",
           paymentStatus: "failed",
           failureReason: ResultDesc,
-          mpesaResultCode: ResultCode?.toString() || "",
           updatedAt: new Date().toISOString(),
-        }
+        },
       );
-
-      // Archive to cancelled orders collection
-      await archiveCancelledOrder(
-        order,
-        ResultDesc,
-        ResultCode === 1032 ? "user_cancelled" : "payment_failed"
-      );
-
-      // Send cancellation email
-      try {
-        const cart = JSON.parse(order.items || "[]");
-        await sendOrderCancellationEmail({
-          customerEmail: order.customerEmail,
-          customerName: order.username,
-          orderId,
-          orderTotal: parseFloat(order.amount),
-          cart,
-          cancellationReason: ResultDesc,
-        });
-        console.log("✅ Cancellation email sent");
-      } catch (emailError) {
-        console.warn("Cancellation email error:", emailError.message);
-      }
-
-      // Notify user
-      try {
-        await createNotification({
-          userId: order.users,
-          message: `Your M-Pesa payment failed: ${ResultDesc}`,
-          type: "payment",
-          username: order.username,
-          email: order.customerEmail,
-        });
-      } catch (e) {
-        console.warn("Notification error:", e.message);
-      }
     }
 
-    // Always respond with success to M-Pesa
+    // Clear processing lock
+    processedCallbacks.delete(lockKey);
+
+    // Always respond with success to M-Pesa to prevent retries
     return res
       .status(200)
       .json({ ResultCode: 0, ResultDesc: "Callback processed" });
@@ -1257,7 +1771,7 @@ const mpesaPaymentStatus = async (req, res) => {
     const order = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_ORDERS_COLLECTION,
-      orderId
+      orderId,
     );
 
     if (!order) {
@@ -1306,7 +1820,7 @@ const mpesaCancelPayment = async (req, res) => {
     const order = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_ORDERS_COLLECTION,
-      orderId
+      orderId,
     );
 
     if (!order) {
@@ -1330,14 +1844,14 @@ const mpesaCancelPayment = async (req, res) => {
           paymentStatus: "cancelled",
           status: "Cancelled",
           updatedAt: new Date().toISOString(),
-        }
+        },
       );
 
       // Archive to cancelled orders collection
       await archiveCancelledOrder(
         order,
         "Cancelled by customer",
-        "user_cancelled"
+        "user_cancelled",
       );
 
       // Send cancellation email
@@ -1359,7 +1873,7 @@ const mpesaCancelPayment = async (req, res) => {
       // Send notification
       try {
         await createNotification({
-          userId: order.users,
+          userId: order.userId || order.users,
           message: `Your M-Pesa payment for order ${orderId} was cancelled.`,
           type: "payment",
           username: order.username,
@@ -1409,7 +1923,7 @@ const cancelCodOrder = async (req, res) => {
     const order = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_ORDERS_COLLECTION,
-      orderId
+      orderId,
     );
 
     if (!order) {
@@ -1445,14 +1959,14 @@ const cancelCodOrder = async (req, res) => {
         paymentStatus: "cancelled",
         status: "Cancelled",
         updatedAt: new Date().toISOString(),
-      }
+      },
     );
 
     // Archive to cancelled orders collection
     await archiveCancelledOrder(
       order,
       "Order cancelled by customer",
-      "user_cancelled"
+      "user_cancelled",
     );
 
     // Restore stock if it was reduced
@@ -1486,7 +2000,7 @@ const cancelCodOrder = async (req, res) => {
     // Send notification
     try {
       await createNotification({
-        userId: order.users,
+        userId: order.userId || order.users,
         message: `Your Cash on Delivery order ${orderId} was cancelled successfully.`,
         type: "order",
         username: order.username,
@@ -1524,4 +2038,5 @@ module.exports = {
   mpesaPaymentStatus,
   mpesaCancelPayment,
   cancelCodOrder,
+  stripeMobilePaymentSheet, // New PaymentSheet endpoint
 };

@@ -18,7 +18,7 @@ if (
   !env.APPWRITE_ADMIN_COLLECTION_ID
 ) {
   throw new Error(
-    "Missing Appwrite collection env variables. Please set APPWRITE_DATABASE_ID, APPWRITE_REFRESH_TOKEN_COLLECTION_ID, APPWRITE_ADMIN_COLLECTION_ID."
+    "Missing Appwrite collection env variables. Please set APPWRITE_DATABASE_ID, APPWRITE_REFRESH_TOKEN_COLLECTION_ID, APPWRITE_ADMIN_COLLECTION_ID.",
   );
 }
 
@@ -28,6 +28,98 @@ const log = {
   warn: (...args) => console.warn("[auth]", ...args),
   error: (...args) => console.error("[auth]", ...args),
 };
+
+/**
+ * Get appropriate cookie domain based on request origin for admin
+ */
+function getCookieDomain(req) {
+  const origin = req.get("origin") || req.get("referer");
+  const host = req.headers.host;
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+
+  console.log("[Admin Cookie Domain Debug]", {
+    origin,
+    host,
+    protocol,
+    isSecure: protocol === "https",
+    requestHeaders: {
+      origin: req.headers.origin,
+      host: req.headers.host,
+      referer: req.headers.referer,
+    },
+  });
+
+  // Check if backend and frontend are on different domains (cross-origin)
+  const isCrossOrigin =
+    origin &&
+    host &&
+    !origin.includes(host) &&
+    !host.includes(origin.replace("https://", "").replace("http://", ""));
+
+  console.log("[Admin Cookie] Cross-origin check:", {
+    origin,
+    host,
+    isCrossOrigin,
+  });
+
+  if (isCrossOrigin) {
+    console.log(
+      "[Admin Cookie] Cross-origin detected - using secure cross-origin settings",
+    );
+    return {
+      domain: undefined, // No domain restriction for cross-origin
+      secure: true, // Always secure for cross-origin
+      sameSite: "none", // Required for cross-origin cookies
+    };
+  }
+
+  // Development - no domain restriction
+  if (
+    !origin ||
+    origin.includes("localhost") ||
+    origin.includes("127.0.0.1") ||
+    (host && host.includes("localhost"))
+  ) {
+    console.log("[Admin Cookie] Using localhost - no domain restriction");
+    return { domain: undefined, secure: false, sameSite: "lax" };
+  }
+
+  // Same-origin admin production domains
+  if (
+    (origin && origin.includes("admin.nileflowafrica.com")) ||
+    (host && host.includes("admin.nileflowafrica.com"))
+  ) {
+    console.log(
+      "[Admin Cookie] Using admin.nileflowafrica.com domain (same-origin)",
+    );
+    return {
+      domain: ".admin.nileflowafrica.com",
+      secure: protocol === "https",
+      sameSite: "lax",
+    };
+  }
+
+  // Fallback for nileflowafrica.com
+  if (
+    (origin && origin.includes("nileflowafrica.com")) ||
+    (host && host.includes("nileflowafrica.com"))
+  ) {
+    console.log("[Admin Cookie] Using nileflowafrica.com domain (same-origin)");
+    return {
+      domain: ".nileflowafrica.com",
+      secure: protocol === "https",
+      sameSite: "lax",
+    };
+  }
+
+  // Default - secure cross-origin settings for production
+  console.log("[Admin Cookie] Using default secure cross-origin settings");
+  return {
+    domain: undefined,
+    secure: true,
+    sameSite: "none",
+  };
+}
 
 /**
  * Persist refresh token (store hashed token only) into Appwrite refresh_tokens collection.
@@ -43,7 +135,7 @@ async function persistRefreshToken({
 }) {
   const hashedRefreshToken = hashToken(refreshToken);
   const expiresAt = new Date(
-    Date.now() + timeframeToMs(env.JWT_REFRESH_EXPIRES_IN || "30d")
+    Date.now() + timeframeToMs(env.JWT_REFRESH_EXPIRES_IN || "30d"),
   ).toISOString();
   const docId = ID.unique();
 
@@ -61,7 +153,7 @@ async function persistRefreshToken({
       userAgent,
       deviceId,
       rotatedFrom, // optional reference to previous token doc id
-    }
+    },
   );
 }
 
@@ -77,7 +169,7 @@ async function findRefreshTokenRecord({ userId, refreshToken }) {
     [
       Query.equal("userId", userId),
       Query.equal("refreshToken", hashedRefreshToken),
-    ]
+    ],
   );
 
   if (!result || !result.documents || result.documents.length === 0)
@@ -90,7 +182,7 @@ async function findRefreshTokenRecordByHash(refreshToken) {
   const result = await db.listDocuments(
     env.APPWRITE_DATABASE_ID,
     env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
-    [Query.equal("refreshToken", tokenHash)]
+    [Query.equal("refreshToken", tokenHash)],
   );
 
   if (!result || !result.documents || result.documents.length === 0)
@@ -109,7 +201,7 @@ async function findTokensByUserAndDevice(userId, deviceId, userAgent) {
     const res = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
-      [Query.equal("userId", userId), Query.equal("deviceId", deviceId)]
+      [Query.equal("userId", userId), Query.equal("deviceId", deviceId)],
     );
     return res?.documents || [];
   }
@@ -118,7 +210,7 @@ async function findTokensByUserAndDevice(userId, deviceId, userAgent) {
     const res = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
-      [Query.equal("userId", userId), Query.equal("userAgent", userAgent)]
+      [Query.equal("userId", userId), Query.equal("userAgent", userAgent)],
     );
     return res?.documents || [];
   }
@@ -126,7 +218,7 @@ async function findTokensByUserAndDevice(userId, deviceId, userAgent) {
   const res = await db.listDocuments(
     env.APPWRITE_DATABASE_ID,
     env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
-    [Query.equal("userId", userId)]
+    [Query.equal("userId", userId)],
   );
   return res?.documents || [];
 }
@@ -139,7 +231,7 @@ async function revokeRefreshTokenById(docId) {
     env.APPWRITE_DATABASE_ID,
     env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
     docId,
-    { revoked: true, revokedAt: new Date().toISOString() }
+    { revoked: true, revokedAt: new Date().toISOString() },
   );
 }
 
@@ -150,7 +242,7 @@ async function revokeAllUserRefreshTokens(userId) {
   const res = await db.listDocuments(
     env.APPWRITE_DATABASE_ID,
     env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
-    [Query.equal("userId", userId)]
+    [Query.equal("userId", userId)],
   );
 
   if (!res || !res.documents) return 0;
@@ -165,7 +257,7 @@ async function revokeAllUserRefreshTokens(userId) {
         {
           revoked: true,
           revokedAt: new Date().toISOString(),
-        }
+        },
       );
       count++;
     }
@@ -220,7 +312,7 @@ const signup = async (req, res) => {
       email,
       null,
       password,
-      username
+      username,
     );
 
     // 2) Create profile document in admin/user collection
@@ -235,7 +327,7 @@ const signup = async (req, res) => {
         createdAt: new Date().toISOString(),
         avatarUrl: null,
         deviceName: deviceName || null,
-      }
+      },
     );
 
     // 3) Safe attempt to update user prefs (non-fatal)
@@ -249,7 +341,7 @@ const signup = async (req, res) => {
     } catch (prefErr) {
       log.warn(
         "Non-fatal: failed to update user prefs:",
-        prefErr?.message || prefErr
+        prefErr?.message || prefErr,
       );
     }
 
@@ -275,26 +367,32 @@ const signup = async (req, res) => {
       // Persistence failure is important; log and proceed (optionally fail).
       log.error(
         "Failed to persist refresh token:",
-        persistErr?.message || persistErr
+        persistErr?.message || persistErr,
       );
     }
 
-    res.cookie("accessToken", accessToken, {
+    const cookieConfig = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      domain: "localhost", // ADD THIS
-      maxAge: 15 * 60 * 1000,
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
+    };
+
+    if (cookieConfig.domain) {
+      cookieOptions.domain = cookieConfig.domain;
+    }
+
+    console.log("[Admin Signup] Cookie options:", cookieOptions);
+
+    res.cookie("accessToken", accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      domain: "localhost", // ADD THIS
+      ...cookieOptions,
       maxAge: 30 * 24 * 60 * 60 * 1000,
-      path: "/",
     });
 
     return res.status(201).json({
@@ -310,15 +408,6 @@ const signup = async (req, res) => {
     });
 
     // Production level: send verification email here (if needed)
-    /* 
-        res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: true, // Change to true in production
-      sameSite: 'strict', // Change to strict in production
-      domain: 'yourdomain.com', // Your actual domain
-      maxAge: 15 * 60 * 1000,
-      path: '/',
-    }); */
   } catch (error) {
     log.error("Signup error:", error?.message || error);
 
@@ -327,7 +416,7 @@ const signup = async (req, res) => {
       try {
         await users.delete(createdUser.$id);
         log.info(
-          "Rolled back Appwrite user after failed signup profile creation."
+          "Rolled back Appwrite user after failed signup profile creation.",
         );
       } catch (delErr) {
         log.error("Rollback failed (delete user):", delErr?.message || delErr);
@@ -358,7 +447,7 @@ const signin = async (req, res) => {
     }
 
     const role = user.prefs?.role || "user";
-    const accessPayload = { sub: user.$id, role };
+    const accessPayload = { sub: user.$id, role, email: user.email };
     const accessToken = signAccessToken(accessPayload);
     const refreshPayload = { sub: user.$id };
     const refreshToken = signRefreshToken(refreshPayload);
@@ -377,22 +466,28 @@ const signin = async (req, res) => {
       log.error("Failed to persist refresh token:", persistErr?.message);
     }
 
-    res.cookie("accessToken", accessToken, {
+    const cookieConfig = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      domain: "localhost", // ADD THIS
-      maxAge: 15 * 60 * 1000,
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
+    };
+
+    if (cookieConfig.domain) {
+      cookieOptions.domain = cookieConfig.domain;
+    }
+
+    console.log("[Admin Signin] Cookie options:", cookieOptions);
+
+    res.cookie("accessToken", accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      domain: "localhost", // ADD THIS
+      ...cookieOptions,
       maxAge: 30 * 24 * 60 * 60 * 1000,
-      path: "/",
     });
 
     return res.status(200).json({
@@ -431,7 +526,7 @@ const handleRefreshToken = async (req, res) => {
     } catch (verifyErr) {
       log.warn(
         "Refresh token verification failed:",
-        verifyErr?.message || verifyErr
+        verifyErr?.message || verifyErr,
       );
       return res.status(401).json({ error: "Invalid refresh token." });
     }
@@ -446,7 +541,7 @@ const handleRefreshToken = async (req, res) => {
     if (!record) {
       log.warn("Refresh token record not found for user:", userId);
       await revokeAllUserRefreshTokens(userId).catch((e) =>
-        log.error("Error revoking all tokens:", e)
+        log.error("Error revoking all tokens:", e),
       );
       return res.status(401).json({ error: "Invalid refresh token." });
     }
@@ -457,16 +552,16 @@ const handleRefreshToken = async (req, res) => {
         "Revoked refresh token used (possible theft) for user:",
         userId,
         "doc:",
-        record.$id
+        record.$id,
       );
       await revokeAllUserRefreshTokens(userId).catch((e) =>
-        log.error("Error revoking all tokens:", e)
+        log.error("Error revoking all tokens:", e),
       );
       return res.status(401).json({ error: "Refresh token revoked." });
     }
     if (new Date(record.expiresAt) < new Date()) {
       await revokeRefreshTokenById(record.$id).catch((e) =>
-        log.error("Error revoking expired token:", e)
+        log.error("Error revoking expired token:", e),
       );
       return res.status(401).json({ error: "Refresh token expired." });
     }
@@ -479,7 +574,7 @@ const handleRefreshToken = async (req, res) => {
     const deviceTokens = await findTokensByUserAndDevice(
       userId,
       requestDeviceId,
-      requestUserAgent
+      requestUserAgent,
     );
 
     if (!deviceTokens || deviceTokens.length === 0) {
@@ -487,10 +582,10 @@ const handleRefreshToken = async (req, res) => {
         "No device-scoped tokens found for user:",
         userId,
         "deviceId:",
-        requestDeviceId
+        requestDeviceId,
       );
       await revokeAllUserRefreshTokens(userId).catch((e) =>
-        log.error("Error revoking all tokens:", e)
+        log.error("Error revoking all tokens:", e),
       );
       return res.status(401).json({ error: "Invalid refresh token." });
     }
@@ -520,10 +615,10 @@ const handleRefreshToken = async (req, res) => {
         "Refresh token reuse detected for user:",
         userId,
         "presentedDoc:",
-        record.$id
+        record.$id,
       );
       await revokeAllUserRefreshTokens(userId).catch((e) =>
-        log.error("Error revoking all tokens:", e)
+        log.error("Error revoking all tokens:", e),
       );
       return res
         .status(401)
@@ -560,15 +655,24 @@ const handleRefreshToken = async (req, res) => {
     } catch (persistErr) {
       log.error(
         "Failed to persist rotated refresh token:",
-        persistErr?.message || persistErr
+        persistErr?.message || persistErr,
       );
       // Return access token only without rotation
-      res.cookie("accessToken", newAccessToken, {
+      const cookieConfig = getCookieDomain(req);
+      const cookieOptions = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        secure: cookieConfig.secure,
+        sameSite: cookieConfig.sameSite,
         maxAge: 15 * 60 * 1000,
-      });
+        path: "/",
+      };
+
+      if (cookieConfig.domain) {
+        cookieOptions.domain = cookieConfig.domain;
+      }
+
+      console.log("[Admin Refresh Fallback] Cookie options:", cookieOptions);
+      res.cookie("accessToken", newAccessToken, cookieOptions);
       return res.status(200).json({ message: "Token refreshed (partial)" });
     }
 
@@ -583,32 +687,38 @@ const handleRefreshToken = async (req, res) => {
           {
             rotatedTo: newDoc.$id,
             rotatedAt: new Date().toISOString(),
-          }
+          },
         )
         .catch(() => {}); // Non-fatal
     } catch (revErr) {
       log.error(
         "Failed to revoke old refresh token after rotation:",
-        revErr?.message || revErr
+        revErr?.message || revErr,
       );
     }
 
-    res.cookie("accessToken", newAccessToken, {
+    const cookieConfig = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      domain: "localhost", // ADD THIS
-      maxAge: 15 * 60 * 1000,
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
+    };
+
+    if (cookieConfig.domain) {
+      cookieOptions.domain = cookieConfig.domain;
+    }
+
+    console.log("[Admin Refresh] Cookie options:", cookieOptions);
+
+    res.cookie("accessToken", newAccessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", newRefreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      domain: "localhost", // ADD THIS
+      ...cookieOptions,
       maxAge: 30 * 24 * 60 * 60 * 1000,
-      path: "/",
     });
 
     return res.status(200).json({ message: "Tokens refreshed" });
@@ -648,7 +758,7 @@ const logout = async (req, res) => {
     const result = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REFRESH_TOKEN_COLLECTION_ID,
-      queries
+      queries,
     );
 
     if (!result || !result.documents || result.documents.length === 0) {
@@ -658,13 +768,26 @@ const logout = async (req, res) => {
     for (const doc of result.documents) {
       if (!doc.revoked) {
         await revokeRefreshTokenById(doc.$id).catch((e) =>
-          log.error("Failed to revoke token in logout:", e)
+          log.error("Failed to revoke token in logout:", e),
         );
       }
     }
 
-    res.clearCookie("accessToken");
-    res.clearCookie("refreshToken");
+    const cookieConfig = getCookieDomain(req);
+    const clearOptions = {
+      httpOnly: true,
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
+      path: "/",
+    };
+
+    if (cookieConfig.domain) {
+      clearOptions.domain = cookieConfig.domain;
+    }
+
+    console.log("[Admin Logout] Clear cookie options:", clearOptions);
+    res.clearCookie("accessToken", clearOptions);
+    res.clearCookie("refreshToken", clearOptions);
 
     return res.status(200).json({ message: "Logged out." });
   } catch (error) {

@@ -47,6 +47,12 @@ const handleValidationErrors = (req, res, next) => {
 };
 
 /**
+ * POST /api/subscription/confirm-payment
+ * Confirm Stripe payment and activate subscription after Payment Sheet success
+ * Body: { paymentIntentId: 'pi_xxx', subscriptionId?: 'sub_xxx' }
+ */
+
+/**
  * DEBUG ENDPOINT - Remove after fixing 401 issue
  * GET /api/subscription/debug
  * Check if cookies are being received
@@ -68,6 +74,18 @@ router.get("/debug", (req, res) => {
 
 // All routes require authentication
 router.use(authMiddleware);
+
+router.post(
+  "/confirm-payment",
+  [
+    body("paymentIntentId")
+      .isString()
+      .isLength({ min: 1 })
+      .withMessage("Payment Intent ID is required"),
+  ],
+  handleValidationErrors,
+  SubscriptionController.confirmStripePayment
+);
 
 /**
  * GET /api/subscription/status

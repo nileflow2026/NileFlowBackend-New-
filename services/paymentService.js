@@ -491,6 +491,97 @@ class PaymentService {
       };
     }
   }
+
+  static async processStripeMobilePayment({
+    userId,
+    amount,
+    currency,
+    description,
+  }) {
+    try {
+      logger.info(
+        `Processing Stripe mobile payment for user ${userId}: ${amount} ${currency}`
+      );
+
+      // Initialize Stripe
+      const Stripe = require("stripe");
+      const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+
+      // Convert KSH to USD (approximate: 1 USD = 130 KSH)
+      const amountInUSD = currency === "KSH" ? amount / 130 : amount;
+      const stripeCurrency =
+        currency === "KSH" ? "usd" : currency.toLowerCase();
+      const amountInCents = Math.round(amountInUSD * 100);
+
+      // Create or retrieve customer
+      let customer;
+      try {
+        // Try to find existing customer by user ID
+        const customers = await stripe.customers.search({
+          query: `metadata['userId']:'${userId}'`,
+          limit: 1,
+        });
+
+        if (customers.data.length > 0) {
+          customer = customers.data[0];
+        } else {
+          // Create new customer
+          customer = await stripe.customers.create({
+            metadata: {
+              userId: userId,
+            },
+          });
+        }
+      } catch (customerError) {
+        logger.error("Error managing Stripe customer:", customerError);
+        throw new Error("Failed to create customer");
+      }
+
+      // Create PaymentIntent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amountInCents,
+        currency: stripeCurrency,
+        customer: customer.id,
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        metadata: {
+          userId: userId,
+          subscriptionType: "premium",
+          originalAmount: amount,
+          originalCurrency: currency,
+        },
+        description: description || "Nile Premium Subscription - 1 Month",
+      });
+
+      // Create ephemeral key for customer
+      const ephemeralKey = await stripe.ephemeralKeys.create(
+        { customer: customer.id },
+        { apiVersion: "2024-06-20" }
+      );
+
+      logger.info(`Stripe PaymentIntent created: ${paymentIntent.id}`);
+
+      return {
+        success: true,
+        subscriptionId: `sub_stripe_mobile_${Date.now()}`,
+        transactionId: paymentIntent.id,
+        message: "Stripe PaymentIntent created successfully",
+        paymentDetails: {
+          paymentIntent: paymentIntent.client_secret,
+          ephemeralKey: ephemeralKey.secret,
+          customer: customer.id,
+          publishableKey: env.STRIPE_PUBLISHABLE_KEY,
+        },
+      };
+    } catch (error) {
+      logger.error("Stripe mobile payment error:", error.message);
+      return {
+        success: false,
+        message: error.message || "Stripe mobile payment processing failed",
+      };
+    }
+  }
 }
 
 module.exports = PaymentService;

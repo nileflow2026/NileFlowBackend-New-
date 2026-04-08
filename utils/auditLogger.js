@@ -25,7 +25,7 @@ const logAudit = async ({
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_AUDIT_LOGS_COLLECTION_ID,
       ID.unique(),
-      payload
+      payload,
     );
   } catch (err) {
     console.error("Failed to log audit:", err.message);
@@ -37,9 +37,9 @@ const logAuditFromRequest = async (
   action,
   entityType,
   entityId,
-  details = {}
+  details = {},
 ) => {
-  const performedBy = req?.user?.email || "Unknown user";
+  const performedBy = req?.user?.email || req?.user?.userId || "Unknown user";
   return logAudit({
     action,
     performedBy,
@@ -53,7 +53,7 @@ const fetchAuditLogs = async (limit = 50) => {
     const result = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_AUDIT_LOGS_COLLECTION_ID,
-      [Query.orderDesc("timestamp"), Query.limit(limit)]
+      [Query.orderDesc("timestamp"), Query.limit(limit)],
     );
 
     return result.documents;

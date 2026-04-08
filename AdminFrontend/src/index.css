@@ -1,0 +1,545 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+html {
+  transition: background-color 0.3s, color 0.3s;
+}
+
+@layer base {
+  :root {
+    /* CSS Variables for African color palette */
+    --color-sun-gold: 212 160 23;
+    --color-earth-dark: 44 24 16;
+    --color-terracotta: 139 69 19;
+    --color-sky-blue: 52 152 219;
+    --color-flora-green: 39 174 96;
+
+    /* Spacing scale */
+    --space-unit: 0.25rem;
+    --space-xs: calc(1 * var(--space-unit));
+    --space-sm: calc(2 * var(--space-unit));
+    --space-md: calc(4 * var(--space-unit));
+    --space-lg: calc(8 * var(--space-unit));
+    --space-xl: calc(16 * var(--space-unit));
+
+    /* Typography scale */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 1.875rem;
+    --text-4xl: 2.25rem;
+    --text-5xl: 3rem;
+  }
+
+  /* Base styles */
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-earth-50 text-earth-900 dark:bg-earth-900 dark:text-earth-50;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Selection styles */
+  ::selection {
+    @apply bg-sun-gold-500/30 text-earth-900;
+  }
+
+  /* Scrollbar styles */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-earth-100 dark:bg-earth-800;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gradient-to-b from-sun-gold-600 to-sun-gold-700 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gradient-to-b from-sun-gold-700 to-sun-gold-800;
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-sun-gold-600 ring-offset-2 ring-offset-earth-50 dark:ring-offset-earth-900;
+  }
+
+  /* Typography improvements */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold tracking-tight;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl lg:text-5xl;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl lg:text-4xl;
+  }
+
+  /* Custom font classes */
+  .font-display {
+    font-family: var(--font-display), system-ui, -apple-system, sans-serif;
+  }
+
+  .font-body {
+    font-family: var(--font-body), system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer components {
+  /* Button variants */
+  .btn {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-gradient-to-r from-sun-gold-600 to-sun-gold-700 text-white hover:shadow-lg hover:scale-105 focus:ring-sun-gold-500;
+  }
+
+  .btn-secondary {
+    @apply btn border-2 border-earth-200 dark:border-earth-700 text-earth-700 dark:text-earth-300 hover:border-earth-300 dark:hover:border-earth-600 hover:bg-earth-50 dark:hover:bg-earth-800;
+  }
+
+  .btn-danger {
+    @apply btn bg-gradient-to-r from-accent-red to-accent-red-dark text-white hover:shadow-lg hover:scale-105 focus:ring-accent-red;
+  }
+
+  .btn-success {
+    @apply btn bg-gradient-to-r from-flora-500 to-flora-600 text-white hover:shadow-lg hover:scale-105 focus:ring-flora-500;
+  }
+
+  /* Card variants */
+  .card {
+    @apply bg-gradient-to-br from-earth-50 to-white dark:from-earth-900 dark:to-earth-800 rounded-2xl border border-earth-200/30 dark:border-earth-700/30 shadow-soft hover:shadow-medium transition-shadow duration-300;
+  }
+
+  .card-elevated {
+    @apply card shadow-medium hover:shadow-hard;
+  }
+
+  .card-glass {
+    @apply glass dark:glass-dark rounded-2xl border border-earth-200/20 dark:border-earth-700/20 shadow-soft;
+  }
+
+  /* Form components */
+  .input {
+    @apply w-full px-4 py-3 rounded-xl border border-earth-200 dark:border-earth-700 bg-white dark:bg-earth-800 text-earth-900 dark:text-earth-50 placeholder-earth-500/50 dark:placeholder-earth-400/50 focus:outline-none focus:ring-2 focus:ring-sun-gold-500 focus:border-transparent transition-colors;
+  }
+
+  .input-error {
+    @apply input border-accent-red focus:ring-accent-red;
+  }
+
+  .input-success {
+    @apply input border-flora-500 focus:ring-flora-500;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-earth-700 dark:text-earth-300 mb-2;
+  }
+
+  /* Badge variants */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-bold;
+  }
+
+  .badge-primary {
+    @apply badge bg-gradient-to-r from-sun-gold-600 to-sun-gold-700 text-white;
+  }
+
+  .badge-success {
+    @apply badge bg-gradient-to-r from-flora-500 to-flora-600 text-white;
+  }
+
+  .badge-warning {
+    @apply badge bg-gradient-to-r from-accent-yellow to-accent-yellow-dark text-earth-900;
+  }
+
+  .badge-danger {
+    @apply badge bg-gradient-to-r from-accent-red to-accent-red-dark text-white;
+  }
+
+  .badge-info {
+    @apply badge bg-gradient-to-r from-sky-500 to-sky-600 text-white;
+  }
+
+  /* Alert variants */
+  .alert {
+    @apply p-4 rounded-xl border;
+  }
+
+  .alert-success {
+    @apply alert border-flora-200 dark:border-flora-800 bg-flora-50/50 dark:bg-flora-900/30 text-flora-800 dark:text-flora-200;
+  }
+
+  .alert-warning {
+    @apply alert border-accent-yellow/30 dark:border-accent-yellow-dark/30 bg-accent-yellow/10 dark:bg-accent-yellow-dark/10 text-earth-700 dark:text-earth-300;
+  }
+
+  .alert-error {
+    @apply alert border-accent-red/30 dark:border-accent-red-dark/30 bg-accent-red/10 dark:bg-accent-red-dark/10 text-accent-red dark:text-accent-red-dark;
+  }
+
+  .alert-info {
+    @apply alert border-sky-200 dark:border-sky-800 bg-sky-50/50 dark:bg-sky-900/30 text-sky-800 dark:text-sky-200;
+  }
+
+  /* Table styles */
+  .table-container {
+    @apply overflow-x-auto rounded-2xl border border-earth-200/30 dark:border-earth-700/30 shadow-soft;
+  }
+
+  .table {
+    @apply w-full min-w-[800px];
+  }
+
+  .table thead {
+    @apply bg-gradient-to-r from-earth-100/50 to-earth-50/30 dark:from-earth-800/50 dark:to-earth-900/30;
+  }
+
+  .table th {
+    @apply px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-earth-700 dark:text-earth-300;
+  }
+
+  .table tbody {
+    @apply divide-y divide-earth-200/30 dark:divide-earth-700/30;
+  }
+
+  .table td {
+    @apply px-6 py-4 text-sm text-earth-900 dark:text-earth-50;
+  }
+
+  .table tr {
+    @apply hover:bg-earth-50/50 dark:hover:bg-earth-800/30 transition-colors;
+  }
+
+  /* Loading states */
+  .skeleton {
+    @apply animate-pulse bg-earth-200 dark:bg-earth-700 rounded;
+  }
+
+  .skeleton-text {
+    @apply skeleton h-4;
+  }
+
+  .skeleton-circle {
+    @apply skeleton rounded-full;
+  }
+
+  /* Animation utilities */
+  .animate-float {
+    @apply animate-float;
+  }
+
+  .animate-shimmer {
+    @apply bg-gradient-to-r from-transparent via-earth-200/50 dark:via-earth-700/50 to-transparent bg-[length:1000px_100%] animate-shimmer;
+  }
+
+  /* Layout utilities */
+  .container-african {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .section-padding {
+    @apply py-8 md:py-12 lg:py-16;
+  }
+
+  /* Grid utilities */
+  .grid-auto-fit {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6;
+  }
+
+  .grid-auto-fill {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+  }
+
+  /* Aspect ratio containers */
+  .aspect-video {
+    @apply relative w-full pt-[56.25%];
+  }
+
+  .aspect-video > * {
+    @apply absolute inset-0 w-full h-full object-cover;
+  }
+
+  /* Custom utilities for African design */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .hyphens-auto {
+    hyphens: auto;
+  }
+
+  .writing-vertical {
+    writing-mode: vertical-rl;
+  }
+
+  /* Gradient text utilities */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+  }
+
+  .gradient-text-sun {
+    @apply gradient-text bg-gradient-to-r from-sun-gold-600 to-sun-gold-700;
+  }
+
+  .gradient-text-earth {
+    @apply gradient-text bg-gradient-to-r from-earth-500 to-earth-900;
+  }
+
+  .gradient-text-sky {
+    @apply gradient-text bg-gradient-to-r from-sky-500 to-sky-600;
+  }
+
+  .gradient-text-flora {
+    @apply gradient-text bg-gradient-to-r from-flora-500 to-flora-600;
+  }
+
+  /* Border gradient utilities */
+  .border-gradient {
+    border: 2px solid transparent;
+    background: linear-gradient(white, white) padding-box,
+      linear-gradient(135deg, var(--tw-gradient-stops)) border-box;
+  }
+
+  /* Custom scrollbar */
+  .scrollbar-custom {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--color-sun-gold)) transparent;
+  }
+
+  .scrollbar-custom::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  .scrollbar-custom::-webkit-scrollbar-track {
+    @apply bg-earth-100 dark:bg-earth-800;
+  }
+
+  .scrollbar-custom::-webkit-scrollbar-thumb {
+    @apply bg-gradient-to-b from-sun-gold-600 to-sun-gold-700 rounded-full;
+  }
+
+  /* Print styles */
+  @media print {
+    .no-print {
+      @apply hidden;
+    }
+
+    .print-break {
+      page-break-before: always;
+    }
+  }
+}
+
+@layer utilities {
+  /* Background patterns */
+  .bg-pattern-dots {
+    background-image: radial-gradient(
+      rgb(var(--color-earth-dark) / 0.1) 1px,
+      transparent 1px
+    );
+    background-size: 20px 20px;
+  }
+
+  .bg-pattern-lines {
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgb(var(--color-earth-dark) / 0.1),
+      rgb(var(--color-earth-dark) / 0.1) 1px,
+      transparent 1px,
+      transparent 10px
+    );
+    background-size: 20px 20px;
+  }
+
+  /* Text shadows */
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .text-shadow-lg {
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .text-shadow-sun {
+    text-shadow: 0 2px 8px rgba(212, 160, 23, 0.3);
+  }
+
+  /* Clip paths */
+  .clip-polygon {
+    clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
+  }
+
+  .clip-circle {
+    clip-path: circle(50% at 50% 50%);
+  }
+
+  /* Blur effects */
+  .backdrop-blur-sm {
+    backdrop-filter: blur(4px);
+  }
+
+  .backdrop-blur-md {
+    backdrop-filter: blur(8px);
+  }
+
+  .backdrop-blur-lg {
+    backdrop-filter: blur(16px);
+  }
+
+  /* Mix blend modes */
+  .mix-blend-multiply {
+    mix-blend-mode: multiply;
+  }
+
+  .mix-blend-screen {
+    mix-blend-mode: screen;
+  }
+
+  .mix-blend-overlay {
+    mix-blend-mode: overlay;
+  }
+
+  /* Grid placement */
+  .place-content-center {
+    place-content: center;
+  }
+
+  .place-items-center {
+    place-items: center;
+  }
+
+  /* Scroll snap */
+  .snap-x {
+    scroll-snap-type: x mandatory;
+  }
+
+  .snap-center {
+    scroll-snap-align: center;
+  }
+
+  /* Filter effects */
+  .filter-grayscale {
+    filter: grayscale(100%);
+  }
+
+  .filter-sepia {
+    filter: sepia(100%);
+  }
+
+  /* Transition properties */
+  .transition-colors {
+    transition-property: color, background-color, border-color,
+      text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+
+  .transition-transform {
+    transition-property: transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+
+  /* Aspect ratio */
+  .aspect-w-16 {
+    position: relative;
+    padding-bottom: calc(var(--tw-aspect-h) / var(--tw-aspect-w) * 100%);
+  }
+
+  .aspect-w-16 > * {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  /* Line clamp */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  /* Custom utilities for responsive design */
+  @media (min-width: 640px) {
+    .sm\:text-balance {
+      text-wrap: balance;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .md\:text-balance {
+      text-wrap: balance;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .lg\:text-balance {
+      text-wrap: balance;
+    }
+  }
+
+  /* Dark mode utilities */
+  @media (prefers-color-scheme: dark) {
+    .dark\:invert {
+      filter: invert(1);
+    }
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* High contrast mode */
+  @media (prefers-contrast: high) {
+    .contrast-high {
+      border-width: 2px;
+    }
+  }
+}

@@ -13,7 +13,7 @@ class AppwriteService {
 
   async initialize() {
     try {
-      console.log("🚀 Initializing Appwrite (compatible mode)...");
+      // console.log("🚀 Initializing Appwrite (compatible mode)...");
 
       // Load config
       const endpoint = env.APPWRITE_ENDPOINT;
@@ -24,9 +24,9 @@ class AppwriteService {
         throw new Error("Missing Appwrite configuration in .env file");
       }
 
-      console.log(`📦 Project: ${projectId}`);
-      console.log(`🌐 Endpoint: ${endpoint}`);
-      console.log(`🔑 API Key: ${apiKey.substring(0, 10)}...`);
+      // console.log(`📦 Project: ${projectId}`);
+      // console.log(`🌐 Endpoint: ${endpoint}`);
+      // console.log(`🔑 API Key: ${apiKey.substring(0, 10)}...`);
 
       // Initialize client
       this.client = new Client()
@@ -40,12 +40,12 @@ class AppwriteService {
       this.db = new Databases(this.client);
 
       // Test connection with available scopes
-      console.log("🔄 Testing available scopes...");
+      // console.log("🔄 Testing available scopes...");
 
       // Test 1: User operations (should work with users.read/write)
       try {
         const userList = await this.users.list([], 1);
-        console.log(`✅ users.read: OK (${userList.total} users found)`);
+        // console.log(`✅ users.read: OK (${userList.total} users found)`);
       } catch (error) {
         console.error("❌ users.read: FAILED - ", error.message);
         throw new Error("API key missing users.read scope");
@@ -54,7 +54,7 @@ class AppwriteService {
       // Test 2: Session operations (should work with sessions.write)
       try {
         // We can't test sessions.write without credentials, but we can verify the service
-        console.log("✅ sessions.write: Service ready");
+        // console.log("✅ sessions.write: Service ready");
       } catch (error) {
         console.error("❌ sessions.write: FAILED - ", error.message);
       }
@@ -66,18 +66,18 @@ class AppwriteService {
           [],
           1
         );
-        console.log(`✅ databases.read: OK (${collections.total} collections)`);
+        // console.log(`✅ databases.read: OK (${collections.total} collections)`);
       } catch (error) {
         console.warn("⚠️  databases.read: Limited - ", error.message);
       }
 
       this.isConnected = true;
-      console.log(
-        "✅ Appwrite service initialized successfully (compatible mode)"
-      );
-      console.log(
-        "📝 Note: Using sessions.write for authentication (account.* scopes not available)"
-      );
+      // console.log(
+      //   "✅ Appwrite service initialized successfully (compatible mode)"
+      // );
+      // console.log(
+      //   "📝 Note: Using sessions.write for authentication (account.* scopes not available)"
+      // );
     } catch (error) {
       console.error("❌ Appwrite initialization failed:");
       console.error("   Error:", error.message);

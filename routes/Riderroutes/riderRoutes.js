@@ -10,8 +10,11 @@ const {
   updateRiderProfile,
   updateRiderStatus,
   getRiderDeliveries,
+  getAllDeliveries,
   getRiderEarnings,
   updateDeliveryStatus,
+  getRiders,
+  assignDeliveryToRider,
 } = require("../../controllers/RiderControler/RiderController");
 
 /**
@@ -35,9 +38,16 @@ router.patch("/status", riderAuthMiddleware, updateRiderStatus);
 router.get("/deliveries", riderAuthMiddleware, getRiderDeliveries);
 
 /**
+ * Debug: Get All Deliveries
+ */
+router.get("/debug/all-deliveries", getAllDeliveries);
+
+/**
  * Get Rider Earnings
  */
 router.get("/earnings", riderAuthMiddleware, getRiderEarnings);
+
+router.get("/riders", getRiders);
 
 /**
  * Update Delivery Status

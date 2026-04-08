@@ -1,262 +1,3 @@
-// controllers/authController.js
-
-/* const bcrypt = require('bcryptjs');
-const { generateToken } = require('../../utils/Vendor/helpers');
-const { env } = require('../../src/env');
-const { Query } = require('node-appwrite');
-const { db } = require('../../services/appwriteService');
-const { ID } = require('node-appwrite');
-
-const vendorauthController = {
-    // Vendor Registration
-    async registerVendor(req, res) {
-        try {
-            const { name, storeName, email, password, confirmPassword } = req.body;
-
-            // Check if vendor already exists
-            const existingVendors = await db.listDocuments(
-                env.VENDOR_DATABASE_ID,
-                env.VENDOR_COLLECTION_ID,
-                [Query.equal('email', email)]
-            );
-
-            if (existingVendors.total > 0) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Vendor with this email already exists'
-                });
-            }
-
-            // Hash password
-            const hashedPassword = await bcrypt.hash(password, 12);
-            const storeStatsObject = {
-                totalProducts: 0,
-                totalSales: 0,
-                rating: 0
-            };
-
-            // Create vendor document
-            const vendor = await db.createDocument(
-                env.VENDOR_DATABASE_ID,
-                env.VENDOR_COLLECTION_ID,
-                ID.unique(),
-                {
-                    name,
-                    storeName,
-                    email,
-                    password: hashedPassword,
-                    confirmPassword: confirmPassword,
-                    isActive: true,
-                    storeDescription: '',
-                    profileImage: '',
-                    coverImage: '',
-                    socialLinks: {},
-                    storeStats: JSON.stringify(storeStatsObject),
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                }
-            );
-
-            // Generate JWT token
-            const token = generateToken(vendor.$id);
- 
-            // Create session record
-            await db.createDocument(
-                env.VENDOR_DATABASE_ID,
-                env.VENDOR_SESSIONS_COLLECTION_ID,
-                ID.unique(),
-                {
-                    vendorId: vendor.$id,
-                    token,
-                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-                    createdAt: new Date().toISOString()
-                }
-            );
-
-            // Remove password from response
-            const { password: _, ...vendorWithoutPassword } = vendor;
-
-            res.status(201).json({
-                success: true,
-                message: 'Vendor account created successfully',
-                data: {
-                    vendor: vendorWithoutPassword,
-                    token
-                }
-            });
-
-        } catch (error) {
-            console.error('Registration error:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to create vendor account'
-            });
-        }
-    },
-
-    // Vendor Login
-    async loginVendor(req, res) {
-        try {
-            const { email, password } = req.body;
-
-            // Find vendor by email
-            const vendors = await db.listDocuments(
-                env.VENDOR_DATABASE_ID,
-                env.VENDOR_COLLECTION_ID,
-                [Query.equal('email', email)]
-            );
-
-            if (vendors.total === 0) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'Invalid email or password'
-                });
-            }
-
-            const vendor = vendors.documents[0];
-
-            // Check if vendor is active
-            if (!vendor.isActive) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'Account is deactivated'
-                });
-            }
-
-            // Verify password
-            const isValidPassword = await bcrypt.compare(password, vendor.password);
-            if (!isValidPassword) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'Invalid email or password'
-                });
-            }
-
-            // Generate token
-            const token = generateToken(vendor.$id);
-
-            // Update session
-            await db.createDocument(
-                env.VENDOR_DATABASE_ID,
-                env.VENDOR_SESSIONS_COLLECTION_ID,
-                ID.unique(),
-                {
-                    vendorId: vendor.$id,
-                    token,
-                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-                    createdAt: new Date().toISOString()
-                }
-            );
-
-            // Remove password from response
-            const { password: _, ...vendorWithoutPassword } = vendor;
-
-            res.json({
-                success: true,
-                message: 'Login successful',
-                data: {
-                    vendor: vendorWithoutPassword,
-                    token
-                }
-            });
-
-        } catch (error) {
-            console.error('Login error:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Login failed'
-            });
-        }
-    },
-
-    async getCurrentVendor(req, res) {
-    try {
-        console.log('DEBUG: vendorId received in controller:', req.vendorId);
-
-        if (!req.vendorId) {
-            return res.status(400).json({
-                success: false,
-                error: "vendorId missing"
-            });
-        }
-
-        const vendor = await db.getDocument(
-            env.VENDOR_DATABASE_ID,
-            env.VENDOR_COLLECTION_ID,
-            req.vendorId
-        );
-
-        // Remove password
-        const { password: _, ...vendorWithoutPassword } = vendor;
-
-        res.json({
-            success: true,
-            data: { vendor: vendorWithoutPassword }
-        });
-
-    } catch (error) {
-        console.error('Get vendor error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch vendor data'
-        });
-    }
-    },
-
-
-    // Logout Vendor
-    async logoutVendor(req, res) {
-            try {
-                const token = req.header('Authorization')?.replace('Bearer ', '');
-
-                if (!token) {
-                    return res.status(400).json({
-                        success: false,
-                        error: 'No token provided'
-                    });
-                }
-
-                // Find the session by token
-                const sessions = await db.listDocuments(
-                    env.VENDOR_DATABASE_ID,
-                    env.VENDOR_SESSIONS_COLLECTION_ID,
-                    [Query.equal("token", token)]
-                );
-
-                if (sessions.total === 0) {
-                    return res.status(400).json({
-                        success: false,
-                        error: 'Session not found'
-                    });
-                }
-
-                const sessionId = sessions.documents[0].$id;
-
-                // Delete session
-                await db.deleteDocument(
-                    env.VENDOR_DATABASE_ID,
-                    env.VENDOR_SESSIONS_COLLECTION_ID,
-                    sessionId
-                );
-
-                res.json({
-                    success: true,
-                    message: 'Logout successful'
-                });
-
-            } catch (error) {
-                console.error('Logout error:', error);
-                res.status(500).json({
-                    success: false,
-                    error: 'Logout failed'
-                });
-            }
-    }
-
-};
-
-module.exports = vendorauthController; */
-
 const bcrypt = require("bcryptjs");
 const { env } = require("../../src/env");
 const { Query, ID } = require("node-appwrite");
@@ -269,6 +10,9 @@ const {
   hashToken,
   timeframeToMs,
 } = require("../../utils/tokenManager");
+const {
+  sendVendorOnboardingEmails,
+} = require("../../services/vendorMailService");
 
 // Logger
 const log = {
@@ -276,6 +20,89 @@ const log = {
   warn: (...args) => console.warn("[vendor-auth]", ...args),
   error: (...args) => console.error("[vendor-auth]", ...args),
 };
+
+/**
+ * Get appropriate cookie domain based on request origin for vendor
+ */
+function getCookieDomain(req) {
+  const origin = req.get("origin") || req.get("referer");
+  const host = req.headers.host;
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+
+  console.log("[Vendor Cookie Domain Debug]", {
+    origin,
+    host,
+    protocol,
+    isSecure: protocol === "https",
+  });
+
+  // Check if backend and frontend are on different domains (cross-origin)
+  const isCrossOrigin =
+    origin &&
+    host &&
+    !origin.includes(host) &&
+    !host.includes(origin.replace("https://", "").replace("http://", ""));
+
+  if (isCrossOrigin) {
+    console.log(
+      "[Vendor Cookie] Cross-origin detected - no domain restriction",
+    );
+    return {
+      domain: undefined, // No domain restriction for cross-origin
+      secure: protocol === "https",
+      sameSite: "none", // Required for cross-origin cookies
+    };
+  }
+
+  // Development - no domain restriction
+  if (
+    !origin ||
+    origin.includes("localhost") ||
+    origin.includes("127.0.0.1") ||
+    (host && host.includes("localhost"))
+  ) {
+    console.log("[Vendor Cookie] Using localhost - no domain restriction");
+    return { domain: undefined, secure: false, sameSite: "lax" };
+  }
+
+  // Same-origin vendor production domains
+  if (
+    (origin && origin.includes("vendor.nileflowafrica.com")) ||
+    (host && host.includes("vendor.nileflowafrica.com"))
+  ) {
+    console.log(
+      "[Vendor Cookie] Using vendor.nileflowafrica.com domain (same-origin)",
+    );
+    return {
+      domain: ".vendor.nileflowafrica.com",
+      secure: protocol === "https",
+      sameSite: "lax",
+    };
+  }
+
+  // Fallback for nileflowafrica.com
+  if (
+    (origin && origin.includes("nileflowafrica.com")) ||
+    (host && host.includes("nileflowafrica.com"))
+  ) {
+    console.log(
+      "[Vendor Cookie] Using nileflowafrica.com domain (same-origin)",
+    );
+    return {
+      domain: ".nileflowafrica.com",
+      secure: protocol === "https",
+      sameSite: "lax",
+    };
+  }
+
+  // Default - no domain restriction
+  console.log("[Vendor Cookie] Using default - no domain restriction");
+  return {
+    domain: undefined,
+    secure: protocol === "https",
+    sameSite: "lax",
+  };
+}
 
 /**
  * Persist refresh token
@@ -290,7 +117,7 @@ async function persistRefreshToken({
 }) {
   const hashedRefreshToken = hashToken(refreshToken);
   const expiresAt = new Date(
-    Date.now() + timeframeToMs(env.JWT_REFRESH_EXPIRES_IN || "30d")
+    Date.now() + timeframeToMs(env.JWT_REFRESH_EXPIRES_IN || "30d"),
   ).toISOString();
   const docId = ID.unique();
 
@@ -308,7 +135,7 @@ async function persistRefreshToken({
       userAgent,
       deviceId,
       rotatedFrom,
-    }
+    },
   );
 }
 
@@ -320,7 +147,7 @@ async function findRefreshTokenRecordByHash(refreshToken) {
   const result = await db.listDocuments(
     env.VENDOR_DATABASE_ID,
     env.VENDOR_SESSIONS_COLLECTION_ID,
-    [Query.equal("refreshToken", tokenHash)]
+    [Query.equal("refreshToken", tokenHash)],
   );
 
   if (!result || !result.documents || result.documents.length === 0)
@@ -336,7 +163,7 @@ async function findTokensByVendorAndDevice(vendorId, deviceId, userAgent) {
     const res = await db.listDocuments(
       env.VENDOR_DATABASE_ID,
       env.VENDOR_SESSIONS_COLLECTION_ID,
-      [Query.equal("vendorId", vendorId), Query.equal("deviceId", deviceId)]
+      [Query.equal("vendorId", vendorId), Query.equal("deviceId", deviceId)],
     );
     return res?.documents || [];
   }
@@ -344,14 +171,14 @@ async function findTokensByVendorAndDevice(vendorId, deviceId, userAgent) {
     const res = await db.listDocuments(
       env.VENDOR_DATABASE_ID,
       env.VENDOR_SESSIONS_COLLECTION_ID,
-      [Query.equal("vendorId", vendorId), Query.equal("userAgent", userAgent)]
+      [Query.equal("vendorId", vendorId), Query.equal("userAgent", userAgent)],
     );
     return res?.documents || [];
   }
   const res = await db.listDocuments(
     env.VENDOR_DATABASE_ID,
     env.VENDOR_SESSIONS_COLLECTION_ID,
-    [Query.equal("vendorId", vendorId)]
+    [Query.equal("vendorId", vendorId)],
   );
   return res?.documents || [];
 }
@@ -364,7 +191,7 @@ async function revokeRefreshTokenById(docId) {
     env.VENDOR_DATABASE_ID,
     env.VENDOR_SESSIONS_COLLECTION_ID,
     docId,
-    { revoked: true, revokedAt: new Date().toISOString() }
+    { revoked: true, revokedAt: new Date().toISOString() },
   );
 }
 
@@ -375,7 +202,7 @@ async function revokeAllVendorRefreshTokens(vendorId) {
   const res = await db.listDocuments(
     env.VENDOR_DATABASE_ID,
     env.VENDOR_SESSIONS_COLLECTION_ID,
-    [Query.equal("vendorId", vendorId)]
+    [Query.equal("vendorId", vendorId)],
   );
 
   if (!res || !res.documents) return 0;
@@ -390,7 +217,7 @@ async function revokeAllVendorRefreshTokens(vendorId) {
         {
           revoked: true,
           revokedAt: new Date().toISOString(),
-        }
+        },
       );
       count++;
     }
@@ -409,7 +236,9 @@ function sanitizeVendor(vendorObj) {
     storeName: sanitized.storeName,
     email: sanitized.email,
     isActive: sanitized.isActive,
+    category: sanitized.category || "",
     storeDescription: sanitized.storeDescription || "",
+    location: sanitized.location || "",
     profileImage: sanitized.profileImage || "",
     coverImage: sanitized.coverImage || "",
     socialLinks: sanitized.socialLinks || {},
@@ -423,14 +252,30 @@ const vendorauthController = {
    */
   async registerVendor(req, res) {
     try {
-      const { name, storeName, email, password, confirmPassword, deviceId } =
-        req.body;
+      const {
+        name,
+        storeName,
+        email,
+        password,
+        confirmPassword,
+        category,
+        storeDescription,
+        location,
+        deviceId,
+      } = req.body;
 
       // Validation
-      if (!name || !storeName || !email || !password) {
+      if (
+        !name ||
+        !storeName ||
+        !email ||
+        !password ||
+        !category ||
+        !storeDescription
+      ) {
         return res.status(400).json({
           success: false,
-          error: "All fields are required",
+          error: "All required fields must be provided",
         });
       }
 
@@ -448,11 +293,18 @@ const vendorauthController = {
         });
       }
 
+      if (storeDescription.length < 20) {
+        return res.status(400).json({
+          success: false,
+          error: "Store description must be at least 20 characters",
+        });
+      }
+
       // Check if vendor exists
       const existingVendors = await db.listDocuments(
         env.VENDOR_DATABASE_ID,
         env.VENDOR_COLLECTION_ID,
-        [Query.equal("email", email)]
+        [Query.equal("email", email)],
       );
 
       if (existingVendors.total > 0) {
@@ -471,6 +323,7 @@ const vendorauthController = {
       };
 
       // Create vendor
+      // Create vendor
       const vendor = await db.createDocument(
         env.VENDOR_DATABASE_ID,
         env.VENDOR_COLLECTION_ID,
@@ -481,15 +334,26 @@ const vendorauthController = {
           email,
           password: hashedPassword,
           isActive: true,
-          storeDescription: "",
+          category,
+          storeDescription,
+          location: location || "",
           profileImage: "",
           coverImage: "",
           socialLinks: {},
           storeStats: JSON.stringify(storeStatsObject),
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        }
+        },
       );
+
+      // Send onboarding emails to vendor (fire and forget - don't block signup)
+      sendVendorOnboardingEmails({
+        vendorName: name,
+        vendorEmail: email,
+      }).catch((err) => {
+        log.error("Failed to send vendor onboarding emails:", err?.message);
+        // Don't throw - continue with signup even if emails fail
+      });
 
       // Generate tokens
       const accessPayload = { sub: vendor.$id, role: "vendor" };
@@ -513,22 +377,28 @@ const vendorauthController = {
       }
 
       // Set cookies
-      res.cookie("accessToken", accessToken, {
+      const cookieConfig = getCookieDomain(req);
+      const cookieOptions = {
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        domain: "localhost",
-        maxAge: 15 * 60 * 1000,
+        secure: cookieConfig.secure,
+        sameSite: cookieConfig.sameSite,
         path: "/",
+      };
+
+      if (cookieConfig.domain) {
+        cookieOptions.domain = cookieConfig.domain;
+      }
+
+      console.log("[Vendor Signup] Cookie options:", cookieOptions);
+
+      res.cookie("accessToken", accessToken, {
+        ...cookieOptions,
+        maxAge: 15 * 60 * 1000,
       });
 
       res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        domain: "localhost",
+        ...cookieOptions,
         maxAge: 30 * 24 * 60 * 60 * 1000,
-        path: "/",
       });
 
       res.status(201).json({
@@ -563,7 +433,7 @@ const vendorauthController = {
       const vendors = await db.listDocuments(
         env.VENDOR_DATABASE_ID,
         env.VENDOR_COLLECTION_ID,
-        [Query.equal("email", email)]
+        [Query.equal("email", email)],
       );
 
       if (vendors.total === 0) {
@@ -614,22 +484,28 @@ const vendorauthController = {
       }
 
       // Set cookies
-      res.cookie("accessToken", accessToken, {
+      const cookieConfig = getCookieDomain(req);
+      const cookieOptions = {
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        domain: "localhost",
-        maxAge: 15 * 60 * 1000,
+        secure: cookieConfig.secure,
+        sameSite: cookieConfig.sameSite,
         path: "/",
+      };
+
+      if (cookieConfig.domain) {
+        cookieOptions.domain = cookieConfig.domain;
+      }
+
+      console.log("[Vendor Signin] Cookie options:", cookieOptions);
+
+      res.cookie("accessToken", accessToken, {
+        ...cookieOptions,
+        maxAge: 15 * 60 * 1000,
       });
 
       res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        domain: "localhost",
+        ...cookieOptions,
         maxAge: 30 * 24 * 60 * 60 * 1000,
-        path: "/",
       });
 
       log.info("Vendor login successful:", vendor.email);
@@ -665,7 +541,7 @@ const vendorauthController = {
       const vendor = await db.getDocument(
         env.VENDOR_DATABASE_ID,
         env.VENDOR_COLLECTION_ID,
-        decoded.sub
+        decoded.sub,
       );
 
       res.json({
@@ -721,7 +597,7 @@ const vendorauthController = {
       if (!record) {
         log.warn("Refresh token record not found for vendor:", vendorId);
         await revokeAllVendorRefreshTokens(vendorId).catch((e) =>
-          log.error("Error revoking all tokens:", e)
+          log.error("Error revoking all tokens:", e),
         );
         return res.status(401).json({
           success: false,
@@ -733,7 +609,7 @@ const vendorauthController = {
       if (record.revoked) {
         log.warn("Revoked refresh token used for vendor:", vendorId);
         await revokeAllVendorRefreshTokens(vendorId).catch((e) =>
-          log.error("Error revoking all tokens:", e)
+          log.error("Error revoking all tokens:", e),
         );
         return res.status(401).json({
           success: false,
@@ -743,7 +619,7 @@ const vendorauthController = {
 
       if (new Date(record.expiresAt) < new Date()) {
         await revokeRefreshTokenById(record.$id).catch((e) =>
-          log.error("Error revoking expired token:", e)
+          log.error("Error revoking expired token:", e),
         );
         return res.status(401).json({
           success: false,
@@ -758,13 +634,13 @@ const vendorauthController = {
       const deviceTokens = await findTokensByVendorAndDevice(
         vendorId,
         requestDeviceId,
-        requestUserAgent
+        requestUserAgent,
       );
 
       if (!deviceTokens || deviceTokens.length === 0) {
         log.warn("No device-scoped tokens found for vendor:", vendorId);
         await revokeAllVendorRefreshTokens(vendorId).catch((e) =>
-          log.error("Error revoking all tokens:", e)
+          log.error("Error revoking all tokens:", e),
         );
         return res.status(401).json({
           success: false,
@@ -790,7 +666,7 @@ const vendorauthController = {
       if (foundNewer) {
         log.warn("Refresh token reuse detected for vendor:", vendorId);
         await revokeAllVendorRefreshTokens(vendorId).catch((e) =>
-          log.error("Error revoking all tokens:", e)
+          log.error("Error revoking all tokens:", e),
         );
         return res.status(401).json({
           success: false,
@@ -802,7 +678,7 @@ const vendorauthController = {
       const vendor = await db.getDocument(
         env.VENDOR_DATABASE_ID,
         env.VENDOR_COLLECTION_ID,
-        vendorId
+        vendorId,
       );
 
       if (!vendor) {
@@ -833,7 +709,7 @@ const vendorauthController = {
       } catch (persistErr) {
         log.error(
           "Failed to persist rotated refresh token:",
-          persistErr?.message
+          persistErr?.message,
         );
         res.cookie("accessToken", newAccessToken, {
           httpOnly: true,
@@ -860,7 +736,7 @@ const vendorauthController = {
             {
               rotatedTo: newDoc.$id,
               rotatedAt: new Date().toISOString(),
-            }
+            },
           )
           .catch(() => {});
       } catch (revErr) {
@@ -868,22 +744,28 @@ const vendorauthController = {
       }
 
       // Set new cookies
-      res.cookie("accessToken", newAccessToken, {
+      const cookieConfig = getCookieDomain(req);
+      const cookieOptions = {
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        domain: "localhost",
-        maxAge: 15 * 60 * 1000,
+        secure: cookieConfig.secure,
+        sameSite: cookieConfig.sameSite,
         path: "/",
+      };
+
+      if (cookieConfig.domain) {
+        cookieOptions.domain = cookieConfig.domain;
+      }
+
+      console.log("[Vendor Refresh] Cookie options:", cookieOptions);
+
+      res.cookie("accessToken", newAccessToken, {
+        ...cookieOptions,
+        maxAge: 15 * 60 * 1000,
       });
 
       res.cookie("refreshToken", newRefreshToken, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        domain: "localhost",
+        ...cookieOptions,
         maxAge: 30 * 24 * 60 * 60 * 1000,
-        path: "/",
       });
 
       return res.status(200).json({
@@ -927,14 +809,14 @@ const vendorauthController = {
         const result = await db.listDocuments(
           env.VENDOR_DATABASE_ID,
           env.VENDOR_SESSIONS_COLLECTION_ID,
-          queries
+          queries,
         );
 
         if (result && result.documents && result.documents.length > 0) {
           for (const doc of result.documents) {
             if (!doc.revoked) {
               await revokeRefreshTokenById(doc.$id).catch((e) =>
-                log.error("Failed to revoke token in logout:", e)
+                log.error("Failed to revoke token in logout:", e),
               );
             }
           }
@@ -942,8 +824,22 @@ const vendorauthController = {
       }
 
       // Clear cookies
-      res.clearCookie("accessToken", { domain: "localhost", path: "/" });
-      res.clearCookie("refreshToken", { domain: "localhost", path: "/" });
+      const cookieConfig = getCookieDomain(req);
+      const cookieOptions = {
+        httpOnly: true,
+        secure: cookieConfig.secure,
+        sameSite: cookieConfig.sameSite,
+        path: "/",
+      };
+
+      if (cookieConfig.domain) {
+        cookieOptions.domain = cookieConfig.domain;
+      }
+
+      console.log("[Vendor Logout] Cookie options:", cookieOptions);
+
+      res.clearCookie("accessToken", cookieOptions);
+      res.clearCookie("refreshToken", cookieOptions);
 
       res.json({
         success: true,

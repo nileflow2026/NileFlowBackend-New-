@@ -9,6 +9,40 @@ const {
 const { Resend } = require("resend");
 const resend = new Resend(env.RESEND_API_KEY);
 
+const getCancelledOrders = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .json({ error: "Unauthorized: No user information found." });
+    }
+
+    const { userId, role } = req.user;
+
+    console.log("Authenticated userId:", userId);
+    console.log("User role:", role);
+
+    if (!userId) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    if (role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: Admins only" });
+    }
+
+    const response = await db.listDocuments(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_CANCELLED_ORDERS_COLLECTION_ID,
+      [Query.orderDesc("$createdAt")],
+    );
+
+    res.status(200).json({ response: response.documents });
+  } catch (error) {
+    console.error("Fetching orders failed:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 const getOrders = async (req, res) => {
   try {
     if (!req.user) {
@@ -33,7 +67,7 @@ const getOrders = async (req, res) => {
     const response = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_ORDERS_COLLECTION,
-      [Query.orderDesc("$createdAt")]
+      [Query.orderDesc("$createdAt")],
     );
 
     res.status(200).json({ response: response.documents });
@@ -80,7 +114,7 @@ const getProducts = async (req, res) => {
       const batch = await db.listDocuments(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_PRODUCT_COLLECTION_ID,
-        queries
+        queries,
       );
 
       allProducts.push(...batch.documents);
@@ -116,7 +150,7 @@ const getPendingProducts = async (req, res) => {
         Query.equal("status", "pending"),
         Query.orderDesc("submittedAt"),
         Query.limit(100),
-      ]
+      ],
     );
 
     res.json({
@@ -140,7 +174,7 @@ const getApprovedProducts = async (req, res) => {
         Query.equal("status", "approved"),
         Query.orderDesc("approvedAt"),
         Query.limit(100),
-      ]
+      ],
     );
 
     res.json({
@@ -164,7 +198,7 @@ const getRejectedProducts = async (req, res) => {
         Query.equal("status", "rejected"),
         Query.orderDesc("rejectedAt"),
         Query.limit(100),
-      ]
+      ],
     );
 
     res.json({
@@ -184,7 +218,7 @@ const getSingleProductDetails = async (req, res) => {
     const product = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      req.params.productId
+      req.params.productId,
     );
 
     res.json({
@@ -202,6 +236,7 @@ const addProduct = async (req, res) => {
     type,
     description,
     price,
+    discountPrice,
     brand,
     details,
     currency,
@@ -209,8 +244,18 @@ const addProduct = async (req, res) => {
     image,
     images,
     specifications,
+    colors,
+    sizes,
+    sku,
+    weight,
+    dimensions,
+    tags,
+    metaDescription,
+    warranty,
+    careInstructions,
     stock,
-    subcategoryId, // 👈 Add this line
+    visibility = "visible", // default to visible
+    subcategoryId,
   } = req.body;
   // ✅ Log the received data
   console.log("Received product data:", req.body);
@@ -228,21 +273,32 @@ const addProduct = async (req, res) => {
         type,
         description,
         price: parseFloat(price),
+        discountPrice: discountPrice ? parseFloat(discountPrice) : null,
         brand,
         details,
         currency,
-        // ✅ The key change is here. Use the relationship attribute name.
+        isApproved: true, // Auto-approve for now; adjust as needed
+        isActive: true, // New field to track if product is active or soft-deleted
         category: category,
-        // New (Correct for Many-to-One)
-
-        // ✅ New line to populate the 'categoryId' array of string IDs
-        categoryId: [category],
-        subcategoryId, // 👈 Store the subcategory ID as a string here
+        categoryId: Array.isArray(category) ? category : [category],
+        subcategoryId,
         image,
-        images, // Make sure this is an array if defined as an array attribute
-        specifications, // Also ensure correct structure (e.g., object or array)
+        images: images || [],
+        specifications: specifications || [],
+        colors: colors ? JSON.stringify(colors) : "[]",
+        sizes: sizes ? JSON.stringify(sizes) : "[]",
+        sku,
+        weight: weight ? parseFloat(weight) : null,
+        dimensions: dimensions
+          ? [dimensions.length, dimensions.width, dimensions.height]
+          : [],
+        tags: tags || [],
+        metaDescription,
+        warranty,
+        careInstructions,
         stock: parseInt(stock),
-      }
+        visibility,
+      },
     );
 
     // 🟩 Audit log here
@@ -268,7 +324,7 @@ const addFeaturedProducts = async (req, res) => {
     const { total: existingFeatured } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_FEATURED_COLLECTION_ID,
-      [Query.equal("productId", productId)] // Use the new attribute name
+      [Query.equal("productId", productId)], // Use the new attribute name
     );
 
     if (existingFeatured > 0) {
@@ -279,7 +335,7 @@ const addFeaturedProducts = async (req, res) => {
     const product = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId
+      productId,
     );
 
     const imagesToSave = product.images || [];
@@ -297,7 +353,7 @@ const addFeaturedProducts = async (req, res) => {
         images: imagesToSave, // Pass the array directly to the URL array attribute
         tag: tag,
         isFeatured: true,
-      } // Save the product's $id here,
+      }, // Save the product's $id here,
     );
 
     res
@@ -311,13 +367,13 @@ const addFeaturedProducts = async (req, res) => {
 
 const addProductsDeal = async (req, res) => {
   try {
-    const { productId, discountPercentage, tag } = req.body;
+    const { productId, discountPercentage, tag, durationHours = 24 } = req.body;
 
     // Check if the product already exists in the deals collection
     const { total: existingDeal } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_DEALS_COLLECTION_ID, // Use your new deals collection ID
-      [Query.equal("productId", productId)] // Assumes your deals collection has a 'productDocId' attribute
+      [Query.equal("productId", productId)], // Assumes your deals collection has a 'productDocId' attribute
     );
 
     if (existingDeal > 0) {
@@ -330,13 +386,17 @@ const addProductsDeal = async (req, res) => {
     const product = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID, // Get the document from your main products collection
-      productId
+      productId,
     );
 
     const originalPrice = product.price;
     const discountedPrice = originalPrice * (1 - discountPercentage / 100);
 
     const imagesToSave = product.images || [];
+
+    // Calculate deal end time
+    const dealEndTime = new Date();
+    dealEndTime.setHours(dealEndTime.getHours() + durationHours);
 
     // Create a new document in the deals collection with the necessary info
     await db.createDocument(
@@ -353,10 +413,18 @@ const addProductsDeal = async (req, res) => {
         discount: discountPercentage,
         tag: tag,
         isDeal: true,
-      }
+        dealEndTime: dealEndTime.toISOString(),
+        durationHours: durationHours,
+        category: product.category || "general",
+        stockQuantity: product.stockQuantity || 100,
+      },
     );
 
-    res.status(200).json({ message: "Product added to deals successfully!" });
+    res.status(200).json({
+      message: "Product added to deals successfully!",
+      dealEndTime: dealEndTime.toISOString(),
+      durationHours: durationHours,
+    });
   } catch (error) {
     console.error("Failed to add product to deals:", error);
     res.status(500).json({ error: "Failed to add product to deals." });
@@ -372,7 +440,7 @@ const addFlashSale = async (req, res) => {
     const { total: existingSale } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_FLASH_SALE_COLLECTION_ID,
-      [Query.equal("productId", productId)]
+      [Query.equal("productId", productId)],
     );
 
     if (existingSale > 0) {
@@ -385,7 +453,7 @@ const addFlashSale = async (req, res) => {
     const product = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID, // Use your main products collection ID
-      productId
+      productId,
     );
     const originalPrice = product.price;
 
@@ -395,7 +463,7 @@ const addFlashSale = async (req, res) => {
     // ✅ 4. Calculate the sale end time based on the duration.
     const now = new Date();
     const saleEndTime = new Date(
-      now.getTime() + saleDurationHours * 60 * 60 * 1000
+      now.getTime() + saleDurationHours * 60 * 60 * 1000,
     );
 
     // ✅ 5. Create the new document in the flash sales collection.
@@ -414,7 +482,7 @@ const addFlashSale = async (req, res) => {
         discountPercentage: discountPercentage,
         isFlashSale: true, // Use a boolean flag for easy querying
         saleEndTime: saleEndTime.toISOString(), // Save as an ISO string
-      }
+      },
     );
 
     res
@@ -423,6 +491,69 @@ const addFlashSale = async (req, res) => {
   } catch (error) {
     console.error("Failed to add product to flash sale:", error);
     res.status(500).json({ error: "Failed to add product to flash sale." });
+  }
+};
+
+const updatePremiumDeal = async (req, res) => {
+  try {
+    const { productId, premiumDeal } = req.body;
+
+    // Validate required fields
+    if (!productId || typeof premiumDeal !== "boolean") {
+      return res.status(400).json({
+        error: "productId and premiumDeal (boolean) are required.",
+      });
+    }
+
+    // Verify the product exists first
+    try {
+      const existingProduct = await db.getDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_PRODUCT_COLLECTION_ID,
+        productId,
+      );
+
+      // Check if the product is already in the desired state
+      if (existingProduct.premiumDeal === premiumDeal) {
+        const status = premiumDeal
+          ? "already marked as premium"
+          : "already not premium";
+        return res.status(409).json({
+          error: `Product is ${status}.`,
+        });
+      }
+    } catch (error) {
+      if (error.code === 404) {
+        return res.status(404).json({ error: "Product not found." });
+      }
+      throw error; // Re-throw if it's not a 404 error
+    }
+
+    // Update the product's premiumDeal attribute
+    const updatedProduct = await db.updateDocument(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_PRODUCT_COLLECTION_ID,
+      productId,
+      {
+        premiumDeal: premiumDeal,
+      },
+    );
+
+    // Send appropriate success message
+    const message = premiumDeal
+      ? "Product successfully marked as premium deal!"
+      : "Premium deal status removed successfully!";
+
+    res.status(200).json({
+      message: message,
+      productId: productId,
+      premiumDeal: premiumDeal,
+    });
+  } catch (error) {
+    console.error("Failed to update premium deal status:", error);
+    res.status(500).json({
+      error: "Failed to update premium deal status.",
+    });
   }
 };
 
@@ -437,7 +568,7 @@ const getFlashSales = async (req, res) => {
         // Query for sales that are active and have not expired
         Query.equal("isFlashSale", true),
         Query.greaterThan("saleEndTime", now),
-      ]
+      ],
     );
 
     res.status(200).json(flashSales.documents);
@@ -455,7 +586,7 @@ const addReward = async (req, res) => {
     const { total } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REWARDS_COLLECTION_ID,
-      [Query.equal("rewardKey", rewardKey)]
+      [Query.equal("rewardKey", rewardKey)],
     );
 
     if (total > 0) {
@@ -475,7 +606,7 @@ const addReward = async (req, res) => {
         requiredMiles,
         rewardKey,
         category, // e.g. "Storytelling Journey", "Festive Rewards"
-      }
+      },
     );
 
     res.status(200).json({ message: "Reward added successfully!" });
@@ -495,7 +626,7 @@ const updateReward = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REWARDS_COLLECTION_ID,
       rewardId,
-      updates
+      updates,
     );
 
     res.status(200).json({ message: "Reward updated successfully!" });
@@ -513,7 +644,7 @@ const deleteReward = async (req, res) => {
     await db.deleteDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REWARDS_COLLECTION_ID,
-      rewardId
+      rewardId,
     );
 
     res.status(200).json({ message: "Reward deleted successfully!" });
@@ -528,7 +659,7 @@ const listRewards = async (req, res) => {
   try {
     const { documents } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_REWARDS_COLLECTION_ID
+      env.APPWRITE_REWARDS_COLLECTION_ID,
     );
 
     res.status(200).json({ rewards: documents });
@@ -539,284 +670,99 @@ const listRewards = async (req, res) => {
 };
 // Add this debug useEffect
 
-/* const updateProduct = async (req, res) => {
-  const { productId, categoryId } = req.body;
-
-  console.log("=== UPDATE PRODUCT DEBUG ===");
-  console.log("1. Request received for productId:", productId);
-  console.log("2. Adding categoryId:", categoryId);
-  console.log("3. Request body:", req.body);
-
-  try {
-    // Get the SPECIFIC product
-    console.log("4. Fetching product with ID:", productId);
-    const currentProduct = await db.getDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId // Make sure this is correct!
-    );
-
-    console.log("5. Current product found:", {
-      id: currentProduct.$id,
-      name: currentProduct.productName,
-      currentCategories: currentProduct.category,
-    });
-
-    // Normalize existing categories
-    let existingCategories = [];
-
-    if (currentProduct.category) {
-      if (Array.isArray(currentProduct.category)) {
-        // Handle both object format and ID format
-        existingCategories = currentProduct.category.map((cat) => {
-          if (typeof cat === "object" && cat.id) {
-            return cat.id; // Extract ID from object
-          }
-          return cat; // Already an ID string
-        });
-      } else {
-        existingCategories = [currentProduct.category];
-      }
-    }
-
-    console.log("6. Normalized existing categories:", existingCategories);
-
-    // Check for duplicates
-    if (existingCategories.includes(categoryId)) {
-      console.log("7. Category already exists, skipping");
-      return res.status(400).json({
-        error: "Product already belongs to this category",
-        productId,
-        categoryId,
-      });
-    }
-
-    // Append new category
-    const updatedCategories = [...existingCategories, categoryId];
-    console.log("7. Updated categories array:", updatedCategories);
-
-    // Update ONLY this specific product
-    console.log("8. Updating document with ID:", productId);
-    const updatedDoc = await db.updateDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId, // CRITICAL: Ensure this is the specific product ID
-      {
-        category: updatedCategories,
-        $updatedAt: new Date().toISOString(),
-      }
-    );
-
-    console.log("9. Update successful! New document:", {
-      id: updatedDoc.$id,
-      categories: updatedDoc.category,
-      categoriesCount: updatedCategories.length,
-    });
-
-    // Verify the update
-    console.log("10. Verifying update by fetching again...");
-    const verifyProduct = await db.getDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId
-    );
-
-    console.log("11. Verified product categories:", verifyProduct.category);
-
-    res.status(200).json({
-      success: true,
-      message: `Category added to ${currentProduct.productName}`,
-      productId: updatedDoc.$id,
-      categoriesCount: updatedCategories.length,
-      categories: updatedDoc.category,
-    });
-  } catch (error) {
-    console.error("=== UPDATE ERROR ===");
-    console.error("Error details:", {
-      message: error.message,
-      code: error.code,
-      type: error.type,
-      stack: error.stack,
-    });
-
-    if (error.code === 404) {
-      console.error("Product not found. Was productId correct?", productId);
-      return res.status(404).json({
-        error: `Product with ID ${productId} not found`,
-      });
-    }
-
-    res.status(500).json({
-      error: "Failed to update product",
-      details: error.message,
-    });
-  }
-}; */
 // Updated updateProduct controller for Many-to-Many relationship
 const updateProduct = async (req, res) => {
-  const { productId, categoryId } = req.body;
-
-  console.log("Many-to-Many Update:", { productId, categoryId });
+  const { productId, categoryId, ...otherUpdates } = req.body;
 
   try {
-    // Get the current product
-    const currentProduct = await db.getDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId
-    );
+    if (!productId) {
+      return res.status(400).json({ error: "Missing productId" });
+    }
 
-    console.log("Current product categories:", currentProduct.categories);
+    // if otherUpdates contains fields (like productName, price, colors etc.)
+    if (Object.keys(otherUpdates).length > 0) {
+      const updatedDoc = await db.updateDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_PRODUCT_COLLECTION_ID,
+        productId,
+        otherUpdates,
+      );
 
-    // Get existing categories array
-    let existingCategories = [];
+      return res.status(200).json({
+        success: true,
+        message: "Product updated successfully",
+        product: updatedDoc,
+      });
+    }
 
-    if (currentProduct.categories) {
-      if (Array.isArray(currentProduct.categories)) {
-        // Extract IDs from category objects
-        existingCategories = currentProduct.categories.map((cat) => {
-          if (typeof cat === "object" && cat.$id) {
-            return cat.$id;
-          }
-          return cat;
+    // fallback to previous category-add logic when only categoryId is given
+    if (categoryId) {
+      console.log("Many-to-Many Update (category only):", {
+        productId,
+        categoryId,
+      });
+
+      const currentProduct = await db.getDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_PRODUCT_COLLECTION_ID,
+        productId,
+      );
+
+      let existingCategories = [];
+      if (currentProduct.categories) {
+        if (Array.isArray(currentProduct.categories)) {
+          existingCategories = currentProduct.categories.map((cat) => {
+            if (typeof cat === "object" && cat.$id) {
+              return cat.$id;
+            }
+            return cat;
+          });
+        } else {
+          const cat = currentProduct.categories;
+          existingCategories = [typeof cat === "object" ? cat.$id : cat];
+        }
+      }
+
+      if (existingCategories.includes(categoryId)) {
+        return res.status(400).json({
+          error: "Product already belongs to this category",
+          productId,
+          categoryId,
+          currentCategories: existingCategories,
         });
-      } else {
-        // Handle single category
-        const cat = currentProduct.categories;
-        existingCategories = [typeof cat === "object" ? cat.$id : cat];
       }
-    }
 
-    console.log("Existing category IDs:", existingCategories);
+      const updatedCategoryIds = [...existingCategories, categoryId];
 
-    // Check if category already exists
-    if (existingCategories.includes(categoryId)) {
-      return res.status(400).json({
-        error: "Product already belongs to this category",
+      const updatedDoc = await db.updateDocument(
+        env.APPWRITE_DATABASE_ID,
+        env.APPWRITE_PRODUCT_COLLECTION_ID,
         productId,
-        categoryId,
-        currentCategories: existingCategories,
+        {
+          categories: updatedCategoryIds,
+        },
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: `Category added successfully to ${currentProduct.productName}`,
+        product: updatedDoc,
+        categoriesCount: updatedDoc.categories?.length || 0,
       });
     }
 
-    // Add new category to array
-    const updatedCategoryIds = [...existingCategories, categoryId];
-
-    console.log("Updated category IDs:", updatedCategoryIds);
-
-    // Update the product with the new categories array
-    const updatedDoc = await db.updateDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId,
-      {
-        categories: updatedCategoryIds, // Just send IDs, Appwrite will handle the relationship
-      }
-    );
-
-    console.log(
-      "Update successful. Product now has categories:",
-      updatedDoc.categories?.length || 0
-    );
-
-    // Optionally, verify the two-way relationship
-    const categoryDoc = await db.getDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_CATEGORIES_COLLECTION_ID,
-      categoryId
-    );
-
-    console.log(
-      "Category now has products:",
-      categoryDoc.products?.length || 0,
-      "products"
-    );
-
-    res.status(200).json({
-      success: true,
-      message: `Category added successfully to ${currentProduct.productName}`,
-      product: updatedDoc,
-      categoriesCount: updatedDoc.categories?.length || 0,
-    });
+    res.status(400).json({ error: "No updates provided" });
   } catch (error) {
-    console.error("Many-to-Many update error:", {
-      message: error.message,
-      code: error.code,
-      type: error.type,
-    });
-
-    // Specific error handling
-    if (error.code === 404) {
-      return res.status(404).json({
-        error: "Product or Category not found",
-        productId,
-        categoryId,
-      });
-    }
-
-    if (error.message.includes("relationship") || error.code === 400) {
-      return res.status(400).json({
-        error:
-          "Relationship configuration error. Please check your Appwrite Many-to-Many setup.",
-        details: error.message,
-      });
-    }
-
-    res.status(500).json({
-      error: "Failed to update product categories",
-      details: error.message,
-    });
+    console.error("updateProduct error:", error);
+    res.status(500).json({ error: error.message });
   }
 };
-// Example backend updateProduct controller
-/* const updateProduct = async (req, res) => {
-  const { productId, categoryId } = req.body;
-  if (!productId || !categoryId) {
-    return res.status(400).json({
-      error: "Missing required fields: productId and categoryId are required",
-    });
-  }
-
-  console.log("Updating product:", { productId, categoryId }); // Add logging
-  try {
-    const updatedDoc = await db.updateDocument(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      productId,
-      {
-        category: [categoryId], // Appwrite two-way relationship requires an array
-      }
-    );
-    res.status(200).json(updatedDoc);
-  } catch (error) {
-    console.error("Appwrite update error:", {
-      message: error.message,
-      code: error.code,
-      type: error.type,
-      response: error.response,
-    });
-
-    // Provide more specific error messages
-    if (error.code === 404) {
-      return res.status(404).json({ error: "Product not found" });
-    }
-
-    if (error.code === 401 || error.code === 403) {
-      return res.status(403).json({ error: "Permission denied" });
-    }
-
-    res.status(500).json({
-      error: "Failed to update product",
-      details: error.message,
-    });
-  }
-}; */
 
 const getUsers = async (_req, res) => {
   try {
     const { documents } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_USER_COLLECTION_ID
+      env.APPWRITE_USER_COLLECTION_ID,
     );
     res.json(documents);
   } catch (e) {
@@ -837,7 +783,7 @@ const updateOrderStatus = async (req, res) => {
     console.log("userId:", userId);
     const exec = await functions.createExecution(
       "692d903e000d2d217887", // env.APPWRITE_UPDATE_ORDER_STATUS_FUNCTION_ID,
-      JSON.stringify({ orderId, orderStatus })
+      JSON.stringify({ orderId, orderStatus }),
     );
     await logAuditFromRequest(req, "Order status updated", "Order", orderId, {
       newStatus: orderStatus,
@@ -846,7 +792,7 @@ const updateOrderStatus = async (req, res) => {
     const order = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_ORDERS_COLLECTION,
-      orderId
+      orderId,
     );
 
     // 4. Call email function
@@ -871,7 +817,7 @@ const clientmesseags = async (req, res) => {
     const { documents: messages } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID, // Your contact database ID
       env.APPWRITE_USER_MESSAGES_COLLECTION_ID,
-      [Query.orderDesc("$createdAt")] // Your messages collection ID
+      [Query.orderDesc("$createdAt")], // Your messages collection ID
     );
 
     res.status(200).json(messages);
@@ -913,7 +859,7 @@ const createCategory = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_CATEGORIES_COLLECTION_ID,
       ID.unique, // auto-ID
-      { name, slug, image, description }
+      { name, slug, image, description },
     );
 
     res.status(201).json(doc);
@@ -935,7 +881,7 @@ const createSubcategory = async (req, res) => {
       category = await db.getDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_CATEGORIES_COLLECTION_ID,
-        id
+        id,
       );
     } catch {
       return res.status(404).json({ message: "Category not found" });
@@ -952,7 +898,7 @@ const createSubcategory = async (req, res) => {
         category: id, // wrap in array
 
         categoryId: id, // string field for queries
-      }
+      },
     );
 
     res.status(201).json({ message: "Subcategory created", subcategory });
@@ -971,7 +917,7 @@ const getSubcategoriesByCategoryId = async (req, res) => {
       category = await db.getDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_CATEGORIES_COLLECTION_ID,
-        id
+        id,
       );
     } catch {
       return res.status(404).json({ message: "Category not found" });
@@ -981,7 +927,7 @@ const getSubcategoriesByCategoryId = async (req, res) => {
     const subcategories = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_SUBCATEGORY_COLLECTION_ID,
-      [Query.equal("categoryId", [id])]
+      [Query.equal("categoryId", [id])],
     );
 
     res.status(200).json({ category, subcategories: subcategories.documents });
@@ -1000,7 +946,7 @@ const getProductsBySubcategoryId = async (req, res) => {
     const products = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      [Query.equal("subcategoryId", id)] // <-- Fix this line
+      [Query.equal("subcategoryId", id)], // <-- Fix this line
     );
 
     if (!products.documents.length) {
@@ -1018,8 +964,391 @@ const getProductsBySubcategoryId = async (req, res) => {
     });
   }
 };
+
+const assignDeliveryToRider = async (req, res) => {
+  try {
+    const { deliveryId, riderId, pickupAddress } = req.body;
+    if (!deliveryId || !riderId) {
+      return res.status(400).json({
+        success: false,
+        error: "Delivery ID and Rider ID are required",
+      });
+    }
+    // Validate input
+
+    console.log("Attempting to assign delivery:", {
+      deliveryId,
+      riderId,
+      pickupAddress: pickupAddress || "Not provided by admin",
+    });
+    console.log(
+      "Using database:",
+      env.RIDER_DATABASE_ID || env.APPWRITE_DATABASE_ID,
+    );
+    console.log(
+      "Using collection:",
+      env.DELIVERIES_COLLECTION_ID || "UNDEFINED",
+    );
+
+    // First, check if this is an order ID and we need to find or create a delivery record
+    let delivery;
+
+    try {
+      // Try to find delivery in deliveries collection first
+      console.log("Trying to find delivery in deliveries collection...");
+      delivery = await db.getDocument(
+        env.RIDER_DATABASE_ID || env.APPWRITE_DATABASE_ID,
+        env.DELIVERIES_COLLECTION_ID,
+        deliveryId,
+      );
+      console.log("Found existing delivery:", delivery.$id);
+    } catch (deliveryError) {
+      console.log(
+        "Delivery not found in deliveries collection, checking orders...",
+      );
+
+      try {
+        // Check if this is an order ID - try to find in orders collection
+        const order = await db.getDocument(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ORDERS_COLLECTION || env.APPWRITE_ORDERS_COLLECTION_ID,
+          deliveryId,
+        );
+
+        console.log("Found order:", order.$id);
+        console.log("🔍 Order document contains:", {
+          userId: order.userId,
+          customerId: order.userId,
+          customerName: order.username || order.customerName || order.name,
+          customerEmail: order.customerEmail,
+          customerPhone: order.customerPhone,
+          userEmail: order.userEmail,
+          userName: order.username,
+          email: order.email,
+          name: order.name,
+          allOrderFields: Object.keys(order),
+        });
+
+        // Fetch customer details
+        let customerInfo = {};
+        let customerDeliveryAddress = null;
+        try {
+          const customerId = order.userId || order.userId || order.customerId;
+          console.log("🔍 Customer ID extracted from order:", customerId);
+          console.log("🔍 Order fields containing customer info:", {
+            userId: order.userId,
+            customerId: order.userId,
+            orderUserId: order.orderUserId,
+            user: order.user,
+          });
+
+          // Check if customerId exists and is valid
+          if (!customerId) {
+            throw new Error("No customer ID found in order");
+          }
+
+          console.log("🔍 Attempting to fetch customer from database...");
+          console.log("🔍 Using database ID:", env.APPWRITE_DATABASE_ID);
+          console.log(
+            "🔍 Using users collection ID:",
+            env.APPWRITE_USER_COLLECTION_ID,
+          );
+
+          const customer = await db.getDocument(
+            env.APPWRITE_DATABASE_ID,
+            env.APPWRITE_USER_COLLECTION_ID,
+            customerId,
+          );
+
+          console.log("✅ Successfully fetched customer document");
+
+          console.log("Customer document fields:", Object.keys(customer));
+          console.log("Customer name fields:", {
+            name: customer.name,
+            username: customer.username,
+            fullName: customer.fullName,
+            firstName: customer.firstName,
+            lastName: customer.lastName,
+          });
+          console.log("🔍 Customer email field:", {
+            email: customer.email,
+            emailType: typeof customer.email,
+            emailLength: customer.email ? customer.email.length : "N/A",
+            emailTrimmed: customer.email ? customer.email.trim() : "N/A",
+          });
+
+          // Build customer name with better field checking
+          let customerName =
+            customer.username ||
+            customer.name ||
+            customer.fullName ||
+            `${customer.firstName || ""} ${customer.lastName || ""}`.trim() ||
+            "Customer";
+
+          // Ensure customerName is within 25 character limit
+          if (customerName.length > 25) {
+            customerName = customerName.substring(0, 22) + "...";
+          }
+
+          // Get customer delivery address (where to deliver TO)
+          try {
+            const deliveryAddresses = await db.listDocuments(
+              env.APPWRITE_DATABASE_ID,
+              env.APPWRITE_ADDRESS_COLLECTION_ID,
+              [Query.equal("user", customerId), Query.equal("type", "pickup")],
+            );
+
+            if (deliveryAddresses.documents.length > 0) {
+              const deliveryAddr = deliveryAddresses.documents[0];
+              customerDeliveryAddress = {
+                address: deliveryAddr.address,
+                phone: deliveryAddr.phone,
+                city: deliveryAddr.city,
+                state: deliveryAddr.state,
+                postalCode: deliveryAddr.zipCode || "",
+                fullAddress: `${deliveryAddr.address}, ${deliveryAddr.city}, ${
+                  deliveryAddr.state
+                }${deliveryAddr.zipCode ? " " + deliveryAddr.zipCode : ""}`,
+              };
+              console.log(
+                "Found customer delivery address:",
+                customerDeliveryAddress.fullAddress,
+              );
+            } else {
+              console.log(
+                "No delivery address found for customer, using order address",
+              );
+            }
+          } catch (addressError) {
+            console.log(
+              "Error fetching customer delivery address:",
+              addressError.message,
+            );
+          }
+
+          customerInfo = {
+            customerName: customerName,
+            customerPhone: customer.phone || customer.phoneNumber || "",
+            customerEmail:
+              customer.email && customer.email.trim() !== ""
+                ? customer.email
+                : "unknown@nileflow.com",
+          };
+          console.log("✅ Customer info prepared:", {
+            name: customerInfo.customerName,
+            phone: customerInfo.customerPhone,
+            email: customerInfo.customerEmail,
+            usingFallbackEmail: !customer.email || customer.email.trim() === "",
+          });
+          console.log("Fetched customer info:", customerInfo.customerName);
+        } catch (customerError) {
+          console.log("❌ Could not fetch customer details:");
+          console.log("Error type:", customerError.type);
+          console.log("Error code:", customerError.code);
+          console.log("Error message:", customerError.message);
+          console.log(
+            "🔍 Was looking for customer ID:",
+            order.userId || order.customerId,
+          );
+          console.log("🔍 In database:", env.APPWRITE_DATABASE_ID);
+          console.log("🔍 In collection:", env.APPWRITE_USER_COLLECTION_ID);
+
+          // Try to use customer information from the order itself as fallback
+          console.log(
+            "🔄 Attempting to use order customer info as fallback...",
+          );
+
+          // Try to get phone from customer's address records as additional fallback
+          let fallbackPhone = "";
+          try {
+            console.log("🔄 Trying to get phone from customer addresses...");
+            const customerAddresses = await db.listDocuments(
+              env.APPWRITE_DATABASE_ID,
+              env.APPWRITE_ADDRESS_COLLECTION_ID,
+              [Query.equal("user", order.userId || order.customerId)],
+            );
+
+            if (customerAddresses.documents.length > 0) {
+              // Get phone from any address that has it
+              const addressWithPhone = customerAddresses.documents.find(
+                (addr) => addr.phone,
+              );
+              if (addressWithPhone) {
+                fallbackPhone = addressWithPhone.phone;
+                console.log(
+                  "✅ Found phone in address records:",
+                  fallbackPhone,
+                );
+              }
+            }
+          } catch (addressPhoneError) {
+            console.log(
+              "⚠️ Could not fetch phone from addresses:",
+              addressPhoneError.message,
+            );
+          }
+
+          customerInfo = {
+            customerName:
+              order.customerName ||
+              order.username ||
+              order.userName ||
+              order.name ||
+              "Unknown Customer",
+            customerPhone: order.customerPhone || fallbackPhone || "",
+            customerEmail:
+              (
+                order.customerEmail ||
+                order.userEmail ||
+                order.email ||
+                ""
+              ).trim() !== ""
+                ? order.customerEmail || order.userEmail || order.email
+                : "unknown@nileflow.com",
+          };
+          console.log("✅ Using order-based customer info:", customerInfo);
+        }
+
+        // Create a delivery record from the order
+        delivery = await db.createDocument(
+          env.RIDER_DATABASE_ID || env.APPWRITE_DATABASE_ID,
+          env.DELIVERIES_COLLECTION_ID,
+          deliveryId, // Use the same ID as the order
+          {
+            orderId: order.$id,
+            customerId: order.userId || order.customerId,
+            ...customerInfo, // Include customer name, phone, email
+            pickupAddress:
+              pickupAddress ||
+              order.pickupAddress ||
+              "Business location - To be assigned by admin",
+            deliveryAddress:
+              customerDeliveryAddress?.fullAddress ||
+              order.deliveryAddress ||
+              order.address ||
+              "Customer delivery address not provided",
+            // Include detailed delivery address information for riders as JSON string
+            pickupDetails: customerDeliveryAddress
+              ? JSON.stringify({
+                  address: customerDeliveryAddress.address,
+                  phone: customerDeliveryAddress.phone,
+                  city: customerDeliveryAddress.city,
+                  state: customerDeliveryAddress.state,
+                  postalCode: customerDeliveryAddress.postalCode,
+                })
+              : null,
+            status: "pending",
+            totalAmount: order.totalAmount || order.total || order.amount,
+            deliveryFee: order.deliveryFee || 0,
+            subTotal: order.subTotal || order.subtotal,
+            tax: order.tax || 0,
+            discount: order.discount || 0,
+            items: order.items ? JSON.stringify(order.items) : "[]",
+            orderNotes: order.notes || order.specialInstructions || "",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        );
+
+        console.log("Created delivery record:", delivery.$id);
+      } catch (orderError) {
+        console.error("Order also not found:", orderError);
+        return res.status(404).json({
+          success: false,
+          error: "Neither delivery nor order found with the provided ID",
+          details: `Searched for ID: ${deliveryId} in both deliveries and orders collections`,
+        });
+      }
+    }
+
+    if (delivery.status !== "pending" && delivery.status !== "assigned") {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Delivery cannot be reassigned - current status: " + delivery.status,
+      });
+    }
+
+    // Check if rider exists and is available
+    const rider = await db.getDocument(
+      env.RIDER_DATABASE_ID,
+      env.RIDER_COLLECTION_ID,
+      riderId,
+    );
+
+    if (!rider.isActive) {
+      return res.status(400).json({
+        success: false,
+        error: "Rider is not active",
+      });
+    }
+
+    if (rider.status === "offline") {
+      return res.status(400).json({
+        success: false,
+        error: "Rider is currently offline",
+      });
+    }
+
+    // Assign delivery to rider
+    const updatedDelivery = await db.updateDocument(
+      env.RIDER_DATABASE_ID,
+      env.DELIVERIES_COLLECTION_ID,
+      deliveryId,
+      {
+        riderId: riderId,
+        status: "assigned",
+        assignedAt: new Date().toISOString(),
+        assignedBy: req.admin ? req.admin.adminId : req.user.userId,
+        updatedAt: new Date().toISOString(),
+      },
+    );
+
+    // Update rider status to busy if they were online
+    if (rider.status === "online") {
+      await db.updateDocument(
+        env.RIDER_DATABASE_ID,
+        env.RIDER_COLLECTION_ID,
+        riderId,
+        {
+          status: "busy",
+          updatedAt: new Date().toISOString(),
+        },
+      );
+    }
+
+    res.json({
+      success: true,
+      message: "Delivery assigned successfully",
+      delivery: updatedDelivery,
+      rider: {
+        riderId: rider.$id,
+        name: rider.name,
+        phone: rider.phone,
+        status: "busy",
+      },
+    });
+  } catch (error) {
+    console.error("Assign delivery error:", error);
+
+    if (error.code === 404) {
+      return res.status(404).json({
+        success: false,
+        error: "Delivery or Rider not found",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: "Failed to assign delivery",
+      message: error.message,
+    });
+  }
+};
 module.exports = {
+  assignDeliveryToRider,
   getOrders,
+  getCancelledOrders,
   getProducts,
   getPendingProducts,
   getApprovedProducts,
@@ -1033,6 +1362,7 @@ module.exports = {
   addFeaturedProducts,
   addProductsDeal,
   addFlashSale,
+  updatePremiumDeal,
   updateProduct,
   createSubcategory,
   getSubcategoriesByCategoryId,

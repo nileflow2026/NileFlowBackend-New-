@@ -24,6 +24,9 @@ const {
   getCategorie,
   getCategoryById,
   getProducts2,
+  getPopularSearches,
+  getGlobalDealCountdown,
+  getDealAnalytics,
 } = require("../controllers/UserControllers/ClientController");
 const {
   handleCancelRequest,
@@ -44,6 +47,7 @@ router.get("/update-currencies", authenticateToken, updateCurrencyRates);
 router.get("/customer-orders", authenticateToken, getCustomerOrders);
 router.post("/customer-searches", saveRecentSearch);
 router.get("/customer-recent-search", getRecentSearches);
+router.get("/popular-searches", getPopularSearches);
 router.get("/fetch-product", getProducts);
 router.get("/fetch-product-mobile", getProductsForMobile);
 router.post("/increment-rating", incrementProductRatingsCount);
@@ -61,6 +65,8 @@ router.get("/mobile-products", getProducts2);
 router.get("/products/category/:categoryId", getProductsByCategory);
 router.get("/featured-products", getFeaturedProducts);
 router.get("/deal-products", getDealProducts);
+router.get("/deal-analytics", getDealAnalytics);
+router.get("/deal-countdown", getGlobalDealCountdown);
 router.get("/hero-products", getHeroProducts);
 
 // Order cancellation request

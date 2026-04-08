@@ -41,6 +41,83 @@ const log = {
 };
 
 /**
+ * Get appropriate cookie domain based on request origin
+ */
+function getCookieDomain(req) {
+  const origin = req.get("origin") || req.get("referer");
+  const host = req.headers.host;
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+
+  console.log("[Cookie Domain Debug]", {
+    origin,
+    host,
+    protocol,
+    isSecure: protocol === "https",
+  });
+
+  // Check if backend and frontend are on different domains (cross-origin)
+  const isCrossOrigin =
+    origin &&
+    host &&
+    !origin.includes(host) &&
+    !host.includes(origin.replace("https://", "").replace("http://", ""));
+
+  if (isCrossOrigin) {
+    console.log("[Cookie] Cross-origin detected - no domain restriction");
+    return {
+      domain: undefined, // No domain restriction for cross-origin
+      secure: protocol === "https",
+      sameSite: "none", // Required for cross-origin cookies
+    };
+  }
+
+  // Development - no domain restriction
+  if (
+    !origin ||
+    origin.includes("localhost") ||
+    origin.includes("127.0.0.1") ||
+    (host && host.includes("localhost"))
+  ) {
+    console.log("[Cookie] Using localhost - no domain restriction");
+    return { domain: undefined, secure: false, sameSite: "lax" };
+  }
+
+  // Same-origin production domains
+  if (
+    (origin && origin.includes("nileflowafrica.com")) ||
+    (host && host.includes("nileflowafrica.com"))
+  ) {
+    console.log("[Cookie] Using nileflowafrica.com domain (same-origin)");
+    return {
+      domain: ".nileflowafrica.com",
+      secure: protocol === "https",
+      sameSite: "lax",
+    };
+  }
+
+  // nileflow.co.ke domain
+  if (
+    (origin && origin.includes("nileflow.co.ke")) ||
+    (host && host.includes("nileflow.co.ke"))
+  ) {
+    console.log("[Cookie] Using nileflow.co.ke domain (same-origin)");
+    return {
+      domain: ".nileflow.co.ke",
+      secure: protocol === "https",
+      sameSite: "lax",
+    };
+  }
+
+  // Default - no domain restriction
+  console.log("[Cookie] Using default - no domain restriction");
+  return {
+    domain: undefined,
+    secure: protocol === "https",
+    sameSite: "lax",
+  };
+}
+
+/**
  * Persist refresh token (store hashed token only) into Appwrite refresh_tokens collection.
  */
 async function persistRefreshToken({
@@ -282,20 +359,28 @@ const signupcustomer = async (req, res) => {
     }
 
     // 7) Set cookies
-    res.cookie("accessToken", accessToken, {
+    const cookieConfig = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
+    };
+
+    if (cookieConfig.domain) {
+      cookieOptions.domain = cookieConfig.domain;
+    }
+
+    console.log("[Signup] Cookie options:", cookieOptions);
+
+    res.cookie("accessToken", accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
+      ...cookieOptions,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      path: "/",
     });
 
     // 8) Create notification (if you have this function)
@@ -391,20 +476,28 @@ const signincustomer = async (req, res) => {
     }
 
     // Set cookies
-    res.cookie("accessToken", accessToken, {
+    const cookieConfig = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 15 * 60 * 1000,
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
+    };
+
+    if (cookieConfig.domain) {
+      cookieOptions.domain = cookieConfig.domain;
+    }
+
+    console.log("[Signin] Cookie options:", cookieOptions);
+
+    res.cookie("accessToken", accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
+      ...cookieOptions,
       maxAge: 30 * 24 * 60 * 60 * 1000,
-      path: "/",
     });
 
     log.info("Customer signin successful:", user.email);
@@ -559,13 +652,21 @@ const handleRefreshToken = async (req, res) => {
       );
 
       // Return access token only
-      res.cookie("accessToken", newAccessToken, {
+      const cookieConfig = getCookieDomain(req);
+      const cookieOptions = {
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
+        secure: cookieConfig.secure,
+        sameSite: cookieConfig.sameSite,
         maxAge: 15 * 60 * 1000,
         path: "/",
-      });
+      };
+
+      if (cookieConfig.domain) {
+        cookieOptions.domain = cookieConfig.domain;
+      }
+
+      console.log("[Refresh Fallback] Cookie options:", cookieOptions);
+      res.cookie("accessToken", newAccessToken, cookieOptions);
       return res.status(200).json({ message: "Token refreshed (partial)" });
     }
 
@@ -588,20 +689,28 @@ const handleRefreshToken = async (req, res) => {
     }
 
     // 11) Set new cookies
-    res.cookie("accessToken", newAccessToken, {
+    const cookieConfig = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 15 * 60 * 1000,
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
       path: "/",
+    };
+
+    if (cookieConfig.domain) {
+      cookieOptions.domain = cookieConfig.domain;
+    }
+
+    console.log("[Refresh] Cookie options:", cookieOptions);
+
+    res.cookie("accessToken", newAccessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", newRefreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
+      ...cookieOptions,
       maxAge: 30 * 24 * 60 * 60 * 1000,
-      path: "/",
     });
 
     return res.status(200).json({ message: "Tokens refreshed" });
@@ -655,8 +764,21 @@ const logoutcustomer = async (req, res) => {
     }
 
     // Clear cookies
-    res.clearCookie("accessToken", { path: "/" });
-    res.clearCookie("refreshToken", { path: "/" });
+    const cookieConfig = getCookieDomain(req);
+    const clearOptions = {
+      httpOnly: true,
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
+      path: "/",
+    };
+
+    if (cookieConfig.domain) {
+      clearOptions.domain = cookieConfig.domain;
+    }
+
+    console.log("[Logout] Clear cookie options:", clearOptions);
+    res.clearCookie("accessToken", clearOptions);
+    res.clearCookie("refreshToken", clearOptions);
 
     return res.status(200).json({ message: "Logged out successfully." });
   } catch (error) {
@@ -819,8 +941,9 @@ function getGoogleOAuthUrl(req, res) {
     const state = crypto.randomBytes(16).toString("hex");
     res.cookie("oauth_state", state, {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
+      secure: true,
+      sameSite: "strict",
+      domain: "nileflowafrica.com",
       maxAge: 10 * 60 * 1000,
       path: "/",
     });
@@ -945,13 +1068,20 @@ function getFacebookOAuthUrl(req, res) {
     }
 
     const state = crypto.randomBytes(16).toString("hex");
-    res.cookie("oauth_state", state, {
+    const cookieDomain = getCookieDomain(req);
+    const cookieOptions = {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       maxAge: 10 * 60 * 1000,
       path: "/",
-    });
+    };
+
+    if (cookieDomain) {
+      cookieOptions.domain = cookieDomain;
+    }
+
+    res.cookie("oauth_state", state, cookieOptions);
 
     const params = new URLSearchParams({
       client_id: appId,
@@ -1122,7 +1252,7 @@ async function upsertOAuthUser({ email, name, avatarUrl }) {
         role: "customer",
         avatarUrl: avatarUrl || null,
         phone: null,
-        createdAt: new Date().toISOString(),
+        $createdAt: new Date().toISOString(),
       }
     );
   } catch (e) {
@@ -1131,3 +1261,235 @@ async function upsertOAuthUser({ email, name, avatarUrl }) {
 
   return created.$id;
 }
+
+/**
+ * Save customer pickup address
+ */
+const savePickupAddress = async (req, res) => {
+  try {
+    const accessToken = req.cookies.accessToken;
+    if (!accessToken) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const decoded = verifyAccessToken(accessToken);
+    const userId = decoded.sub;
+
+    // Validate userId exists
+    if (!userId) {
+      log.error("Save pickup address: userId is missing from token");
+      return res.status(401).json({ error: "Invalid authentication token" });
+    }
+
+    log.info(`Save pickup address for user: ${userId}`);
+
+    const { address, phone, city, state, postalCode } = req.body;
+
+    // Validate required fields
+    if (!address || !phone || !city || !state) {
+      return res.status(400).json({
+        error: "Address, phone, city, and state are required fields",
+      });
+    }
+
+    // Validate phone number format
+    if (!/^\+?[\d\s\-()]+$/.test(phone)) {
+      return res.status(400).json({
+        error: "Please enter a valid phone number",
+      });
+    }
+
+    try {
+      // Check if user already has a pickup address
+      log.info(`Checking existing pickup addresses for user: ${userId}`);
+
+      let existingAddresses;
+      try {
+        // Try to query with type field first
+        existingAddresses = await db.listDocuments(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ADDRESS_COLLECTION_ID,
+          [Query.equal("user", userId), Query.equal("type", "pickup")]
+        );
+      } catch (queryError) {
+        log.warn(
+          "Query with type field failed, trying without type field:",
+          queryError.message
+        );
+        // Fallback: query without type field if it doesn't exist
+        existingAddresses = await db.listDocuments(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ADDRESS_COLLECTION_ID,
+          [Query.equal("user", userId)]
+        );
+        // Filter to find pickup addresses manually if needed
+        existingAddresses.documents = existingAddresses.documents.filter(
+          (addr) => addr.type === "pickup" || !addr.type // Include addresses without type
+        );
+      }
+
+      let pickupAddress;
+
+      if (existingAddresses.documents.length > 0) {
+        // Update existing pickup address
+        const existingAddress = existingAddresses.documents[0];
+        pickupAddress = await db.updateDocument(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ADDRESS_COLLECTION_ID,
+          existingAddress.$id,
+          {
+            address,
+            phone,
+            city,
+            state,
+            zipCode: postalCode || "",
+            $updatedAt: new Date().toISOString(),
+          }
+        );
+        log.info(`Updated pickup address for user ${userId}`);
+      } else {
+        // Create new pickup address
+        const addressId = ID.unique();
+        pickupAddress = await db.createDocument(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ADDRESS_COLLECTION_ID,
+          addressId,
+          {
+            user: userId,
+            type: "pickup", // Mark as pickup address
+            address,
+            phone,
+            city,
+            state,
+            zipCode: postalCode || "",
+            country: "Kenya", // Default country, can be made dynamic
+            fullName: "", // Will be populated from user profile if needed
+            $createdAt: new Date().toISOString(),
+            $updatedAt: new Date().toISOString(),
+          }
+        );
+        log.info(`Created new pickup address for user ${userId}`);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Pickup address saved successfully",
+        address: {
+          id: pickupAddress.$id,
+          address: pickupAddress.address,
+          phone: pickupAddress.phone,
+          city: pickupAddress.city,
+          state: pickupAddress.state,
+          postalCode: pickupAddress.zipCode,
+        },
+      });
+    } catch (dbError) {
+      log.error("Database error saving pickup address:", dbError);
+      return res.status(500).json({
+        error: "Failed to save pickup address. Please try again.",
+      });
+    }
+  } catch (error) {
+    log.error("Save pickup address failed:", error?.message || error);
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+};
+
+/**
+ * Get customer pickup address
+ */
+const getPickupAddress = async (req, res) => {
+  try {
+    const accessToken = req.cookies.accessToken;
+    if (!accessToken) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const decoded = verifyAccessToken(accessToken);
+    const userId = decoded.sub;
+
+    // Validate userId exists
+    if (!userId) {
+      log.error("Get pickup address: userId is missing from token");
+      return res.status(401).json({ error: "Invalid authentication token" });
+    }
+
+    log.info(`Get pickup address for user: ${userId}`);
+
+    try {
+      // Get pickup address for the user
+      let addresses;
+      try {
+        // Try to query with type field first
+        addresses = await db.listDocuments(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ADDRESS_COLLECTION_ID,
+          [Query.equal("user", userId), Query.equal("type", "pickup")]
+        );
+      } catch (queryError) {
+        log.warn(
+          "Query with type field failed, trying without type field:",
+          queryError.message
+        );
+        // Fallback: query without type field
+        addresses = await db.listDocuments(
+          env.APPWRITE_DATABASE_ID,
+          env.APPWRITE_ADDRESS_COLLECTION_ID,
+          [Query.equal("user", userId)]
+        );
+        // Filter manually for pickup addresses
+        addresses.documents = addresses.documents.filter(
+          (addr) => addr.type === "pickup"
+        );
+      }
+
+      if (addresses.documents.length === 0) {
+        return res.status(404).json({
+          error: "No pickup address found",
+        });
+      }
+
+      const pickupAddress = addresses.documents[0];
+
+      return res.status(200).json({
+        success: true,
+        address: {
+          id: pickupAddress.$id,
+          address: pickupAddress.address,
+          phone: pickupAddress.phone,
+          city: pickupAddress.city,
+          state: pickupAddress.state,
+          postalCode: pickupAddress.zipCode || "",
+        },
+      });
+    } catch (dbError) {
+      log.error("Database error getting pickup address:", dbError);
+      return res.status(500).json({
+        error: "Failed to retrieve pickup address",
+      });
+    }
+  } catch (error) {
+    log.error("Get pickup address failed:", error?.message || error);
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+};
+
+module.exports = {
+  signupcustomer,
+  signincustomer,
+  handleRefreshToken,
+  getCurrentCustomer,
+  logoutcustomer,
+  getCustomerPreferences,
+  updateCustomerPreferences,
+  getGoogleOAuthUrl,
+  googleOAuthCallback,
+  getFacebookOAuthUrl,
+  facebookOAuthCallback,
+  savePickupAddress,
+  getPickupAddress,
+};

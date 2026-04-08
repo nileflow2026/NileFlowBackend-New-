@@ -25,7 +25,7 @@ const getCustomerProfile = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_USER_COLLECTION_ID,
       /* [Query.equal("accountid", userId)] */
-      [Query.equal("$id", userId)]
+      [Query.equal("$id", userId)],
     );
 
     // 4️⃣ If no document found, return empty profile (prevents frontend crashes)
@@ -38,7 +38,7 @@ const getCustomerProfile = async (req, res) => {
       const userDoc = await db.getDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_USER_COLLECTION_ID,
-        docs.documents[0].$id
+        docs.documents[0].$id,
       );
       avatarUrl = userDoc.avatarUrl || null;
       avatarFileId = userDoc.avatarFileId || null;
@@ -72,7 +72,7 @@ const getCustomerProfile = async (req, res) => {
 const updateCurrencyRates = async (req, res) => {
   try {
     const response = await fetch(
-      "https://api.exchangerate-api.com/v4/latest/USD"
+      "https://api.exchangerate-api.com/v4/latest/USD",
     );
     const data = await response.json();
 
@@ -85,7 +85,7 @@ const updateCurrencyRates = async (req, res) => {
       const existing = await db.listDocuments(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_CURRENCIES_COLLECTION,
-        [Query.equal("currency_code", currencyCode)]
+        [Query.equal("currency_code", currencyCode)],
       );
 
       if (existing.total > 0) {
@@ -97,7 +97,7 @@ const updateCurrencyRates = async (req, res) => {
           {
             rate: parseFloat(rate),
             last_updated: now,
-          }
+          },
         );
       } else {
         // Create new document
@@ -109,7 +109,7 @@ const updateCurrencyRates = async (req, res) => {
             currency_code: currencyCode,
             rate: parseFloat(rate),
             last_updated: now,
-          }
+          },
         );
       }
     }
@@ -129,7 +129,7 @@ const getCustomerOrders = async (req, res) => {
     const result = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_ORDER_COLLECTION_ID,
-      [Query.equal("users", userId), Query.orderDesc("$createdAt")]
+      [Query.equal("userId", userId), Query.orderDesc("$createdAt")],
     );
 
     res.status(200).json({ orders: result.documents });
@@ -152,7 +152,7 @@ const saveRecentSearch = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_SEARCH_COLLECTION, // recentSearches
       ID.unique(),
-      { userId, query, timestamp }
+      { userId, query, timestamp },
     );
 
     return res
@@ -181,12 +181,54 @@ const getRecentSearches = async (req, res) => {
         Query.equal("userId", userId),
         Query.orderDesc("timestamp"),
         Query.limit(10),
-      ]
+      ],
     );
 
     return res.status(200).json({ searches: response.documents });
   } catch (error) {
     console.error("Error fetching recent searches:", error.message);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+const getPopularSearches = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    // Get all searches and aggregate by query to find most popular
+    const allSearches = await db.listDocuments(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_SEARCH_COLLECTION,
+      [
+        Query.orderDesc("timestamp"),
+        Query.limit(1000), // Get more searches to analyze
+      ],
+    );
+
+    // Count query occurrences
+    const queryCount = {};
+    allSearches.documents.forEach((search) => {
+      const query = search.query.toLowerCase().trim();
+      queryCount[query] = (queryCount[query] || 0) + 1;
+    });
+
+    // Sort by count and get top results
+    const popularQueries = Object.entries(queryCount)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, parseInt(limit))
+      .map(([query, count]) => ({
+        query: query,
+        count: count,
+        // Capitalize first letter for display
+        displayQuery: query.charAt(0).toUpperCase() + query.slice(1),
+      }));
+
+    return res.status(200).json({
+      searches: popularQueries,
+      total: popularQueries.length,
+    });
+  } catch (error) {
+    console.error("Error fetching popular searches:", error);
     return res.status(500).json({ message: "Internal server error." });
   }
 };
@@ -202,7 +244,7 @@ const clearRecentSearches = async (req, res) => {
     const response = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_SEARCH_COLLECTION,
-      [Query.equal("userId", userId)]
+      [Query.equal("userId", userId)],
     );
 
     const documents = response.documents;
@@ -211,8 +253,8 @@ const clearRecentSearches = async (req, res) => {
       db.deleteDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_SEARCH_COLLECTION,
-        doc.$id
-      )
+        doc.$id,
+      ),
     );
 
     await Promise.all(deletePromises);
@@ -240,49 +282,50 @@ const getProducts = async (req, res) => {
       page = 1,
     } = req.query;
 
-    let filters = [];
-
-    // ✅ CRITICAL: Only show APPROVED and ACTIVE products
-    filters.push(Query.equal("isApproved", true));
-    filters.push(Query.equal("isActive", true));
+    // Base filters applied to both queries
+    let baseFilters = [];
 
     // Category filter
     if (category && category !== "all") {
-      // Handle both category and categoryId arrays
-      filters.push(Query.equal("categoryId", category));
+      baseFilters.push(Query.equal("categoryId", category));
     }
 
     // Search filter (search in multiple fields)
     if (search) {
-      filters.push(
+      const normalizedSearch = search.trim().toLowerCase();
+      baseFilters.push(
         Query.or([
+          Query.search("productName", normalizedSearch),
+          Query.search("description", normalizedSearch),
+          Query.search("brand", normalizedSearch),
+          Query.search("tags", normalizedSearch),
           Query.search("productName", search),
           Query.search("description", search),
           Query.search("brand", search),
           Query.search("tags", search),
-        ])
+        ]),
       );
     }
 
     // Price range
     if (minPrice) {
-      filters.push(Query.greaterThanEqual("price", parseFloat(minPrice)));
+      baseFilters.push(Query.greaterThanEqual("price", parseFloat(minPrice)));
     }
     if (maxPrice) {
-      filters.push(Query.lessThanEqual("price", parseFloat(maxPrice)));
+      baseFilters.push(Query.lessThanEqual("price", parseFloat(maxPrice)));
     }
 
     // Stock filter
     if (inStock === "true" || inStock === true) {
-      filters.push(Query.greaterThan("stock", 0));
+      baseFilters.push(Query.greaterThan("stock", 0));
     }
 
     // Vendor filter
     if (vendorId) {
-      filters.push(Query.equal("vendorId", vendorId));
+      baseFilters.push(Query.equal("vendorId", vendorId));
     }
 
-    console.log("Appwrite Filters:", filters);
+    console.log("Appwrite Base Filters:", baseFilters);
 
     // Sort options
     let sortQuery;
@@ -300,60 +343,41 @@ const getProducts = async (req, res) => {
         sortQuery = Query.orderDesc("rating");
         break;
       case "featured":
-        sortQuery = Query.orderDesc("isFeatured"); // Show featured first
+        sortQuery = Query.orderDesc("isFeatured");
         break;
       default: // "newest"
         sortQuery = Query.orderDesc("$createdAt");
     }
 
-    // Pagination
-    const pageLimit = Math.min(parseInt(limit), 100); // Max 100 per page
-    const offset = (parseInt(page) - 1) * pageLimit;
-
+    // ✅ FETCH ALL PRODUCTS regardless of source or approval status
     let allProducts = [];
-    let totalProducts = 0;
     let cursor = null;
-    let currentCount = 0;
 
-    // First, get total count for pagination info
-    try {
-      const countQuery = await db.listDocuments(
-        env.APPWRITE_DATABASE_ID,
-        env.APPWRITE_PRODUCT_COLLECTION_ID,
-        [...filters, Query.limit(1)]
-      );
-      totalProducts = countQuery.total;
-    } catch (countError) {
-      console.warn("Could not get total count:", countError);
-    }
-
-    // Fetch with pagination
     while (true) {
       const queries = [
-        Query.limit(pageLimit),
+        Query.limit(100),
         sortQuery,
-        ...filters,
+        ...baseFilters,
         ...(cursor ? [Query.cursorAfter(cursor)] : []),
       ];
 
       const batch = await db.listDocuments(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_PRODUCT_COLLECTION_ID,
-        queries
+        queries,
       );
 
       allProducts.push(...batch.documents);
-      currentCount += batch.documents.length;
 
-      // Stop conditions
-      if (batch.documents.length < pageLimit || currentCount >= pageLimit) {
-        break;
-      }
-
+      if (batch.documents.length < 100) break;
       cursor = batch.documents[batch.documents.length - 1].$id;
     }
 
-    // Apply offset for pagination (if not using cursor pagination)
+    const totalProducts = allProducts.length;
+    const pageLimit = Math.min(parseInt(limit), 100);
+    const offset = (parseInt(page) - 1) * pageLimit;
+
+    // Apply offset for pagination
     const paginatedProducts = allProducts.slice(offset, offset + pageLimit);
 
     // Get unique categories for filter options
@@ -378,7 +402,7 @@ const getProducts = async (req, res) => {
       },
       availableCategories: categories,
       stats: {
-        approvedProducts: totalProducts,
+        totalProducts: totalProducts,
         outOfStock: allProducts.filter((p) => p.stock <= 0).length,
         averagePrice:
           allProducts.length > 0
@@ -402,33 +426,29 @@ const getProductsForMobile = async (req, res) => {
   try {
     const { category, search, limit = 20, cursor } = req.query;
 
-    let filters = [];
-
-    // ✅ CRITICAL: Only show APPROVED and ACTIVE products
-    filters.push(Query.equal("isApproved", true));
-    filters.push(Query.equal("isActive", true));
+    let queries = [];
 
     // Category filter (use categoryId for consistency)
     if (category && category !== "all") {
-      filters.push(Query.equal("categoryId", category));
+      queries.push(Query.equal("categoryId", category));
     }
 
     // Search filter
     if (search) {
-      filters.push(Query.search("productName", search));
+      queries.push(Query.search("productName", search));
     }
 
-    const queries = [
-      Query.limit(parseInt(limit)),
-      Query.orderDesc("$createdAt"),
-      ...filters,
-      ...(cursor ? [Query.cursorAfter(cursor)] : []),
-    ];
+    // ✅ Fetch ALL products regardless of approval status
+    queries.push(Query.limit(parseInt(limit)));
+    queries.push(Query.orderDesc("$createdAt"));
+    if (cursor) {
+      queries.push(Query.cursorAfter(cursor));
+    }
 
     const batch = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      queries
+      queries,
     );
 
     // ✅ ADD: Fetch review counts for all products in parallel
@@ -439,7 +459,7 @@ const getProductsForMobile = async (req, res) => {
           const reviews = await db.listDocuments(
             env.APPWRITE_DATABASE_ID,
             env.APPWRITE_REVIEW_COLLECTION_ID,
-            [Query.equal("productId", doc.$id), Query.select(["rating"])]
+            [Query.equal("productId", doc.$id), Query.select(["rating"])],
           );
 
           const reviewCount = reviews.total || 0;
@@ -469,7 +489,7 @@ const getProductsForMobile = async (req, res) => {
         } catch (error) {
           console.error(
             `Error fetching reviews for product ${doc.$id}:`,
-            error
+            error,
           );
           // Return product without review data on error
           return {
@@ -489,7 +509,7 @@ const getProductsForMobile = async (req, res) => {
             totalRatings: 0,
           };
         }
-      })
+      }),
     );
 
     res.json({
@@ -530,7 +550,7 @@ const submitReview = async (req, res) => {
     const userDoc = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_USER_COLLECTION_ID,
-      [Query.equal("$id", userId)]
+      [Query.equal("$id", userId)],
     );
 
     if (!userDoc.documents.length) {
@@ -585,7 +605,7 @@ const submitReview = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REVIEW_COLLECTION_ID,
       ID.unique(),
-      reviewPayload
+      reviewPayload,
     );
 
     // Optional: Increment product ratings count (if implemented separately)
@@ -603,7 +623,7 @@ const incrementProductRatingsCountInternal = async (productIdToIncrement) => {
   try {
     if (!productIdToIncrement) {
       console.warn(
-        "Internal incrementProductRatingsCount called without productId"
+        "Internal incrementProductRatingsCount called without productId",
       );
       return;
     }
@@ -612,12 +632,12 @@ const incrementProductRatingsCountInternal = async (productIdToIncrement) => {
     const productResponse = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      [Query.equal("$id", String(productIdToIncrement))]
+      [Query.equal("$id", String(productIdToIncrement))],
     );
 
     if (!productResponse.documents.length) {
       console.warn(
-        `Product with ID ${productIdToIncrement} not found for rating increment.`
+        `Product with ID ${productIdToIncrement} not found for rating increment.`,
       );
       return;
     }
@@ -631,11 +651,11 @@ const incrementProductRatingsCountInternal = async (productIdToIncrement) => {
       product.$id,
       {
         ratingsCount: updatedRatingsCount,
-      }
+      },
     );
 
     console.log(
-      `Ratings count incremented for product ${productIdToIncrement}`
+      `Ratings count incremented for product ${productIdToIncrement}`,
     );
     return {
       message: "Ratings count incremented",
@@ -644,7 +664,7 @@ const incrementProductRatingsCountInternal = async (productIdToIncrement) => {
   } catch (error) {
     console.error(
       "Error in internal incrementProductRatingsCount:",
-      error.message || error
+      error.message || error,
     );
     // Decide if you want to throw this error or just log it
   }
@@ -673,7 +693,7 @@ const incrementProductRatingsCount = async (req, res) => {
   } catch (error) {
     console.error(
       "Error handling incrementProductRatingsCount route:",
-      error.message || error
+      error.message || error,
     );
     return res
       .status(500)
@@ -700,11 +720,11 @@ const getProductReviews = async (req, res) => {
       [
         Query.equal("productId", String(productId)),
         Query.orderDesc("createdAt"),
-      ]
+      ],
     );
 
     // console.log(`\n📝 Found ${reviewResponse.documents.length} reviews`);
-    
+
     // Log first review to see what fields exist
     // if (reviewResponse.documents.length > 0) {
     //   console.log("\n📋 FIRST REVIEW DOCUMENT STRUCTURE:");
@@ -725,18 +745,18 @@ const getProductReviews = async (req, res) => {
       uniqueUserIds.map(async (userId) => {
         try {
           // console.log(`\n🔎 Fetching user profile for userId: ${userId}`);
-          
+
           const userResponse = await db.listDocuments(
             env.APPWRITE_DATABASE_ID,
             env.APPWRITE_USER_COLLECTION_ID,
-            [Query.equal("$id", userId)]
+            [Query.equal("$id", userId)],
           );
 
           // console.log(`📊 User query results for ${userId}:`, userResponse.total, "documents found");
 
           if (userResponse.documents.length > 0) {
             const userDoc = userResponse.documents[0];
-            
+
             // console.log(`\n✅ USER DOCUMENT FOUND for ${userId}:`);
             // console.log("User $id:", userDoc.$id);
             // console.log("User userName field:", userDoc.userName);
@@ -744,10 +764,14 @@ const getProductReviews = async (req, res) => {
             // console.log("User name field:", userDoc.name);
             // console.log("User email:", userDoc.email);
             // console.log("All user fields:", Object.keys(userDoc));
-            
-            const resolvedUserName = userDoc.userName || userDoc.username || userDoc.name || "Anonymous";
+
+            const resolvedUserName =
+              userDoc.userName ||
+              userDoc.username ||
+              userDoc.name ||
+              "Anonymous";
             // console.log(`🎯 Resolved userName: "${resolvedUserName}"`);
-            
+
             userDetails[userId] = {
               userName: resolvedUserName,
               avatar:
@@ -778,20 +802,25 @@ const getProductReviews = async (req, res) => {
               "https://fra.cloud.appwrite.io/v1/storage/buckets/692a3b700039c02fb4bc/files/692b97e30027bf293efe/view?project=6926c7df002fa7831d94&mode=admin",
           };
         }
-      })
+      }),
     );
 
     // console.log("\n📦 Final userDetails object:", JSON.stringify(userDetails, null, 2));
 
-    console.log("\n📦 Final userDetails object:", JSON.stringify(userDetails, null, 2));
+    console.log(
+      "\n📦 Final userDetails object:",
+      JSON.stringify(userDetails, null, 2),
+    );
 
     // Enrich reviews with user data
     const enrichedReviews = reviewResponse.documents.map((doc) => {
       // ✅ PRIORITY 1: Use userName stored in review document (in case user was deleted)
       let userName = doc.userName || "Anonymous";
-      let avatar = doc.avatar || "https://fra.cloud.appwrite.io/v1/storage/buckets/692a3b700039c02fb4bc/files/692b97e30027bf293efe/view?project=6926c7df002fa7831d94&mode=admin";
+      let avatar =
+        doc.avatar ||
+        "https://fra.cloud.appwrite.io/v1/storage/buckets/692a3b700039c02fb4bc/files/692b97e30027bf293efe/view?project=6926c7df002fa7831d94&mode=admin";
       let avatarUrl = avatar;
-      
+
       // ✅ PRIORITY 2: Override with fresh user data if user still exists
       if (userDetails[doc.userId]) {
         const user = userDetails[doc.userId];
@@ -834,7 +863,7 @@ const getProductReviews = async (req, res) => {
         productId: doc.productId,
       };
     });
-    
+
     // console.log("\n✅ Enriched reviews count:", enrichedReviews.length);
     // console.log("📤 Sending response...\n");
 
@@ -868,7 +897,7 @@ const submitRating = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_REVIEW_COLLECTION_ID,
       ID.unique(),
-      reviewData
+      reviewData,
     );
 
     console.log("Review submitted:", response);
@@ -896,7 +925,7 @@ const updateUserAvatar = async (req, res) => {
     const created = await storage.createFile(
       env.APPWRITE_STORAGE_ID,
       ID.unique(),
-      InputFile.fromBuffer(file.data, file.name)
+      InputFile.fromBuffer(file.data, file.name),
     );
 
     const avatarUrl = `${env.APPWRITE_ENDPOINT}/storage/buckets/${env.APPWRITE_STORAGE_ID}/files/${created.$id}/view?project=${env.APPWRITE_PROJECT_ID}`;
@@ -904,7 +933,7 @@ const updateUserAvatar = async (req, res) => {
     const docs = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_USER_COLLECTION_ID,
-      [Query.equal("$id", userId)]
+      [Query.equal("$id", userId)],
     );
 
     if (docs.total === 0)
@@ -916,7 +945,7 @@ const updateUserAvatar = async (req, res) => {
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_USER_COLLECTION_ID,
       profileDocId,
-      { avatarUrl, avatarFileId: created.$id }
+      { avatarUrl, avatarFileId: created.$id },
     );
 
     res.json({ avatarUrl });
@@ -941,7 +970,7 @@ const getFeaturedProducts = async (req, res) => {
     const response = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_FEATURED_COLLECTION_ID,
-      queries
+      queries,
     );
 
     res.status(200).json(response.documents);
@@ -953,35 +982,199 @@ const getFeaturedProducts = async (req, res) => {
 
 const getDealProducts = async (req, res) => {
   try {
-    const queries = [Query.equal("isDeal", true)];
+    const { category, sortBy } = req.query;
+    let queries = [Query.equal("isDeal", true)];
+
+    // Add category filter if provided
+    if (category && category !== "All Deals") {
+      queries.push(Query.equal("category", category));
+    }
+
+    // Add sorting
+    if (sortBy === "discount_desc") {
+      queries.push(Query.orderDesc("discount"));
+    } else if (sortBy === "newest") {
+      queries.push(Query.orderDesc("$createdAt"));
+    } else if (sortBy === "price_asc") {
+      queries.push(Query.orderAsc("dealPrice"));
+    } else {
+      queries.push(Query.orderDesc("$updatedAt"));
+    }
 
     const response = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_DEALS_COLLECTION_ID,
-      queries
+      queries,
     );
 
-    res.status(200).json(response.documents);
+    // Enrich products with calculated data
+    const enrichedProducts = response.documents.map((product) => {
+      const discount = product.discount || 0;
+      const timeLeft = calculateTimeLeft(
+        product.dealEndTime || new Date(Date.now() + 24 * 60 * 60 * 1000),
+      );
+
+      return {
+        ...product,
+        discount: discount,
+        timeLeft: timeLeft,
+        originalPrice: product.price,
+        price: product.dealPrice || product.price,
+        isExpiringSoon: timeLeft.totalHours <= 6,
+        isHighDiscount: discount >= 40,
+        isPremium: product.premiumDeal || false,
+      };
+    });
+
+    res.status(200).json(enrichedProducts);
   } catch (error) {
-    console.error("Error fetching featured products:", error);
+    console.error("Error fetching deal products:", error);
     res.status(500).json({ error: "Failed to fetch products" });
   }
 };
 
-// productsController.js
+const getDealAnalytics = async (req, res) => {
+  try {
+    // Get all active deals
+    const dealsResponse = await db.listDocuments(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_DEALS_COLLECTION_ID,
+      [Query.equal("isDeal", true)],
+    );
+
+    const deals = dealsResponse.documents;
+    const totalDeals = deals.length;
+
+    // Calculate analytics
+    const maxDiscount = Math.max(...deals.map((d) => d.discount || 0));
+    const averageDiscount =
+      deals.reduce((sum, d) => sum + (d.discount || 0), 0) / totalDeals || 0;
+
+    // Count deals ending soon (within 24 hours)
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const endingSoon = deals.filter((deal) => {
+      const endTime = new Date(deal.dealEndTime || tomorrow);
+      return endTime <= tomorrow;
+    }).length;
+
+    // Count premium deals
+    const premiumDeals = deals.filter((d) => d.premiumDeal).length;
+
+    // Count new arrivals (created in last 7 days)
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const newArrivals = deals.filter((deal) => {
+      const createdTime = new Date(deal.$createdAt);
+      return createdTime >= weekAgo;
+    }).length;
+
+    // Calculate time left for flash sale (find the deal with shortest time left)
+    let globalTimeLeft = { hours: 23, minutes: 59, seconds: 59 };
+    if (deals.length > 0) {
+      const shortestDeal = deals.reduce((shortest, current) => {
+        const currentEnd = new Date(current.dealEndTime || tomorrow);
+        const shortestEnd = new Date(shortest.dealEndTime || tomorrow);
+        return currentEnd < shortestEnd ? current : shortest;
+      });
+
+      globalTimeLeft = calculateTimeLeft(shortestDeal.dealEndTime || tomorrow);
+    }
+
+    res.status(200).json({
+      totalDeals,
+      maxDiscount: Math.floor(maxDiscount),
+      averageDiscount: Math.floor(averageDiscount),
+      endingSoon,
+      premiumDeals,
+      newArrivals,
+      globalTimeLeft,
+      isFlashSaleActive: totalDeals > 0,
+      categories: {
+        "All Deals": totalDeals,
+        "Most Popular": Math.floor(totalDeals * 0.3),
+        "Ending Soon": endingSoon,
+        "Best Value": deals.filter((d) => (d.discount || 0) >= 40).length,
+        "Premium Offers": premiumDeals,
+        "New Arrivals": newArrivals,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching deal analytics:", error);
+    res.status(500).json({ error: "Failed to fetch deal analytics" });
+  }
+};
+
+const getGlobalDealCountdown = async (req, res) => {
+  try {
+    const now = new Date();
+
+    // Get the deal that ends soonest
+    const dealsResponse = await db.listDocuments(
+      env.APPWRITE_DATABASE_ID,
+      env.APPWRITE_DEALS_COLLECTION_ID,
+      [
+        Query.equal("isDeal", true),
+        Query.greaterThan("dealEndTime", now.toISOString()),
+        Query.orderAsc("dealEndTime"),
+        Query.limit(1),
+      ],
+    );
+
+    if (dealsResponse.documents.length === 0) {
+      // No active deals, return default countdown
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      return res.json(calculateTimeLeft(tomorrow.toISOString()));
+    }
+
+    const nextEndingDeal = dealsResponse.documents[0];
+    const timeLeft = calculateTimeLeft(nextEndingDeal.dealEndTime);
+
+    res.json({
+      ...timeLeft,
+      dealId: nextEndingDeal.$id,
+      dealName: nextEndingDeal.productName,
+      hasActiveDeals: true,
+    });
+  } catch (error) {
+    console.error("Error fetching global deal countdown:", error);
+    // Return default countdown on error
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    res.json({
+      ...calculateTimeLeft(tomorrow.toISOString()),
+      hasActiveDeals: false,
+    });
+  }
+};
+
+// Helper function to calculate time left
+const calculateTimeLeft = (endTime) => {
+  const now = new Date();
+  const end = new Date(endTime);
+  const timeDiff = end.getTime() - now.getTime();
+
+  if (timeDiff <= 0) {
+    return { hours: 0, minutes: 0, seconds: 0, totalHours: 0 };
+  }
+
+  const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+  const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+
+  return { hours, minutes, seconds, totalHours: hours + minutes / 60 };
+};
 
 const getHeroProducts = async (req, res) => {
   try {
     const { documents: featured } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_FEATURED_COLLECTION_ID,
-      [Query.limit(3), Query.orderDesc("$createdAt")] // Limit to a few slides
+      [Query.limit(3), Query.orderDesc("$createdAt")], // Limit to a few slides
     );
 
     const { documents: deals } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_DEALS_COLLECTION_ID,
-      [Query.limit(3), Query.orderDesc("$createdAt")] // Limit to a few slides
+      [Query.limit(3), Query.orderDesc("$createdAt")], // Limit to a few slides
     );
 
     // Combine the two lists and send to the frontend
@@ -997,7 +1190,7 @@ const getCategories = async (req, res) => {
     const { documents } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_CATEGORIES_COLLECTION_ID,
-      [Query.limit(100), Query.orderAsc("name")]
+      [Query.limit(100), Query.orderAsc("name")],
     );
 
     const categories = documents.map((doc) => ({
@@ -1012,139 +1205,6 @@ const getCategories = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch categories." });
   }
 };
-
-// Example: Controller to get products for a specific category
-/* const getProductsBycategory = async (req, res) => {
-  try {
-    const categoryId = req.params.categoryId || req.params.category;
-
-    console.log("🔍 [DEBUG] categoryId:", req.params.categoryId);
-    console.log("🔍 [DEBUG] category:", req.params.category);
-    console.log("🔍 [DEBUG] Using categoryId:", categoryId);
-
-    if (!categoryId) {
-      console.error("❌ Error: No category ID found in params!");
-      console.log("❌ All params:", req.params);
-      return res.status(400).json({ error: "Category ID is required" });
-    }
-
-    const { documents } = await db.listDocuments(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID,
-      [
-        // This query finds all products where the 'categoryLink' attribute
-        // matches the specific categoryId you provided.
-        Query.equal("categoryLink", categoryId),
-        Query.orderDesc("$createdAt"),
-      ]
-    );
-    console.log(
-      `✅ Found ${documents.length} products for category ${categoryId}`
-    );
-    console.log(
-      "Products with subcategories:",
-      documents.filter((p) => p.subcategoryId).length
-    );
-    console.log(
-      "Products without subcategories:",
-      documents.filter((p) => !p.subcategoryId).length
-    );
-
-    res.status(200).json(documents);
-  } catch (error) {
-    console.error("❌ Failed to fetch products by category:", error);
-    res.status(500).json({ error: "Failed to fetch products" });
-  }
-}; */
-/* const getProductsByCategory = async (req, res) => {
-  try {
-    const { category } = req.params;
-
-    console.log("=== getProductsByCategory CONTROLLER CALLED ===");
-    console.log("Full request URL:", req.originalUrl);
-    console.log("Request path:", req.path);
-    console.log("All params:", req.params);
-    console.log("Query params:", req.query);
-
-    // Try multiple ways to get the categoryId
-    const categoryId =
-      req.params.categoryId || req.params.category || req.query.categoryId;
-
-    console.log(`🔍 Fetching products for category ID: "${categoryId}"`);
-    console.log(`Type of categoryId: ${typeof categoryId}`);
-
-    if (!categoryId || categoryId.trim() === "") {
-      console.log("❌ ERROR: categoryId is empty or undefined");
-      console.log("Available params keys:", Object.keys(req.params));
-      return res.status(400).json({
-        error: "Category ID is required",
-        receivedParams: req.params,
-        receivedQuery: req.query,
-      });
-    }
-
-    // Validate the ID format (Appwrite IDs are typically 20 chars)
-    if (categoryId.length < 10) {
-      console.log(
-        `❌ ERROR: categoryId too short (${categoryId.length} chars): ${categoryId}`
-      );
-      return res.status(400).json({
-        error: "Invalid category ID format",
-        details: `ID length: ${categoryId.length}, expected at least 10 characters`,
-      });
-    }
-
-    console.log(`✅ Category ID validated: ${categoryId}`);
-
-    console.log(`🔍 Fetching products for category ID: ${category}`);
-
-    // Validate category ID
-    if (!category || category.trim() === "") {
-      return res.status(400).json({ error: "Category ID is required" });
-    }
-
-    // 1. First, verify the category exists
-    try {
-      await db.getDocument(
-        env.APPWRITE_DATABASE_ID,
-        env.APPWRITE_CATEGORIES_COLLECTION_ID,
-        category
-      );
-    } catch (error) {
-      if (error.code === 404) {
-        return res.status(404).json({ error: "Category not found" });
-      }
-      throw error;
-    }
-
-    const { documents } = await db.listDocuments(
-      env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID, // ✅ Query the PRODUCT collection
-      [
-        Query.equal("categoryId", category), // Assuming products have categoryId field
-        Query.equal("status", "active"), // Only active products
-        Query.orderDesc("$createdAt"), // Newest first
-        Query.limit(50), // Limit results
-      ]
-    );
-
-    // If the category is not found, return an empty array
-    if (!documents || documents.length === 0) {
-      return res.status(404).json([]);
-    }
-
-    // ✅ Access the products using the automatically created virtual attribute
-    // The attribute name is the name of the 'products' collection
-    const productsInTheCategory = documents[0].products;
-
-    res.status(200).json(productsInTheCategory);
-  } catch (error) {
-    console.error("❌ Failed to fetch products by category:", error);
-    res
-      .status(500)
-      .json({ error: "Failed to fetch products for this category." });
-  }
-}; */
 
 const getProductsByCategory = async (req, res) => {
   try {
@@ -1164,7 +1224,7 @@ const getProductsByCategory = async (req, res) => {
       const categoryDoc = await db.getDocument(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_CATEGORIES_COLLECTION_ID,
-        categoryId
+        categoryId,
       );
       console.log(`✅ Category found: ${categoryDoc.name}`);
     } catch (error) {
@@ -1177,15 +1237,15 @@ const getProductsByCategory = async (req, res) => {
       throw error;
     }
 
-    // Fetch products
+    // ✅ Fetch ALL products by category regardless of approval status
     const products = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
       [
         Query.equal("categoryId", categoryId),
         Query.orderDesc("$createdAt"),
-        Query.limit(50),
-      ]
+        Query.limit(100),
+      ],
     );
 
     console.log(`✅ Found ${products.total} products`);
@@ -1220,7 +1280,7 @@ const getCategoryBySlug = async (req, res) => {
     const { documents } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_CATEGORIES_COLLECTION_ID,
-      [Query.equal("slug", slug), Query.limit(1)]
+      [Query.equal("slug", slug), Query.limit(1)],
     );
 
     if (documents.length === 0) {
@@ -1239,7 +1299,7 @@ const getCategorie = async (req, res) => {
     const { documents } = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_CATEGORIES_COLLECTION_ID, // Use the correct ID for your categories collection
-      [Query.limit(100), Query.orderAsc("name")] // Fetch up to 100 categories, ordered by name
+      [Query.limit(100), Query.orderAsc("name")], // Fetch up to 100 categories, ordered by name
     );
 
     // Assuming your category documents have 'name' and 'imgUrl' attributes
@@ -1265,7 +1325,7 @@ const getCategoryById = async (req, res) => {
     const category = await db.getDocument(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_CATEGORIES_COLLECTION_ID,
-      categoryId
+      categoryId,
     );
 
     // Map the document to the desired format
@@ -1286,7 +1346,7 @@ const getMobileCategories = async (req, res) => {
   try {
     const products = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
-      env.APPWRITE_PRODUCT_COLLECTION_ID
+      env.APPWRITE_PRODUCT_COLLECTION_ID,
     );
 
     const categories = [
@@ -1294,7 +1354,7 @@ const getMobileCategories = async (req, res) => {
       ...new Set(
         products.documents
           .map((p) => p.category)
-          .filter((cat) => cat && cat.toLowerCase() !== "all")
+          .filter((cat) => cat && cat.toLowerCase() !== "all"),
       ),
     ];
 
@@ -1311,18 +1371,16 @@ const getMobileProducts = async (req, res) => {
   try {
     const { category, limit = 50, page = 1 } = req.query;
 
-    const queries = [
-      // ✅ CRITICAL: Only show APPROVED and ACTIVE products
-      Query.equal("isApproved", true),
-      Query.equal("isActive", true),
-      Query.limit(parseInt(limit)),
-      Query.orderDesc("$createdAt"), // Show newest first
-    ];
+    let queries = [];
 
     // If a category is specified, add a filter query
     if (category && category !== "all") {
       queries.push(Query.equal("categoryId", category));
     }
+
+    // ✅ Fetch ALL products regardless of approval status
+    queries.push(Query.limit(parseInt(limit)));
+    queries.push(Query.orderDesc("$createdAt"));
 
     // Add offset for pagination
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -1333,7 +1391,7 @@ const getMobileProducts = async (req, res) => {
     const products = await db.listDocuments(
       env.APPWRITE_DATABASE_ID,
       env.APPWRITE_PRODUCT_COLLECTION_ID,
-      queries
+      queries,
     );
 
     // ✅ ADD: Include review counts
@@ -1343,7 +1401,7 @@ const getMobileProducts = async (req, res) => {
           const reviews = await db.listDocuments(
             env.APPWRITE_DATABASE_ID,
             env.APPWRITE_REVIEW_COLLECTION_ID,
-            [Query.equal("productId", doc.$id), Query.select(["rating"])]
+            [Query.equal("productId", doc.$id), Query.select(["rating"])],
           );
 
           const reviewCount = reviews.total || 0;
@@ -1365,7 +1423,7 @@ const getMobileProducts = async (req, res) => {
             avgRating: 0,
           };
         }
-      })
+      }),
     );
 
     res.json({
@@ -1388,37 +1446,35 @@ const getProducts2 = async (req, res) => {
   try {
     const { category, search } = req.query;
 
-    let filters = [];
+    let queries = [Query.limit(100), Query.orderDesc("$createdAt")];
+
     if (category && category !== "all") {
-      filters.push(Query.equal("categoryId", category)); // ✅ FIXED
+      queries.push(Query.equal("categoryId", category));
     }
     if (search) {
-      filters.push(Query.search("productName", search));
+      queries.push(Query.search("productName", search));
     }
 
-    console.log("Appwrite Filters:", filters);
+    console.log("Queries:", queries);
 
     const allProducts = [];
     let cursor = null;
 
+    // ✅ Fetch ALL products regardless of approval status
     while (true) {
-      const queries = [
-        Query.limit(100),
-        Query.orderDesc("$createdAt"),
-        ...(filters.length > 0 ? filters : []),
+      const batchQueries = [
+        ...queries,
         ...(cursor ? [Query.cursorAfter(cursor)] : []),
       ];
 
       const batch = await db.listDocuments(
         env.APPWRITE_DATABASE_ID,
         env.APPWRITE_PRODUCT_COLLECTION_ID,
-        queries
+        batchQueries,
       );
 
       allProducts.push(...batch.documents);
-
       if (batch.documents.length < 100) break;
-
       cursor = batch.documents[batch.documents.length - 1].$id;
     }
 
@@ -1453,6 +1509,8 @@ module.exports = {
   getCategories,
   getProductsForMobile,
   getDealProducts,
+  getDealAnalytics,
+  getGlobalDealCountdown,
   getHeroProducts,
   getProductsByCategory,
   getCategoryBySlug,
@@ -1461,4 +1519,5 @@ module.exports = {
   getCategorie,
   getCategoryById,
   getProducts2,
+  getPopularSearches,
 };
